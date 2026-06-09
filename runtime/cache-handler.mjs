@@ -1,14 +1,14 @@
-// A-6: Next.js 16 CacheHandler 인터페이스를 구현해 brrrd 의
-// op_brrrd_cache_* ops 로 위임. Next config 의 cacheHandlers.default 에
-// 이 모듈을 등록하면 ISR / fetch cache / use cache 가 brrrd backend 로 흐른다.
+// A-6: Implements the Next.js 16 CacheHandler interface and delegates to
+// brrrd's op_brrrd_cache_* ops. Registering this module as cacheHandlers.default
+// in the Next config routes ISR / fetch cache / use cache through the brrrd backend.
 //
-// 인터페이스 출처: next/dist/server/lib/cache-handlers/types.d.ts (Next 16.x).
+// Interface source: next/dist/server/lib/cache-handlers/types.d.ts (Next 16.x).
 //
-// 주의:
-// - tag-based getExpiration 는 backend 가 timestamp 모르니까 Infinity 반환 →
-//   Next 가 get 의 softTags 로 직접 stale 판정.
-// - 본 모듈은 brrrd isolate 안에서만 동작 (Deno.core.ops 의존). 다른 Next
-//   런타임에서 import 하면 ReferenceError.
+// Note:
+// - tag-based getExpiration returns Infinity because the backend doesn't know the
+//   timestamp, so Next determines staleness directly via the softTags passed to get.
+// - This module only works inside the brrrd isolate (it depends on Deno.core.ops).
+//   Importing it from another Next runtime throws a ReferenceError.
 
 class BrrrdCacheHandler {
   async get(cacheKey, softTags) {
@@ -61,11 +61,11 @@ class BrrrdCacheHandler {
   }
 
   async refreshTags() {
-    // backend 가 매 get 시 directly stale 판정. local manifest 없음.
+    // The backend determines staleness directly on every get. There is no local manifest.
   }
 
   async getExpiration(_tags) {
-    // Infinity → Next 가 softTags 를 get 에 넘기게 만들어 stale check 위임.
+    // Infinity makes Next pass softTags to get, delegating the staleness check to it.
     return Infinity;
   }
 

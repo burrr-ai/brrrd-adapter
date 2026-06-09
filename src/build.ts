@@ -20,8 +20,8 @@ import {
 } from "./routing.js";
 import type { BuildContext } from "./types.js";
 
-// TD-14: 텍스트 계열 정적 자산을 빌드 타임에 gzip/brotli 사전 압축.
-// runtime 의 handle_static 이 Accept-Encoding 보고 파생 파일을 선택.
+// TD-14: pre-compress text-based static assets with gzip/brotli at build time.
+// The runtime's handle_static inspects Accept-Encoding and picks the derived file.
 const COMPRESS_EXTENSIONS = new Set([
   "js", "mjs", "css", "html", "json", "svg", "txt", "map", "xml", "wasm",
 ]);
@@ -418,9 +418,9 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   }
 
   // 7. Middleware detection + raw copy
-  // Next 의 compiled middleware bundle 은 webpack chunk format — 절대 esbuild 로
-  // 다시 bundling 하지 말 것. raw 파일을 그대로 runtime/server/ 로 복사한 뒤
-  // isolate 가 edge runtime polyfill 위에서 evaluate.
+  // Next's compiled middleware bundle is in webpack chunk format — never
+  // re-bundle it with esbuild. Copy the raw file as-is into runtime/server/,
+  // then the isolate evaluates it on top of the edge runtime polyfill.
   const middleware = copyMiddlewareBundle(ctx, runtimeDir);
 
   // 8. PPR detection

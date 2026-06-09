@@ -10,13 +10,13 @@ export function modifyConfig(
   // Disable image optimization (no sharp/squoosh in V8 Isolate)
   config.images = { ...config.images, unoptimized: true };
 
-  // A-6 wiring: cache handler 폴리필 자동 등록.
-  // build-time 에는 @brrrd/adapter/cache-handler 의 real disk path 로
-  // require.resolve 가 성공. 같은 파일을 onBuildComplete 가 isolate 의
-  // /bundle/brrrd-cache-handler.cjs 에도 mount. runtime 에 Next 가
-  // import 할 때 brrrd 의 ModuleLoader (pool.rs::load_bundle_module) 가
-  // 절대 disk path 의 basename 만 보고 /bundle/brrrd-cache-handler.cjs 로
-  // remap (다음 단계 — pool.rs 수정).
+  // A-6 wiring: auto-register the cache handler polyfill.
+  // At build time, require.resolve succeeds against the real disk path of
+  // @brrrd/adapter/cache-handler. onBuildComplete also mounts that same file
+  // into the isolate at /bundle/brrrd-cache-handler.cjs. At runtime, when Next
+  // imports it, brrrd's ModuleLoader (pool.rs::load_bundle_module) looks only at
+  // the basename of the absolute disk path and remaps it to
+  // /bundle/brrrd-cache-handler.cjs (next step — pool.rs change).
   config.cacheHandlers = config.cacheHandlers ?? {};
   if (!config.cacheHandlers.default) {
     try {
@@ -25,7 +25,7 @@ export function modifyConfig(
       console.warn("[@brrrd/adapter] cache handler auto-register failed:", e);
     }
   }
-  // Legacy IncrementalCache 인터페이스 — unstable_cache, fetch revalidate, page ISR 용.
+  // Legacy IncrementalCache interface — for unstable_cache, fetch revalidate, and page ISR.
   if (!config.cacheHandler) {
     try {
       config.cacheHandler = require.resolve("@brrrd/adapter/cache-handler-legacy");
@@ -34,8 +34,8 @@ export function modifyConfig(
     }
   }
 
-  // output: 'standalone'은 설정하지 않음.
-  // Adapter API가 per-route output(filePath + assets)을 제공하므로 standalone 불필요.
+  // Do not set output: 'standalone'.
+  // The Adapter API provides per-route output (filePath + assets), so standalone is not needed.
 
   return config;
 }

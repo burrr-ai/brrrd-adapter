@@ -1,9 +1,10 @@
-// TD-11: OpenTelemetry API stub. Next.js tracer requires `@opentelemetry/api` but
-// 운영 환경에선 brrrd 자체 OTel 파이프라인 (B-2) 으로 대체될 예정. 사용자가 별도
-// otel SDK 를 의존성으로 추가하지 않은 경우의 no-op 폴백.
+// TD-11: OpenTelemetry API stub. Next.js tracer requires `@opentelemetry/api`, but
+// in production it will be replaced by brrrd's own OTel pipeline (B-2). This is a
+// no-op fallback for when the user has not added a separate otel SDK as a dependency.
 //
-// 분리 이유: bundler.ts 의 REQUIRE_BANNER 가 비대해지지 않게 하고 향후 stub
-// 동작 (예: noop tracer → 실제 otel global) 교체가 쉬워지도록 모듈로 격리.
+// Why this is split out: to keep REQUIRE_BANNER in bundler.ts from bloating, and to
+// isolate the stub in its own module so that future stub behavior (e.g. swapping the
+// noop tracer for the real otel global) is easy to replace.
 
 export const OTEL_STUB_SOURCE = `(() => {
   const noopSpan = { end(){}, setAttribute(){}, setStatus(){}, recordException(){}, isRecording(){ return false; } };

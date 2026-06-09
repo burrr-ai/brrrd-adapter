@@ -1,22 +1,25 @@
-// A-6: Next.js 의 legacy IncrementalCache 의 CacheHandler 인터페이스 폴리필.
-// `unstable_cache`, fetch revalidate, page ISR 등이 사용. 이 모듈을 next.config
-// 의 `cacheHandler` (singular) 에 등록.
+// A-6: Polyfill for the CacheHandler interface of Next.js's legacy IncrementalCache.
+// Used by `unstable_cache`, fetch revalidate, page ISR, etc. Register this module
+// under `cacheHandler` (singular) in next.config.
 //
-// 인터페이스: next/dist/server/lib/incremental-cache/index.d.ts 의 CacheHandler.
+// Interface: the CacheHandler from next/dist/server/lib/incremental-cache/index.d.ts.
 // CacheHandlerValue = { lastModified, age?, cacheState?, value: IncrementalCacheValue | null }
 //
-// 직렬화 전략: 전체 CacheHandlerValue 를 JSON.stringify → utf-8 bytes 로 저장.
-// 단, APP_PAGE 캐시 value 는 `rscData`/`html`(Node Buffer) 과 `segmentData`(Map)
-// 같은 non-plain 필드를 담는다. plain JSON 왕복은 Buffer → {type:"Buffer",data:[…]}
-// 로 깨뜨려, 정적 RSC 서빙 시 `RenderResult.fromStatic` 의 readable getter 가
-// `Buffer.isBuffer` 를 통과 못 해 web stream 대신 plain 객체를 반환 → Next 의
-// `pipeToNodeResponse` 가 `.pipeTo` 없다고 500(E180) 낸다. 그래서 Buffer/Uint8Array/
-// Map 를 sentinel 로 인코딩해 무손실 왕복한다 (ReadableStream 은 여전히 비대상 —
-// modern cacheHandlers(cache-handler.mjs)가 스트림 value 를 따로 처리).
+// Serialization strategy: JSON.stringify the entire CacheHandlerValue and store it
+// as utf-8 bytes. However, an APP_PAGE cache value carries non-plain fields such as
+// `rscData`/`html` (Node Buffer) and `segmentData` (Map). A plain JSON round-trip
+// mangles Buffer into {type:"Buffer",data:[…]}, so when serving static RSC the
+// readable getter of `RenderResult.fromStatic` fails `Buffer.isBuffer` and returns a
+// plain object instead of a web stream. Next's `pipeToNodeResponse` then throws a
+// 500 (E180) complaining there is no `.pipeTo`. To avoid this we encode
+// Buffer/Uint8Array/Map as sentinels for a lossless round-trip (ReadableStream is
+// still out of scope — the modern cacheHandlers (cache-handler.mjs) handle stream
+// values separately).
 
 const BUF = globalThis.Buffer;
 
-// JSON.stringify replacer. `this[key]` 로 toJSON 적용 전 원본을 봐야 Buffer 를 잡는다.
+// JSON.stringify replacer. We must inspect the original value via `this[key]` before
+// toJSON is applied in order to catch a Buffer.
 function encodeReplacer(key, value) {
   const raw = this[key];
   if (BUF && BUF.isBuffer(raw)) {
@@ -31,7 +34,7 @@ function encodeReplacer(key, value) {
   return value;
 }
 
-// JSON.parse reviver (bottom-up: 중첩 Buffer 가 Map 보다 먼저 복원된다).
+// JSON.parse reviver (bottom-up: a nested Buffer is restored before its enclosing Map).
 function decodeReviver(_key, value) {
   if (value && typeof value === "object" && value.__brrrd_t__) {
     switch (value.__brrrd_t__) {
@@ -48,7 +51,7 @@ function decodeReviver(_key, value) {
 
 class BrrrdLegacyCacheHandler {
   constructor(_ctx) {
-    // ctx 는 무시 — brrrd 의 backend 가 전역 (OpState 에 주입).
+    // ctx is ignored — brrrd's backend is global (injected into OpState).
   }
 
   async get(cacheKey, _ctx) {
