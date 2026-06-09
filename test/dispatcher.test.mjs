@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import test from "node:test";
+
+import { bundleAppHandler } from "../dist/bundler.js";
+
+function tempDir(name) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-adapter-${name}-`));
+}
+
+function res() {
+  return {
+    body: "",
+    ended: false,
+    statusCode: 200,
+    end(chunk = "") {
+      this.body = String(chunk);
+      this.ended = true;
+    },
+    writeHead(statusCode) {
+      this.statusCode = statusCode;
+    },
+  };
+}
+
+test("dispatcher resolves async webpack route module exports before calling handler", async () => {
+  const root = tempDir("dispatcher");
+  const syncRoute = path.join(root, "sync-route.mjs");
+  const asyncRoute = path.join(root, "async-route.cjs");
+
+  fs.writeFileSync(
+    syncRoute,
+    "export function handler(_req, res) { res.end('sync'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    asyncRoute,
+    "module.exports = Promise.resolve({ handler(_req, res) { res.end('async'); } });\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [
+      { id: "sync", filePath: syncRoute },
+      { id: "async", filePath: asyncRoute },
+    ],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const syncRes = res();
+  await dispatch("sync", { headers: { host: "example.test" } }, syncRes);
+  assert.equal(syncRes.body, "sync");
+
+  const asyncRes = res();
+  await dispatch("async", { headers: { host: "example.test" } }, asyncRes);
+  assert.equal(asyncRes.body, "async");
+});

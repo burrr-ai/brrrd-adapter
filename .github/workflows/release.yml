@@ -1,0 +1,27 @@
+name: release
+
+# Push a tag like v0.1.0 -> builds and publishes @brrrd/adapter to npm.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - run: npm install
+      - name: Set version from tag
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: Publish
+        run: npm publish --access public
+        env:
+          # NPM_TOKEN must bypass 2FA (Automation token, or Granular token with
+          # "Bypass 2FA" + read/write on the @brrrd scope).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

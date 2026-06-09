@@ -1,0 +1,44 @@
+{
+  "name": "@brrrd/adapter",
+  "version": "0.1.0",
+  "description": "Next.js build adapter that packages an app for the brrrd runtime (comwit.io platform).",
+  "keywords": ["nextjs", "next", "brrrd", "adapter", "comwit", "deploy"],
+  "license": "UNLICENSED",
+  "homepage": "https://comwit.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/burrr-ai/brrrd-adapter.git"
+  },
+  "type": "module",
+  "files": ["dist", "runtime", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cache-handler": "./runtime/cache-handler.mjs",
+    "./cache-handler-legacy": "./runtime/cache-handler-legacy.mjs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepack": "tsc",
+    "test": "pnpm build && node --test test/*.test.mjs",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "peerDependencies": {
+    "next": "^16.2"
+  },
+  "devDependencies": {
+    "next": "^16.2.1",
+    "typescript": "^5.8.0",
+    "@types/node": "^22.0.0"
+  }
+}
