@@ -35,11 +35,12 @@ Then `next build` produces `dist/brrrd/`. Deploy it with `brrrd-fleet deploy
 - **Database**: use libSQL (Louhi), not a Cloudflare/Workers binding —
   `@tursodatabase/serverless/compat` + `drizzle-orm/libsql/web`, reading your
   `DATABASE_URL` / `DATABASE_AUTH_TOKEN` from the brrrd env bundle.
-- **No native `.node` addons** in the served request path (e.g. `next/og` icon
-  routes should use `export const runtime = "edge"` so they don't pull `sharp`).
-- **Middleware matcher**: avoid negative-lookahead (`/((?!api|...).*)`) — the
-  runtime's regex engine rejects it. Match all + exclude paths inside the
-  middleware function instead.
+- **No native `.node` addons** in the served request path. `next/og` image
+  routes are handled through Next's WASM fallback path, so they do not need
+  `export const runtime = "edge"` just to avoid optional `sharp` traces.
+- **Middleware matcher**: standard Next matcher regexes, including common
+  negative-lookahead patterns such as `/((?!api|...).*)`, are supported by the
+  brrrd runtime.
 
 > Version note: the adapter's manifest format is coupled to the brrrd runtime
 > version. Use an adapter release that matches your deployed runtime.

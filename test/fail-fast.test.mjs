@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
 import { extractMiddlewareMeta, extractRoutingManifest } from "../dist/manifest.js";
+
+const require = createRequire(import.meta.url);
 
 function tempDir(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-adapter-${name}-`));
@@ -53,6 +56,39 @@ test("onBuildComplete rejects native .node traced assets", async () => {
     ),
     /native Node addons/,
   );
+});
+
+test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
+  const root = tempDir("next-og");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    'import { ImageResponse } from "next/og"; export function handler() { return new ImageResponse("x"); }',
+    "utf8",
+  );
+
+  await onBuildComplete(
+    minimalContext(root, distDir, {
+      id: "/apple-icon",
+      pathname: "/apple-icon",
+      filePath: handler,
+      assets: {
+        "next-og": require.resolve("next/dist/compiled/@vercel/og/index.node.js"),
+        "sharp-native": path.join(
+          root,
+          "node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node",
+        ),
+      },
+    }),
+  );
+
+  const bundleDir = path.join(root, "dist", "brrrd", "bundles");
+  const appBundle = fs.readFileSync(path.join(bundleDir, "app.js"), "utf8");
+  assert.match(appBundle, /index\.node\.js/);
+  assert.doesNotMatch(appBundle, /index\.edge\.js/);
+  assert.equal(fs.existsSync(path.join(bundleDir, "resvg.wasm")), true);
+  assert.equal(fs.existsSync(path.join(bundleDir, "Geist-Regular.ttf")), true);
 });
 
 test("extractRoutingManifest preserves rewrite phases and conditions", () => {
