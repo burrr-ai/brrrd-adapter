@@ -12,6 +12,9 @@ importers:
         specifier: ^0.25.0
         version: 0.25.12
     devDependencies:
+      '@next/routing':
+        specifier: ^16.2.9
+        version: 16.2.9
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.20
@@ -338,6 +341,9 @@ packages:
 
   '@next/env@16.2.7':
     resolution: {integrity: sha512-tMJizPlj6ZYpBMMdK8S0LJufrP4QTdR6pcv9KQ/bVETPAmg0j1mlHE9G2c38UyGHxoBapgwuj7XjbGJ2RcDFOg==}
+
+  '@next/routing@16.2.9':
+    resolution: {integrity: sha512-6EfMSDmngFFNgajFd3MJodml79I54YARKcAtYYuXOG8lZhJ/EahTPnwEfLvBYOQ6N4iae0fb1VPCdmn85e89Sg==}
 
   '@next/swc-darwin-arm64@16.2.7':
     resolution: {integrity: sha512-vm1EDI/pVaBNNiychmxk3fft+OhQPVD9cIM/tReLZIQ3TfQ4kqI9DwKk00dzuS1ulC7icbrzCFrmRRlk9PfNdw==}
@@ -682,6 +688,8 @@ snapshots:
     optional: true
 
   '@next/env@16.2.7': {}
+
+  '@next/routing@16.2.9': {}
 
   '@next/swc-darwin-arm64@16.2.7':
     optional: true

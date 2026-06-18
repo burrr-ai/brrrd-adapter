@@ -1,0 +1,171 @@
+{
+  "buildId": "oracle-build",
+  "basePath": "",
+  "pathnames": ["/b", "/c", "/p/[slug]", "/result", "/fallback"],
+  "routes": {
+    "headers": [
+      {
+        "sourceRegex": "^/search$",
+        "headers": {
+          "x-route": "search"
+        }
+      }
+    ],
+    "redirects": [
+      {
+        "sourceRegex": "^/old$",
+        "destination": "/new/$xtenant",
+        "headers": {
+          "location": "/new/$xtenant"
+        },
+        "status": 308,
+        "has": [
+          {
+            "type": "header",
+            "key": "x-tenant",
+            "value": "acme"
+          }
+        ],
+        "missing": [
+          {
+            "type": "header",
+            "key": "x-skip"
+          }
+        ]
+      }
+    ],
+    "beforeFiles": [
+      {
+        "sourceRegex": "^/a$",
+        "destination": "/b"
+      },
+      {
+        "sourceRegex": "^/b$",
+        "destination": "/c"
+      }
+    ],
+    "afterFiles": [
+      {
+        "sourceRegex": "^/legacy/(.+)$",
+        "destination": "/p/$1"
+      },
+      {
+        "sourceRegex": "^/search$",
+        "destination": "/result?tab=$mode",
+        "has": [
+          {
+            "type": "query",
+            "key": "mode",
+            "value": "preview"
+          }
+        ]
+      }
+    ],
+    "dynamicRoutes": [
+      {
+        "sourceRegex": "^/p/([^/]+)$",
+        "destination": "/p/[slug]"
+      }
+    ],
+    "fallback": [
+      {
+        "sourceRegex": "^/missing$",
+        "destination": "/fallback"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "beforeFiles continues through all rules",
+      "url": "http://example.com/a?x=1",
+      "headers": {},
+      "expected": {
+        "resolvedPathname": "/c",
+        "resolvedQuery": {
+          "x": "1"
+        },
+        "invocationTarget": {
+          "pathname": "/c",
+          "query": {
+            "x": "1"
+          }
+        },
+        "resolvedHeaders": {}
+      }
+    },
+    {
+      "name": "afterFiles rematches dynamic route",
+      "url": "http://example.com/legacy/one?mode=preview",
+      "headers": {},
+      "expected": {
+        "resolvedPathname": "/p/[slug]",
+        "resolvedQuery": {
+          "mode": "preview"
+        },
+        "invocationTarget": {
+          "pathname": "/p/one",
+          "query": {
+            "mode": "preview"
+          }
+        },
+        "resolvedHeaders": {},
+        "routeMatches": {
+          "1": "one"
+        }
+      }
+    },
+    {
+      "name": "fallback runs before 404",
+      "url": "http://example.com/missing",
+      "headers": {},
+      "expected": {
+        "resolvedPathname": "/fallback",
+        "resolvedQuery": {},
+        "invocationTarget": {
+          "pathname": "/fallback",
+          "query": {}
+        },
+        "resolvedHeaders": {}
+      }
+    },
+    {
+      "name": "redirect honors has and missing",
+      "url": "http://example.com/old",
+      "headers": {
+        "x-tenant": "acme"
+      },
+      "expected": {
+        "redirect": {
+          "url": "/new/acme",
+          "status": 308
+        },
+        "resolvedHeaders": {
+          "location": "/new/acme"
+        },
+        "status": 308
+      }
+    },
+    {
+      "name": "headers and query captures merge",
+      "url": "http://example.com/search?mode=preview",
+      "headers": {},
+      "expected": {
+        "resolvedPathname": "/result",
+        "resolvedQuery": {
+          "mode": "preview",
+          "tab": "preview"
+        },
+        "invocationTarget": {
+          "pathname": "/result",
+          "query": {
+            "mode": "preview",
+            "tab": "preview"
+          }
+        },
+        "resolvedHeaders": {
+          "x-route": "search"
+        }
+      }
+    }
+  ]
+}

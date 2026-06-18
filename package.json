@@ -1,6 +1,6 @@
 {
   "name": "@brrrd/adapter",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Next.js build adapter that packages an app for the brrrd runtime (comwit.io platform).",
   "keywords": ["nextjs", "next", "brrrd", "adapter", "comwit", "deploy"],
   "license": "UNLICENSED",
@@ -38,6 +38,7 @@
     "next": "^16.2"
   },
   "devDependencies": {
+    "@next/routing": "^16.2.9",
     "next": "^16.2.1",
     "typescript": "^5.8.0",
     "@types/node": "^22.0.0"

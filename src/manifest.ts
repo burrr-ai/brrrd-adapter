@@ -1,27 +1,41 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type {
+  BrrrdHeaderRule,
   BrrrdManifest,
   BrrrdMiddleware,
   BrrrdMiddlewareCondition,
   BrrrdMiddlewareFile,
   BrrrdRedirect,
+  BrrrdRouting,
   BrrrdRewrite,
   BrrrdRoute,
 } from "./types.js";
+
+export function emptyRouting(): BrrrdRouting {
+  return {
+    headers: [],
+    redirects: [],
+    proxy: null,
+    rewrites: {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [],
+    },
+  };
+}
 
 export function writeManifest(
   outDir: string,
   buildId: string,
   routes: BrrrdRoute[],
   env: Record<string, string>,
-  redirects: BrrrdRedirect[] = [],
-  rewrites: BrrrdRewrite[] = [],
+  routing: BrrrdRouting = emptyRouting(),
   middleware?: BrrrdMiddleware,
   pprPages: string[] = [],
 ): void {
   const manifest: BrrrdManifest = {
-    version: 2,
+    version: 3,
     buildId,
     appBundle: "bundles/app.js",
     routes,
@@ -29,8 +43,7 @@ export function writeManifest(
     prerendersDir: "prerenders",
     runtimeDir: "runtime",
     env,
-    redirects,
-    rewrites,
+    routing,
     middleware,
     pprPages,
   };
@@ -51,11 +64,10 @@ function readJsonIfExists(filePath: string): any | null {
 }
 
 /**
- * A-7: Detect whether PPR (Partial Prerendering) is enabled and extract the
- * list of affected pages. In Next 16.2, a route is a PPR page if its entry in
- * prerender-manifest.json's `routes` has `experimentalPPR` or
- * `experimentalBypassFor`. The top-level `experimental.ppr` in
- * routes-manifest.json also signals whether it is globally enabled.
+ * A-7: PPR (Partial Prerendering) 활성 여부 + 해당 페이지 목록 추출.
+ * Next 16.2 의 prerender-manifest.json 의 routes 엔트리에 `experimentalPPR`
+ * 또는 `experimentalBypassFor` 가 있으면 PPR 페이지. routes-manifest.json 의
+ * top-level `experimental.ppr` 도 globally enabled 여부 신호.
  */
 export function extractPprPages(distDir: string): string[] {
   const path1 = path.join(distDir, "prerender-manifest.json");
@@ -72,7 +84,7 @@ export function extractPprPages(distDir: string): string[] {
   return pages;
 }
 
-function normalizeMiddlewareConditions(value: unknown): BrrrdMiddlewareCondition[] | undefined {
+function normalizeConditions(value: unknown): BrrrdMiddlewareCondition[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const out: BrrrdMiddlewareCondition[] = [];
   for (const raw of value) {
@@ -80,11 +92,10 @@ function normalizeMiddlewareConditions(value: unknown): BrrrdMiddlewareCondition
     const item = raw as Record<string, unknown>;
     const type = item.type;
     const key = item.key;
-    if (
-      (type === "header" || type === "cookie" || type === "query" || type === "host") &&
-      typeof key === "string" && key.length > 0
-    ) {
-      const cond: BrrrdMiddlewareCondition = { type, key };
+    if (type === "header" || type === "cookie" || type === "query" || type === "host") {
+      if (type !== "host" && (typeof key !== "string" || key.length === 0)) continue;
+      const cond: BrrrdMiddlewareCondition = { type };
+      if (typeof key === "string" && key.length > 0) cond.key = key;
       if (typeof item.value === "string") cond.value = item.value;
       out.push(cond);
     }
@@ -109,17 +120,17 @@ function normalizeMiddlewareFiles(value: unknown): BrrrdMiddlewareFile[] {
 }
 
 /**
- * A-1: Extract middleware metadata from middleware-manifest.json.
- * When Next compiles middleware.ts, it generates `.next/server/middleware.js`
- * (the webpack chunk) plus `edge-runtime-webpack.js` (the webpack runtime) and
- * registers an entry in `middleware-manifest.json`. Both files are evaluated
- * as-is inside the isolate, registering `_ENTRIES.middleware_<name>`.
+ * A-1: middleware-manifest.json 에서 middleware 메타데이터 추출.
+ * Next 가 middleware.ts 를 컴파일하면 `.next/server/middleware.js` (webpack chunk)
+ * + `edge-runtime-webpack.js` (webpack runtime) 가 생성되고
+ * `middleware-manifest.json` 에 entry 등록된다. 두 파일 모두 isolate 에 그대로
+ * 평가되어 `_ENTRIES.middleware_<name>` 을 등록한다.
  */
 export function extractMiddlewareMeta(distDir: string): {
-  runtimeRel: string;          // e.g. "server/edge-runtime-webpack.js"
-  entryRel: string;            // e.g. "server/middleware.js"
-  name: string;                // e.g. "middleware"
-  page: string;                // e.g. "/middleware"
+  runtimeRel: string;          // 예: "server/edge-runtime-webpack.js"
+  entryRel: string;            // 예: "server/middleware.js"
+  name: string;                // 예: "middleware"
+  page: string;                // 예: "/middleware"
   matchers: Array<{
     regexp: string;
     originalSource: string;
@@ -133,7 +144,7 @@ export function extractMiddlewareMeta(distDir: string): {
   const manifestPath = path.join(distDir, "server", "middleware-manifest.json");
   const raw = readJsonIfExists(manifestPath);
   if (!raw) return null;
-  // Next's manifest key is the mount path (usually "/"). Only the first entry is supported (a single root middleware).
+  // Next 의 manifest 키는 mount path (보통 "/"). 첫 번째 entry 만 지원 (단일 root middleware).
   const middlewareMap = raw?.middleware ?? {};
   const mountKeys = Object.keys(middlewareMap);
   if (mountKeys.length > 1) {
@@ -194,55 +205,88 @@ export function extractMiddlewareMeta(distDir: string): {
   };
 }
 
-// TD-4: Extract static redirect / rewrite rules from routes-manifest.json.
-// Only user-defined rules are included (items marked `internal: true`, such as
-// Next's internal trailing-slash redirects, are excluded).
-export function extractRoutingRules(distDir: string): {
-  redirects: BrrrdRedirect[];
-  rewrites: BrrrdRewrite[];
-} {
+const normalizeMiddlewareConditions = normalizeConditions;
+
+// routes-manifest.json 에서 Next routing metadata 를 phase 보존 형태로 추출한다.
+export function extractRoutingManifest(distDir: string): BrrrdRouting {
   const manifestPath = path.join(distDir, "routes-manifest.json");
   const raw = readJsonIfExists(manifestPath);
   if (!raw) {
-    return { redirects: [], rewrites: [] };
+    return emptyRouting();
   }
-  // Rust's `regex` crate does not support lookaround. Strip negative
-  // lookaheads such as `(?!/_next)` that Next generates — this is safe because
-  // in brrrd's routing model `/_next/*` is handled by a separate static
-  // catch-all.
+  // rust `regex` 는 lookaround 미지원. Next 가 생성하는 `(?!/_next)` 같은
+  // negative lookahead 를 strip — brrrd 의 라우팅 모델에서 `/_next/*` 는 별도
+  // static catch-all 로 처리되므로 strip 해도 안전.
   const stripLookarounds = (re: string): string =>
     re.replace(/\(\?[!=][^)]*\)/g, "");
+
+  const headers: BrrrdHeaderRule[] = [];
+  for (const h of raw.headers ?? []) {
+    if (!h.regex || !Array.isArray(h.headers)) continue;
+    const headerPairs = h.headers
+      .filter((item: any) => typeof item?.key === "string" && typeof item?.value === "string")
+      .map((item: any) => ({ key: item.key, value: item.value }));
+    if (headerPairs.length === 0) continue;
+    const has = normalizeConditions(h.has);
+    const missing = normalizeConditions(h.missing);
+    headers.push({
+      regex: stripLookarounds(h.regex),
+      source: typeof h.source === "string" ? h.source : "",
+      headers: headerPairs,
+      ...(has ? { has } : {}),
+      ...(missing ? { missing } : {}),
+      ...(h.internal === true ? { internal: true } : {}),
+    });
+  }
 
   const redirects: BrrrdRedirect[] = [];
   for (const r of raw.redirects ?? []) {
     if (r.internal) continue;
     if (!r.regex || !r.destination) continue;
+    const has = normalizeConditions(r.has);
+    const missing = normalizeConditions(r.missing);
     redirects.push({
       regex: stripLookarounds(r.regex),
+      source: typeof r.source === "string" ? r.source : "",
       destination: r.destination,
       statusCode: typeof r.statusCode === "number"
         ? r.statusCode
         : (r.permanent ? 308 : 307),
+      ...(has ? { has } : {}),
+      ...(missing ? { missing } : {}),
+      ...(r.internal === true ? { internal: true } : {}),
     });
   }
-  const rewrites: BrrrdRewrite[] = [];
+  const rewrites = emptyRouting().rewrites;
   const rewriteSource = raw.rewrites;
-  const collectRewrites = (arr: any[]) => {
+  const collectRewrites = (arr: any[], target: BrrrdRewrite[]) => {
     for (const w of arr ?? []) {
       if (!w.regex || !w.destination) continue;
-      rewrites.push({ regex: stripLookarounds(w.regex), destination: w.destination });
+      const has = normalizeConditions(w.has);
+      const missing = normalizeConditions(w.missing);
+      target.push({
+        regex: stripLookarounds(w.regex),
+        source: typeof w.source === "string" ? w.source : "",
+        destination: w.destination,
+        ...(has ? { has } : {}),
+        ...(missing ? { missing } : {}),
+        ...(w.internal === true ? { internal: true } : {}),
+      });
     }
   };
   if (Array.isArray(rewriteSource)) {
-    collectRewrites(rewriteSource);
+    // Next applies array-form rewrites after filesystem/public checks and before
+    // dynamic routes; represent that as afterFiles.
+    collectRewrites(rewriteSource, rewrites.afterFiles);
   } else if (rewriteSource && typeof rewriteSource === "object") {
-    if (Array.isArray(rewriteSource.beforeFiles) && rewriteSource.beforeFiles.length > 0) {
-      throw new Error(
-        "routes-manifest beforeFiles rewrites are not supported by brrrd adapter",
-      );
-    }
-    collectRewrites(rewriteSource.afterFiles);
-    collectRewrites(rewriteSource.fallback);
+    collectRewrites(rewriteSource.beforeFiles, rewrites.beforeFiles);
+    collectRewrites(rewriteSource.afterFiles, rewrites.afterFiles);
+    collectRewrites(rewriteSource.fallback, rewrites.fallback);
   }
-  return { redirects, rewrites };
+  return {
+    headers,
+    redirects,
+    proxy: null,
+    rewrites,
+  };
 }

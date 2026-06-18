@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
-import { extractMiddlewareMeta, extractRoutingRules } from "../dist/manifest.js";
+import { extractMiddlewareMeta, extractRoutingManifest } from "../dist/manifest.js";
 
 function tempDir(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-adapter-${name}-`));
@@ -55,18 +55,84 @@ test("onBuildComplete rejects native .node traced assets", async () => {
   );
 });
 
-test("extractRoutingRules rejects beforeFiles rewrites", () => {
+test("extractRoutingManifest preserves rewrite phases and conditions", () => {
   const distDir = tempDir("before-files");
   writeJson(path.join(distDir, "routes-manifest.json"), {
-    redirects: [],
+    headers: [
+      {
+        regex: "^/with-header$",
+        source: "/with-header",
+        headers: [{ key: "x-from-header-rule", value: "yes" }],
+      },
+    ],
+    redirects: [
+      {
+        regex: "^/old$",
+        source: "/old",
+        destination: "/new",
+        statusCode: 308,
+        has: [{ type: "host", value: "example.com" }],
+      },
+    ],
     rewrites: {
-      beforeFiles: [{ regex: "^/a$", destination: "/b" }],
-      afterFiles: [],
-      fallback: [],
+      beforeFiles: [
+        {
+          regex: "^/a$",
+          source: "/a",
+          destination: "/b",
+          has: [{ type: "query", key: "modal", value: "1" }],
+        },
+      ],
+      afterFiles: [{ regex: "^/c$", source: "/c", destination: "/d" }],
+      fallback: [{ regex: "^/(.*)$", source: "/:path*", destination: "/legacy/:path*" }],
     },
   });
 
-  assert.throws(() => extractRoutingRules(distDir), /beforeFiles rewrites/);
+  assert.deepEqual(extractRoutingManifest(distDir), {
+    headers: [
+      {
+        regex: "^/with-header$",
+        source: "/with-header",
+        headers: [{ key: "x-from-header-rule", value: "yes" }],
+      },
+    ],
+    redirects: [
+      {
+        regex: "^/old$",
+        source: "/old",
+        destination: "/new",
+        statusCode: 308,
+        has: [{ type: "host", value: "example.com" }],
+      },
+    ],
+    proxy: null,
+    rewrites: {
+      beforeFiles: [
+        {
+          regex: "^/a$",
+          source: "/a",
+          destination: "/b",
+          has: [{ type: "query", key: "modal", value: "1" }],
+        },
+      ],
+      afterFiles: [{ regex: "^/c$", source: "/c", destination: "/d" }],
+      fallback: [{ regex: "^/(.*)$", source: "/:path*", destination: "/legacy/:path*" }],
+    },
+  });
+});
+
+test("extractRoutingManifest treats array rewrites as afterFiles", () => {
+  const distDir = tempDir("array-rewrites");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    redirects: [],
+    rewrites: [{ regex: "^/array$", source: "/array", destination: "/target" }],
+  });
+
+  assert.deepEqual(extractRoutingManifest(distDir).rewrites, {
+    beforeFiles: [],
+    afterFiles: [{ regex: "^/array$", source: "/array", destination: "/target" }],
+    fallback: [],
+  });
 });
 
 test("extractMiddlewareMeta rejects multiple middleware entries", () => {

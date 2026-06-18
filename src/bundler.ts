@@ -29,7 +29,7 @@ const BRRRD_EXTERNALS = [
 // Next.js turbopack runtime uses CJS require() internally even though we
 // bundle as ESM. This shim resolves node: built-in modules from brrrd's
 // globalThis.__brrrd_modules registry (populated by node_init.js).
-// The OTel stub is imported from a separate otel-stub.ts module (TD-11).
+// OTel stub 은 별도 otel-stub.ts 모듈에서 import (TD-11).
 const REQUIRE_BANNER = `
 var require = globalThis.__brrrd_require || ((id) => {
   var m = globalThis.__brrrd_modules && globalThis.__brrrd_modules[id];
@@ -188,6 +188,7 @@ async function resolveHandler(routeId) {
 export default async function dispatch(routeId, req, res) {
   const h = await resolveHandler(routeId);
   if (!h) { res.writeHead(404); res.end('Not Found'); return; }
+  const brrrdRequestMeta = req.__brrrd_request_meta || {};
   const ctx = {
     waitUntil: (p) => {
       Deno.core.ops.op_brrrd_wait_until_start(globalThis.__brrrd_realm_id);
@@ -196,6 +197,7 @@ export default async function dispatch(routeId, req, res) {
         .finally(() => Deno.core.ops.op_brrrd_wait_until_end(globalThis.__brrrd_realm_id));
     },
     requestMeta: {
+      ...brrrdRequestMeta,
       relativeProjectDir: '.',
       hostname: req.headers?.host || 'localhost',
     },
@@ -237,7 +239,6 @@ export default async function dispatch(routeId, req, res) {
 }
 
 // bundleEdgeHandler removed — all routes use Node.js runtime.
-// bundleMiddleware removed — Next's compiled middleware.js is a webpack
-// chunk, so re-bundling it with esbuild breaks it. Instead, build.ts raw-copies
-// the two .next/server files (edge-runtime-webpack.js + middleware.js) into
-// runtime/server/.
+// bundleMiddleware removed — Next compiled middleware.js 는 webpack
+// chunk 라 esbuild 로 다시 묶으면 깨진다. 대신 build.ts 가 .next/server 의 두
+// 파일 (edge-runtime-webpack.js + middleware.js) 을 runtime/server/ 로 raw 복사.

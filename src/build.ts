@@ -8,7 +8,7 @@ import { bundleAppHandler } from "./bundler.js";
 import {
   extractMiddlewareMeta,
   extractPprPages,
-  extractRoutingRules,
+  extractRoutingManifest,
   writeManifest,
 } from "./manifest.js";
 import type { BrrrdMiddleware } from "./types.js";
@@ -20,8 +20,8 @@ import {
 } from "./routing.js";
 import type { BuildContext } from "./types.js";
 
-// TD-14: pre-compress text-based static assets with gzip/brotli at build time.
-// The runtime's handle_static inspects Accept-Encoding and picks the derived file.
+// TD-14: 텍스트 계열 정적 자산을 빌드 타임에 gzip/brotli 사전 압축.
+// runtime 의 handle_static 이 Accept-Encoding 보고 파생 파일을 선택.
 const COMPRESS_EXTENSIONS = new Set([
   "js", "mjs", "css", "html", "json", "svg", "txt", "map", "xml", "wasm",
 ]);
@@ -411,17 +411,29 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     __NEXT_PRIVATE_PREBUNDLED_REACT: "next",
   };
 
-  // 6. Extract redirects/rewrites
-  const { redirects, rewrites } = extractRoutingRules(ctx.distDir);
-  if (redirects.length > 0 || rewrites.length > 0) {
-    console.log(`  Routing rules: ${redirects.length} redirects, ${rewrites.length} rewrites`);
+  // 6. Extract phase-aware routing metadata
+  const routing = extractRoutingManifest(ctx.distDir);
+  const rewriteCount = routing.rewrites.beforeFiles.length
+    + routing.rewrites.afterFiles.length
+    + routing.rewrites.fallback.length;
+  if (routing.headers.length > 0 || routing.redirects.length > 0 || rewriteCount > 0) {
+    console.log(
+      `  Routing rules: ${routing.headers.length} headers, ${routing.redirects.length} redirects, ${rewriteCount} rewrites`,
+    );
   }
 
   // 7. Middleware detection + raw copy
-  // Next's compiled middleware bundle is in webpack chunk format — never
-  // re-bundle it with esbuild. Copy the raw file as-is into runtime/server/,
-  // then the isolate evaluates it on top of the edge runtime polyfill.
+  // Next 의 compiled middleware bundle 은 webpack chunk format — 절대 esbuild 로
+  // 다시 bundling 하지 말 것. raw 파일을 그대로 runtime/server/ 로 복사한 뒤
+  // isolate 가 edge runtime polyfill 위에서 evaluate.
   const middleware = copyMiddlewareBundle(ctx, runtimeDir);
+  if (middleware) {
+    routing.proxy = {
+      source: middleware.page.includes("proxy") || middleware.name === "proxy"
+        ? "proxy"
+        : "middleware",
+    };
+  }
 
   // 8. PPR detection
   const pprPages = extractPprPages(ctx.distDir);
@@ -430,7 +442,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   }
 
   // 9. Write manifest
-  writeManifest(outDir, ctx.buildId, routes, env, redirects, rewrites, middleware, pprPages);
+  writeManifest(outDir, ctx.buildId, routes, env, routing, middleware, pprPages);
   console.log(`  Manifest written to ${path.join(outDir, "manifest.json")}`);
   console.log(`[@brrrd/adapter] Done!`);
 }
