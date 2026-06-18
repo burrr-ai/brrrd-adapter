@@ -103,6 +103,24 @@ function isSharpNativeAsset(filePath: string): boolean {
     || normalized.includes("/node_modules/sharp/");
 }
 
+function isSharpPackageInput(filePath: string): boolean {
+  const normalized = normalizePathForMatch(filePath);
+  return normalized.includes("/node_modules/sharp/")
+    || normalized.includes("/node_modules/@img/sharp-");
+}
+
+function assertNoBundledSharp(metafile: { inputs?: Record<string, unknown> } | undefined): void {
+  const sharpInputs = Object.keys(metafile?.inputs ?? {}).filter(isSharpPackageInput);
+  if (sharpInputs.length === 0) return;
+
+  throw new Error(
+    [
+      "sharp is not supported in brrrd isolates. next/og is rewritten to use Next's edge/WASM renderer, but direct sharp imports must be removed.",
+      ...sharpInputs.map((input) => `  - ${input}`),
+    ].join("\n"),
+  );
+}
+
 function decodeBase64Expression(base64: string): string {
   return `Uint8Array.from(atob("${base64}"), (c) => c.charCodeAt(0))`;
 }
@@ -171,6 +189,9 @@ function createNextOgPlugin(ctx: BuildContext): Plugin {
 export const nextOgPolicy: CompatibilityPolicy = {
   name: "next-og",
   plugins: (ctx) => [createNextOgPlugin(ctx)],
+  afterBundle(_ctx, metafile) {
+    assertNoBundledSharp(metafile);
+  },
   shouldIgnoreNativeAsset(assetPath, output) {
     return outputUsesNextOg(output) && isSharpNativeAsset(assetPath);
   },

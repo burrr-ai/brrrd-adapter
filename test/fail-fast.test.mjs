@@ -19,6 +19,15 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, JSON.stringify(value), "utf8");
 }
 
+function symlinkDir(src, dest) {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  try {
+    fs.symlinkSync(src, dest, "dir");
+  } catch (err) {
+    if (err?.code !== "EEXIST") throw err;
+  }
+}
+
 function minimalContext(projectDir, distDir, output) {
   return {
     routing: {},
@@ -89,6 +98,70 @@ test("onBuildComplete lets next/og fall back to WASM without traced sharp native
   assert.doesNotMatch(appBundle, /index\.node\.js/);
   assert.doesNotMatch(appBundle, /from "stream"/);
   assert.doesNotMatch(appBundle, /from "fs"/);
+});
+
+test("onBuildComplete rewrites Next compiled next/og node entry to edge", async () => {
+  const root = tempDir("next-og-compiled-entry");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    'export async function handler() { return import("next/dist/compiled/@vercel/og/index.node.js"); }',
+    "utf8",
+  );
+
+  await onBuildComplete(
+    minimalContext(root, distDir, {
+      id: "/apple-icon",
+      pathname: "/apple-icon",
+      filePath: handler,
+      assets: {
+        "next-og": require.resolve("next/dist/compiled/@vercel/og/index.node.js"),
+        "sharp-native": path.join(
+          root,
+          "node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node",
+        ),
+      },
+    }),
+  );
+
+  const appBundle = fs.readFileSync(path.join(root, "dist", "brrrd", "bundles", "app.js"), "utf8");
+  assert.match(appBundle, /index\.edge\.js/);
+  assert.doesNotMatch(appBundle, /index\.node\.js/);
+  assert.doesNotMatch(appBundle, /from "stream"/);
+});
+
+test("onBuildComplete rejects direct sharp usage even when next/og is present", async () => {
+  const root = tempDir("next-og-direct-sharp");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const sharpDir = path.dirname(require.resolve("sharp/package.json", {
+    paths: [path.join(process.cwd(), "node_modules/.pnpm/node_modules")],
+  }));
+  symlinkDir(sharpDir, path.join(root, "node_modules", "sharp"));
+  fs.writeFileSync(
+    handler,
+    'import { ImageResponse } from "next/og"; import sharp from "sharp"; export function handler() { sharp; return new ImageResponse("x"); }',
+    "utf8",
+  );
+
+  await assert.rejects(
+    onBuildComplete(
+      minimalContext(root, distDir, {
+        id: "/apple-icon",
+        pathname: "/apple-icon",
+        filePath: handler,
+        assets: {
+          "next-og": require.resolve("next/dist/compiled/@vercel/og/index.node.js"),
+          "sharp-native": path.join(
+            root,
+            "node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node",
+          ),
+        },
+      }),
+    ),
+    /direct sharp imports must be removed/,
+  );
 });
 
 test("extractRoutingManifest preserves rewrite phases and conditions", () => {
