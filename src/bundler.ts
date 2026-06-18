@@ -1,7 +1,10 @@
 import * as esbuild from "esbuild";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { createRequire } from "node:module";
+import {
+  createCompatibilityPlugins,
+  runCompatibilityAfterBundle,
+} from "./compatibility/index.js";
 import type { BuildContext } from "./types.js";
 import { OTEL_STUB_SOURCE } from "./otel-stub.js";
 
@@ -25,124 +28,6 @@ const BRRRD_EXTERNALS = [
   "@opentelemetry/api",
   "@opentelemetry/sdk-trace-base",
 ];
-
-const NEXT_OG_IMPORT_RE = /^(next\/og|next\/dist\/api\/og|next\/dist\/server\/og\/image-response(?:\.js)?)$/;
-const NEXT_OG_NODE_ENTRY = "next/dist/compiled/@vercel/og/index.node.js";
-const NEXT_OG_NODE_ENTRY_RE = /next[\\/]dist[\\/]compiled[\\/]@vercel[\\/]og[\\/]index\.node\.js$/;
-const NEXT_OG_SHIM_NAMESPACE = "brrrd-next-og";
-const NEXT_OG_SHARP_NAMESPACE = "brrrd-next-og-sharp";
-
-const NEXT_OG_SHIM_SOURCE = `
-function importModule() {
-  return import("${NEXT_OG_NODE_ENTRY}");
-}
-
-export class ImageResponse extends Response {
-  static displayName = "ImageResponse";
-
-  constructor(...args) {
-    const readable = new ReadableStream({
-      async start(controller) {
-        const OGImageResponse = (await importModule()).ImageResponse;
-        const imageResponse = new OGImageResponse(...args);
-        if (!imageResponse.body) {
-          controller.close();
-          return;
-        }
-        const reader = imageResponse.body.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            controller.close();
-            return;
-          }
-          controller.enqueue(value);
-        }
-      },
-    });
-    const options = args[1] || {};
-    const headers = new Headers({
-      "content-type": "image/png",
-      "cache-control": process.env.NODE_ENV === "development"
-        ? "no-cache, no-store"
-        : "public, max-age=0, must-revalidate",
-    });
-    if (options.headers) {
-      const newHeaders = new Headers(options.headers);
-      newHeaders.forEach((value, key) => headers.set(key, value));
-    }
-    super(readable, {
-      headers,
-      status: options.status,
-      statusText: options.statusText,
-    });
-  }
-}
-`;
-
-function normalizePathForMatch(filePath: string): string {
-  return filePath.replace(/\\/g, "/");
-}
-
-function resolveFromProject(ctx: BuildContext, specifier: string): string {
-  const projectRequire = createRequire(path.join(ctx.projectDir, "package.json"));
-  try {
-    return projectRequire.resolve(specifier);
-  } catch {
-    return createRequire(import.meta.url).resolve(specifier);
-  }
-}
-
-function isNextOgNodeEntry(filePath: string): boolean {
-  return NEXT_OG_NODE_ENTRY_RE.test(normalizePathForMatch(filePath));
-}
-
-function createNextOgPlugin(ctx: BuildContext): esbuild.Plugin {
-  return {
-    name: "brrrd-next-og",
-    setup(build) {
-      build.onResolve({ filter: NEXT_OG_IMPORT_RE }, () => ({
-        path: "image-response",
-        namespace: NEXT_OG_SHIM_NAMESPACE,
-      }));
-      build.onLoad({ filter: /.*/, namespace: NEXT_OG_SHIM_NAMESPACE }, () => ({
-        contents: NEXT_OG_SHIM_SOURCE,
-        loader: "js",
-        resolveDir: ctx.projectDir,
-      }));
-      build.onResolve({ filter: /^next\/dist\/compiled\/@vercel\/og\/index\.node\.js$/ }, (args) => ({
-        path: resolveFromProject(ctx, args.path),
-      }));
-      build.onResolve({ filter: /^sharp$/ }, (args) => {
-        if (!isNextOgNodeEntry(args.importer)) return undefined;
-        return {
-          path: "sharp",
-          namespace: NEXT_OG_SHARP_NAMESPACE,
-        };
-      });
-      build.onLoad({ filter: /.*/, namespace: NEXT_OG_SHARP_NAMESPACE }, () => ({
-        contents: "export default undefined;\n",
-        loader: "js",
-      }));
-    },
-  };
-}
-
-function metafileUsesNextOgNode(metafile: esbuild.Metafile | undefined): boolean {
-  return Object.keys(metafile?.inputs ?? {}).some(isNextOgNodeEntry);
-}
-
-function copyNextOgNodeAssets(ctx: BuildContext): void {
-  const copied: string[] = [];
-  for (const name of ["Geist-Regular.ttf", "resvg.wasm"]) {
-    const src = resolveFromProject(ctx, `next/dist/compiled/@vercel/og/${name}`);
-    const dest = path.join(ctx.outDir, "bundles", name);
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(src, dest);
-    copied.push(name);
-  }
-  console.log(`  Copied next/og WASM fallback assets: ${copied.join(", ")}`);
-}
 
 // require() shim for ESM bundles running in brrrd's V8 Isolate.
 // Next.js turbopack runtime uses CJS require() internally even though we
@@ -342,7 +227,7 @@ export default async function dispatch(routeId, req, res) {
         js: REQUIRE_BANNER,
       },
       metafile: true,
-      plugins: [createNextOgPlugin(ctx)],
+      plugins: createCompatibilityPlugins(ctx),
       define: {
         "process.env.NODE_ENV": '"production"',
         "process.env.NEXT_RUNTIME": '"nodejs"',
@@ -352,9 +237,7 @@ export default async function dispatch(routeId, req, res) {
       conditions: ["node", "import"],
       nodePaths: computeNodePaths(outputs.map((o) => o.assets), ctx),
     });
-    if (metafileUsesNextOgNode(result.metafile)) {
-      copyNextOgNodeAssets(ctx);
-    }
+    runCompatibilityAfterBundle(ctx, result.metafile);
   } catch (e) {
     console.error("Failed to bundle app handler:", e);
     throw e;

@@ -5,6 +5,7 @@ import * as zlib from "node:zlib";
 
 const require = createRequire(import.meta.url);
 import { bundleAppHandler } from "./bundler.js";
+import { shouldIgnoreNativeAssetForCompatibility } from "./compatibility/index.js";
 import {
   extractMiddlewareMeta,
   extractPprPages,
@@ -67,30 +68,6 @@ function isNativeBinding(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === ".node";
 }
 
-function normalizePathForMatch(filePath: string): string {
-  return filePath.replace(/\\/g, "/");
-}
-
-function isNextOgTraceFile(filePath: string): boolean {
-  const normalized = normalizePathForMatch(filePath);
-  return normalized.endsWith("/next/og.js")
-    || normalized.endsWith("/next/dist/api/og.js")
-    || normalized.endsWith("/next/dist/server/og/image-response.js")
-    || normalized.endsWith("/next/dist/compiled/@vercel/og/index.node.js");
-}
-
-function isNextOgOptionalSharpNative(filePath: string, output: AdapterOutput): boolean {
-  const outputUsesNextOg = [
-    output.filePath,
-    ...Object.values(output.assets ?? {}),
-  ].some((assetPath) => typeof assetPath === "string" && isNextOgTraceFile(assetPath));
-  if (!outputUsesNextOg) return false;
-
-  const normalized = normalizePathForMatch(filePath);
-  return normalized.includes("/node_modules/@img/sharp-")
-    || normalized.includes("/node_modules/sharp/");
-}
-
 function assertNoNativeBindings(outputs: AdapterOutput[]): void {
   const nativeFiles: string[] = [];
   for (const output of outputs) {
@@ -100,7 +77,7 @@ function assertNoNativeBindings(outputs: AdapterOutput[]): void {
     for (const assetPath of Object.values(output.assets ?? {})) {
       if (
         isNativeBinding(assetPath)
-        && !isNextOgOptionalSharpNative(assetPath, output)
+        && !shouldIgnoreNativeAssetForCompatibility(assetPath, output)
       ) {
         nativeFiles.push(assetPath);
       }

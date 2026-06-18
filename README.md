@@ -42,5 +42,15 @@ Then `next build` produces `dist/brrrd/`. Deploy it with `brrrd-fleet deploy
   negative-lookahead patterns such as `/((?!api|...).*)`, are supported by the
   brrrd runtime.
 
+### Next compatibility policies
+
+The adapter keeps platform-specific Next built-in fixes in `src/compatibility/`
+instead of scattering one-off branches through the build pipeline. Current
+policies:
+
+- `next/og`: routes using `ImageResponse` use Next's WASM renderer fallback.
+  Optional traced `sharp` native files are excluded, and the edge/WASM renderer
+  plus its fallback font are bundled into the request handler for isolates.
+
 > Version note: the adapter's manifest format is coupled to the brrrd runtime
 > version. Use an adapter release that matches your deployed runtime.

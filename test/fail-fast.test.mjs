@@ -85,10 +85,10 @@ test("onBuildComplete lets next/og fall back to WASM without traced sharp native
 
   const bundleDir = path.join(root, "dist", "brrrd", "bundles");
   const appBundle = fs.readFileSync(path.join(bundleDir, "app.js"), "utf8");
-  assert.match(appBundle, /index\.node\.js/);
-  assert.doesNotMatch(appBundle, /index\.edge\.js/);
-  assert.equal(fs.existsSync(path.join(bundleDir, "resvg.wasm")), true);
-  assert.equal(fs.existsSync(path.join(bundleDir, "Geist-Regular.ttf")), true);
+  assert.match(appBundle, /index\.edge\.js/);
+  assert.doesNotMatch(appBundle, /index\.node\.js/);
+  assert.doesNotMatch(appBundle, /from "stream"/);
+  assert.doesNotMatch(appBundle, /from "fs"/);
 });
 
 test("extractRoutingManifest preserves rewrite phases and conditions", () => {
