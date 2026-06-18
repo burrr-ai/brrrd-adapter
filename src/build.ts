@@ -315,7 +315,7 @@ function copyMiddlewareBundle(
     copyMiddlewareFile(file.filePath);
   }
   console.log(
-    `  Middleware bundles copied: ${mwMeta.runtimeRel}, ${mwMeta.entryRel} (${mwMeta.matchers.length} matchers, ${mwMeta.wasm.length} wasm, ${mwMeta.assets.length} assets)`,
+    `  Proxy/middleware bundles copied: ${mwMeta.runtimeRel}, ${mwMeta.entryRel} (${mwMeta.matchers.length} matchers, ${mwMeta.wasm.length} wasm, ${mwMeta.assets.length} assets)`,
   );
   return {
     runtime: mwMeta.runtimeRel,
@@ -327,6 +327,15 @@ function copyMiddlewareBundle(
     assets: mwMeta.assets,
     env: mwMeta.env,
   };
+}
+
+function proxySourceFor(middleware: BrrrdMiddleware): "middleware" | "proxy" {
+  const probe = [
+    middleware.name,
+    middleware.page,
+    middleware.entry,
+  ].join("\n").toLowerCase();
+  return probe.includes("proxy") ? "proxy" : "middleware";
 }
 
 export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
@@ -422,16 +431,14 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     );
   }
 
-  // 7. Middleware detection + raw copy
-  // Next 의 compiled middleware bundle 은 webpack chunk format — 절대 esbuild 로
+  // 7. Proxy/middleware detection + raw copy
+  // Next 의 compiled proxy/middleware entry 는 webpack chunk format — 절대 esbuild 로
   // 다시 bundling 하지 말 것. raw 파일을 그대로 runtime/server/ 로 복사한 뒤
   // isolate 가 edge runtime polyfill 위에서 evaluate.
   const middleware = copyMiddlewareBundle(ctx, runtimeDir);
   if (middleware) {
     routing.proxy = {
-      source: middleware.page.includes("proxy") || middleware.name === "proxy"
-        ? "proxy"
-        : "middleware",
+      source: proxySourceFor(middleware),
     };
   }
 

@@ -120,17 +120,15 @@ function normalizeMiddlewareFiles(value: unknown): BrrrdMiddlewareFile[] {
 }
 
 /**
- * A-1: middleware-manifest.json 에서 middleware 메타데이터 추출.
- * Next 가 middleware.ts 를 컴파일하면 `.next/server/middleware.js` (webpack chunk)
- * + `edge-runtime-webpack.js` (webpack runtime) 가 생성되고
- * `middleware-manifest.json` 에 entry 등록된다. 두 파일 모두 isolate 에 그대로
- * 평가되어 `_ENTRIES.middleware_<name>` 을 등록한다.
+ * middleware-manifest.json 에서 proxy/middleware 메타데이터를 추출한다.
+ * Next 가 생성한 edge runtime webpack chunk 는 esbuild 로 다시 묶지 않고
+ * 그대로 isolate 에서 evaluate 한다.
  */
 export function extractMiddlewareMeta(distDir: string): {
   runtimeRel: string;          // 예: "server/edge-runtime-webpack.js"
-  entryRel: string;            // 예: "server/middleware.js"
+  entryRel: string;            // 예: "server/middleware.js" 또는 "server/proxy.js"
   name: string;                // 예: "middleware"
-  page: string;                // 예: "/middleware"
+  page: string;                // 예: "/middleware" 또는 "/proxy"
   matchers: Array<{
     regexp: string;
     originalSource: string;
@@ -144,7 +142,7 @@ export function extractMiddlewareMeta(distDir: string): {
   const manifestPath = path.join(distDir, "server", "middleware-manifest.json");
   const raw = readJsonIfExists(manifestPath);
   if (!raw) return null;
-  // Next 의 manifest 키는 mount path (보통 "/"). 첫 번째 entry 만 지원 (단일 root middleware).
+  // Next 의 manifest 키는 mount path (보통 "/"). 단일 root proxy/middleware phase 만 지원.
   const middlewareMap = raw?.middleware ?? {};
   const mountKeys = Object.keys(middlewareMap);
   if (mountKeys.length > 1) {
@@ -159,7 +157,9 @@ export function extractMiddlewareMeta(distDir: string): {
   const filesArr: string[] = Array.isArray(mw.files) ? mw.files : [];
   const runtimeRel = filesArr.find((f) => f.includes("edge-runtime-webpack"))
     ?? "server/edge-runtime-webpack.js";
-  const entryRel = filesArr.find((f) => f.endsWith("middleware.js"))
+  const entryRel = typeof mw.entrypoint === "string" && mw.entrypoint.length > 0
+    ? mw.entrypoint
+    : filesArr.find((f) => f.endsWith("middleware.js") || f.endsWith("proxy.js"))
     ?? "server/middleware.js";
   if (!fs.existsSync(path.join(distDir, runtimeRel))) {
     throw new Error(`middleware runtime file missing: ${runtimeRel}`);
@@ -214,12 +214,6 @@ export function extractRoutingManifest(distDir: string): BrrrdRouting {
   if (!raw) {
     return emptyRouting();
   }
-  // rust `regex` 는 lookaround 미지원. Next 가 생성하는 `(?!/_next)` 같은
-  // negative lookahead 를 strip — brrrd 의 라우팅 모델에서 `/_next/*` 는 별도
-  // static catch-all 로 처리되므로 strip 해도 안전.
-  const stripLookarounds = (re: string): string =>
-    re.replace(/\(\?[!=][^)]*\)/g, "");
-
   const headers: BrrrdHeaderRule[] = [];
   for (const h of raw.headers ?? []) {
     if (!h.regex || !Array.isArray(h.headers)) continue;
@@ -230,7 +224,7 @@ export function extractRoutingManifest(distDir: string): BrrrdRouting {
     const has = normalizeConditions(h.has);
     const missing = normalizeConditions(h.missing);
     headers.push({
-      regex: stripLookarounds(h.regex),
+      regex: h.regex,
       source: typeof h.source === "string" ? h.source : "",
       headers: headerPairs,
       ...(has ? { has } : {}),
@@ -246,7 +240,7 @@ export function extractRoutingManifest(distDir: string): BrrrdRouting {
     const has = normalizeConditions(r.has);
     const missing = normalizeConditions(r.missing);
     redirects.push({
-      regex: stripLookarounds(r.regex),
+      regex: r.regex,
       source: typeof r.source === "string" ? r.source : "",
       destination: r.destination,
       statusCode: typeof r.statusCode === "number"
@@ -265,7 +259,7 @@ export function extractRoutingManifest(distDir: string): BrrrdRouting {
       const has = normalizeConditions(w.has);
       const missing = normalizeConditions(w.missing);
       target.push({
-        regex: stripLookarounds(w.regex),
+        regex: w.regex,
         source: typeof w.source === "string" ? w.source : "",
         destination: w.destination,
         ...(has ? { has } : {}),

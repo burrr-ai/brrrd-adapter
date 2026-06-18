@@ -121,6 +121,26 @@ test("extractRoutingManifest preserves rewrite phases and conditions", () => {
   });
 });
 
+test("extractRoutingManifest preserves Next regex without lookaround stripping", () => {
+  const distDir = tempDir("lookaround");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    rewrites: {
+      beforeFiles: [
+        {
+          regex: "^/((?!api).*)$",
+          source: "/((?!api).*)",
+          destination: "/catch/$1",
+        },
+      ],
+    },
+  });
+
+  assert.equal(
+    extractRoutingManifest(distDir).rewrites.beforeFiles[0].regex,
+    "^/((?!api).*)$",
+  );
+});
+
 test("extractRoutingManifest treats array rewrites as afterFiles", () => {
   const distDir = tempDir("array-rewrites");
   writeJson(path.join(distDir, "routes-manifest.json"), {
@@ -156,4 +176,26 @@ test("extractMiddlewareMeta rejects missing referenced files", () => {
   });
 
   assert.throws(() => extractMiddlewareMeta(distDir), /middleware runtime file missing/);
+});
+
+test("extractMiddlewareMeta uses manifest entrypoint for proxy chunks", () => {
+  const distDir = tempDir("proxy-entry");
+  fs.mkdirSync(path.join(distDir, "server"), { recursive: true });
+  fs.writeFileSync(path.join(distDir, "server", "edge-runtime-webpack.js"), "", "utf8");
+  fs.writeFileSync(path.join(distDir, "server", "proxy.js"), "", "utf8");
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {
+      "/": {
+        files: ["server/edge-runtime-webpack.js", "server/proxy.js"],
+        entrypoint: "server/proxy.js",
+        name: "proxy",
+        page: "/proxy",
+        matchers: [],
+      },
+    },
+  });
+
+  const meta = extractMiddlewareMeta(distDir);
+  assert.equal(meta.entryRel, "server/proxy.js");
+  assert.equal(meta.name, "proxy");
 });

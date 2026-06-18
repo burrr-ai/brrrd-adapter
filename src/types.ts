@@ -8,7 +8,7 @@ export interface BrrrdManifest {
   runtimeDir: string;
   env: Record<string, string>;
   routing: BrrrdRouting;
-  /** A-1: middleware.ts 가 존재할 때 bundle 경로 + matcher 패턴. */
+  /** Next proxy/middleware phase bundle path + matcher metadata. */
   middleware?: BrrrdMiddleware;
   /** A-7: Partial Prerendering 활성 페이지 목록. 빈 배열이면 PPR 미사용. */
   pprPages?: string[];
@@ -34,7 +34,7 @@ export interface BrrrdProxySpec {
 export interface BrrrdMiddleware {
   /** Next webpack edge runtime 의 절대 경로 (manifest outDir 기준 상대). */
   runtime: string;
-  /** Next 가 생성한 middleware.js (webpack chunk) 의 상대 경로. */
+  /** Next 가 생성한 proxy/middleware webpack chunk 의 상대 경로. */
   entry: string;
   /** Next 의 _ENTRIES key suffix (보통 "middleware"). */
   name: string;

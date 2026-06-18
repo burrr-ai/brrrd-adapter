@@ -239,6 +239,6 @@ export default async function dispatch(routeId, req, res) {
 }
 
 // bundleEdgeHandler removed — all routes use Node.js runtime.
-// bundleMiddleware removed — Next compiled middleware.js 는 webpack
-// chunk 라 esbuild 로 다시 묶으면 깨진다. 대신 build.ts 가 .next/server 의 두
-// 파일 (edge-runtime-webpack.js + middleware.js) 을 runtime/server/ 로 raw 복사.
+// bundleMiddleware removed — Next compiled proxy/middleware entries are webpack
+// chunks, so re-bundling with esbuild breaks them. build.ts raw-copies the edge
+// runtime chunk plus the proxy/middleware entry chunk into runtime/server/.
