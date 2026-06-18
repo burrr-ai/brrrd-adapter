@@ -27,6 +27,7 @@
   "scripts": {
     "build": "tsc",
     "prepack": "tsc",
+    "publish:local": "pnpm publish --access public",
     "test": "pnpm build && node --test test/*.test.mjs",
     "dev": "tsc --watch"
   },
