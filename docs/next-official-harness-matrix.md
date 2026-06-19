@@ -4,11 +4,14 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 ## Status
 
-Initial local harness integration exists. The CI workflow runs one small deploy-test shard manually or on schedule
-before this becomes a pull-request gate. The current smoke shard is intentionally small (`1/64`); it is not the full
-official compatibility signal. The workflow makes the bundler axis explicit: `webpack` is the forced webpack baseline,
-`turbopack` is tracked separately, and `next-default` records whatever the checked-out Next canary uses when no bundler
-flag is supplied.
+Initial local harness integration exists. The CI workflow runs deploy-test shards manually or on schedule. The current
+smoke shard is intentionally small (`1/64`); it is not the full official compatibility signal. The workflow makes the
+bundler axis explicit: `webpack` is the forced webpack baseline, `turbopack` is tracked separately, and `next-default`
+records whatever the checked-out Next canary uses when no bundler flag is supplied.
+
+The workflow separates build and test jobs. It builds the adapter, brrrd runtime, and Next.js checkout once, saves that
+workspace, and fans out the requested test shards from the saved workspace. `group=1/64` runs one smoke shard,
+`group=1/64,2/64` runs an explicit subset, and `group=all` expands to all 64 shards for the selected bundler axis.
 
 ## Failure categories
 
@@ -39,7 +42,7 @@ flag is supplied.
 | Official deploy suite `1/64` webpack current smoke | pass | 2026-06-19 run [`27844534055`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534055) at adapter `9276911` passed. |
 | Official deploy suite `1/64` Turbopack current smoke | pass | 2026-06-19 run [`27844534077`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534077) at adapter `9276911` passed after the adapter patched both Turbopack server runtime wrappers: `server/chunks/ssr/[turbopack]_runtime.js` and `server/chunks/[turbopack]_runtime.js`. |
 | Official deploy suite `1/64` Next default current smoke | pass | 2026-06-19 run [`27844534013`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534013) at adapter `9276911` passed. |
-| Full official deploy suite | pending | Promote shard coverage after first failures are classified. |
+| Full official deploy suite | pending | Use `group=all` once the smoke workflow shape is revalidated after the build/test split. Run per bundler axis first (`webpack`, then `turbopack`, then `next-default`) so failures can be classified without mixing bundler-specific output shapes. |
 
 ## Policy
 
