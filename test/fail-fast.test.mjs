@@ -30,6 +30,18 @@ function symlinkDir(src, dest) {
   }
 }
 
+function writeFakeSharpPackage(root) {
+  const dir = path.join(root, "node_modules", "sharp");
+  fs.mkdirSync(dir, { recursive: true });
+  writeJson(path.join(dir, "package.json"), {
+    name: "sharp",
+    version: "0.0.0-test",
+    type: "module",
+    main: "index.js",
+  });
+  fs.writeFileSync(path.join(dir, "index.js"), "export default function sharp() {}\n", "utf8");
+}
+
 function minimalContext(projectDir, distDir, output) {
   return {
     routing: {
@@ -233,10 +245,7 @@ test("onBuildComplete rejects direct sharp usage even when next/og is present", 
   const root = tempDir("next-og-direct-sharp");
   const distDir = path.join(root, ".next");
   const handler = path.join(root, "handler.js");
-  const sharpDir = path.dirname(require.resolve("sharp/package.json", {
-    paths: [path.join(process.cwd(), "node_modules/.pnpm/node_modules")],
-  }));
-  symlinkDir(sharpDir, path.join(root, "node_modules", "sharp"));
+  writeFakeSharpPackage(root);
   fs.writeFileSync(
     handler,
     'import { ImageResponse } from "next/og"; import sharp from "sharp"; export function handler() { sharp; return new ImageResponse("x"); }',
