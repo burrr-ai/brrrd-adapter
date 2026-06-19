@@ -151,3 +151,44 @@ test("dispatcher bundling tolerates missing Next optional runtime dependencies",
     },
   );
 });
+
+test("dispatcher supplies Next-compatible no-op OpenTelemetry API", async () => {
+  const root = tempDir("dispatcher-otel");
+  const otelRoute = path.join(root, "otel-route.cjs");
+
+  fs.writeFileSync(
+    otelRoute,
+    `
+const { trace, context } = require('@opentelemetry/api');
+
+module.exports = {
+  handler(_req, res) {
+    const provider = trace.getTracerProvider();
+    const tracer = provider.getTracer('next.js', '0.0.1');
+    const result = tracer.startActiveSpan('render', {}, context.active(), (span) => {
+      span.setAttribute('next.span_name', 'render');
+      return 'otel-ok';
+    });
+    res.end(result);
+  },
+};
+`,
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "otel", filePath: otelRoute }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const otelRes = res();
+  await dispatch("otel", { headers: { host: "example.test" } }, otelRes);
+  assert.equal(otelRes.body, "otel-ok");
+});

@@ -1,26 +1,49 @@
-// TD-11: OpenTelemetry API stub. Next.js tracer requires `@opentelemetry/api`, but
-// in production it will be replaced by brrrd's own OTel pipeline (B-2). This is a
-// no-op fallback for when the user has not added a separate otel SDK as a dependency.
-//
-// Why this is split out: to keep REQUIRE_BANNER in bundler.ts from bloating, and to
-// isolate the stub in its own module so that future stub behavior (e.g. swapping the
-// noop tracer for the real otel global) is easy to replace.
+// Next's server runtime expects the stable OpenTelemetry API surface even when an
+// application has not installed an SDK. brrrd supplies a no-op implementation so
+// tracing hooks stay inert instead of crashing request handling.
 
 export const OTEL_STUB_SOURCE = `(() => {
-  const noopSpan = { end(){}, setAttribute(){}, setStatus(){}, recordException(){}, isRecording(){ return false; } };
+  const noopSpanContext = undefined;
+  const noopSpan = {
+    end(){},
+    setAttribute(){ return this; },
+    setAttributes(){ return this; },
+    setStatus(){ return this; },
+    updateName(){ return this; },
+    addEvent(){ return this; },
+    addLink(){ return this; },
+    addLinks(){ return this; },
+    recordException(){ return this; },
+    isRecording(){ return false; },
+    spanContext(){ return noopSpanContext; },
+  };
   const noopTracer = {
     startSpan: () => noopSpan,
-    startActiveSpan: (n, o, f) => {
-      if (typeof o === "function") { f = o; o = undefined; }
+    startActiveSpan: (...args) => {
+      let f;
+      for (let i = args.length - 1; i >= 0; i--) {
+        if (typeof args[i] === "function") {
+          f = args[i];
+          break;
+        }
+      }
       return typeof f === "function" ? f(noopSpan) : noopSpan;
     },
+  };
+  const noopTracerProvider = {
+    getTracer: () => noopTracer,
+    forceFlush: () => Promise.resolve(),
+    shutdown: () => Promise.resolve(),
   };
   const noopCtx = { getValue(){ return undefined; }, setValue(){ return this; }, deleteValue(){ return this; } };
   return {
     trace: {
       getTracer: () => noopTracer,
+      getTracerProvider: () => noopTracerProvider,
+      setGlobalTracerProvider: () => false,
       getSpan: () => undefined,
       getActiveSpan: () => undefined,
+      getSpanContext: () => undefined,
       setSpan: (ctx) => ctx,
       deleteSpan: (ctx) => ctx,
     },
