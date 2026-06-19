@@ -31,9 +31,17 @@ manifest/runtime backward compatibility is not a goal; prefer the clean final
 contract over bridge layers.
 
 Routing regexes come from the `sourceRegex` field on each `ctx.routing` phase
-entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.). Do not derive a
-source-of-truth regex from a pathname, and do not assume a top-level
+entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.) whenever Next
+provides one. Some Adapter API outputs currently omit a `dynamicRoutes[]` entry
+for a dynamic request output, so the routing compiler has a narrow fallback that
+uses Next's own `route-regex` compiler for that pathname. Do not add ad-hoc
+regex generation at call sites, and do not assume a top-level
 `ctx.routing.sourceRegex` field.
+
+Pages Router automatic static optimization can emit dynamic static templates
+such as `/[post]` or `/[post]/[cmnt]`. Those are not literal bracket URL paths:
+the routing compiler registers them with Next's route-regex semantics while the
+artifact planner still stores the template under a collision-safe static path.
 
 The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
 adapter release must be tested with the matching brrrd runtime/fleet build before

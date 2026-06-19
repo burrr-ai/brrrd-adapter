@@ -185,25 +185,54 @@ test("public static file storage avoids parent file and child directory collisio
     routes.find((route) => route.id === "static-_post_"),
     {
       id: "static-_post_",
-      pattern: "^/\\[post\\]$",
+      pattern: "^\\/([^/]+?)(?:\\/)?$",
       type: "static",
       runtime: "nodejs",
       bundle: "",
       file: "/[post]/index",
       immutable: false,
+      params: ["post"],
     },
   );
   assert.deepEqual(
     routes.find((route) => route.id === "static-_post_-comments"),
     {
       id: "static-_post_-comments",
-      pattern: "^/\\[post\\]/comments$",
+      pattern: "^\\/([^/]+?)\\/comments(?:\\/)?$",
       type: "static",
       runtime: "nodejs",
       bundle: "",
       file: "/[post]/comments",
       immutable: false,
+      params: ["post"],
     },
+  );
+});
+
+test("auto-export dynamic static templates match concrete request paths after exact routes", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    staticFiles: [
+      staticFile("/[post]", `${distDir}/server/pages/[post]/index.html`),
+      staticFile("/[post]/[cmnt]", `${distDir}/server/pages/[post]/[cmnt].html`),
+      staticFile("/commonjs1", `${distDir}/server/pages/commonjs1.html`),
+    ],
+  }));
+
+  const firstCommon = routes.find((route) => new RegExp(route.pattern).test("/commonjs1"));
+  const firstPost = routes.find((route) => new RegExp(route.pattern).test("/post-1"));
+  const firstComment = routes.find((route) => new RegExp(route.pattern).test("/zeit/cmnt-2"));
+
+  assert.equal(firstCommon.id, "static-commonjs1");
+  assert.equal(firstPost.id, "static-_post_");
+  assert.equal(firstComment.id, "static-_post_-_cmnt_");
+  assert.ok(
+    routes.findIndex((route) => route.id === "static-commonjs1")
+      < routes.findIndex((route) => route.id === "static-_post_"),
+  );
+  assert.ok(
+    routes.findIndex((route) => route.id === "static-_post_-_cmnt_")
+      < routes.findIndex((route) => route.id === "static-_post_"),
   );
 });
 

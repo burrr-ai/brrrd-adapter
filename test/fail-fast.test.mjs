@@ -312,12 +312,13 @@ test("onBuildComplete stores parent static HTML under index when child paths nee
     manifest.routes.find((route) => route.id === "static-_post_"),
     {
       id: "static-_post_",
-      pattern: "^/\\[post\\]$",
+      pattern: "^\\/([^/]+?)(?:\\/)?$",
       type: "static",
       runtime: "nodejs",
       bundle: "",
       file: "/[post]/index",
       immutable: false,
+      params: ["post"],
     },
   );
   assert.deepEqual(

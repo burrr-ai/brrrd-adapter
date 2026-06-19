@@ -253,6 +253,27 @@ function exactRoute(output: NormalizedOutput, type: "page" | "route"): BrrrdRout
   };
 }
 
+function publicRoute(
+  output: NormalizedOutput,
+  type: "static" | "prerender",
+  file: string,
+  immutable?: boolean,
+): BrrrdRoute {
+  const dynamicPublicTemplate = output.kind !== "public" && output.pathname.includes("[");
+  return {
+    id: `${type}-${sanitizeId(output.urlPath)}`,
+    pattern: dynamicPublicTemplate
+      ? routeRegexFromPathname(output.pathname)
+      : `^${escapeRegex(output.urlPath)}$`,
+    type,
+    runtime: "nodejs",
+    bundle: "",
+    file,
+    ...(immutable !== undefined ? { immutable } : {}),
+    ...(dynamicPublicTemplate ? { params: segmentParamNames(output.pathname) } : {}),
+  };
+}
+
 function dynamicRoute(
   output: NormalizedOutput,
   type: "page" | "route",
@@ -297,30 +318,24 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
     params: ["path"],
   });
 
-  for (const file of model.outputs.staticFiles) {
+  for (const file of sortBySpecificity(model.outputs.staticFiles)) {
     if (file.urlPath.startsWith("/_next/static/")) continue;
-    routes.push({
-      id: `static-${sanitizeId(file.urlPath)}`,
-      pattern: `^${escapeRegex(file.urlPath)}$`,
-      type: "static",
-      runtime: "nodejs",
-      bundle: "",
-      file: publicStorageFilePath(file.pathname, allPublicPathnames),
-      immutable: !!file.immutableHash,
-    });
+    routes.push(publicRoute(
+      file,
+      "static",
+      publicStorageFilePath(file.pathname, allPublicPathnames),
+      !!file.immutableHash,
+    ));
   }
 
-  for (const pr of model.outputs.prerenders) {
+  for (const pr of sortBySpecificity(model.outputs.prerenders)) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
     if (isRouteHandlerPrerender(model, pr)) continue;
-    routes.push({
-      id: `prerender-${sanitizeId(pr.pathname)}`,
-      pattern: `^${escapeRegex(pr.pathname)}$`,
-      type: "prerender",
-      runtime: "nodejs",
-      bundle: "",
-      file: publicStorageFilePath(pr.pathname, allPublicPathnames),
-    });
+    routes.push(publicRoute(
+      pr,
+      "prerender",
+      publicStorageFilePath(pr.pathname, allPublicPathnames),
+    ));
   }
 
   const allPages = [...model.outputs.appPages, ...model.outputs.pages];
