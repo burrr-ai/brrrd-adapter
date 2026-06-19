@@ -22,7 +22,7 @@ before this becomes a pull-request gate.
 | Scope | Status | Notes |
 | --- | --- | --- |
 | Local deploy script smoke | pass | 2026-06-19: copied `brrrd/examples/nextjs-basic` to a temp app, ran `deploy -> curl / -> logs -> cleanup -> cleanup`; `/` returned 200 and required log markers were present. |
-| Official deploy suite `1/16` | pending | First GitHub Actions target. |
+| Official deploy suite `1/16` | blocked | First run reached `Checkout brrrd runtime` and failed because `burrr-ai/brrrd` is private. Configure `RUNTIME_REPO_DEPLOY_KEY` with a read-only deploy key, then rerun. |
 | Full official deploy suite | pending | Promote shard coverage after first failures are classified. |
 
 ## Policy

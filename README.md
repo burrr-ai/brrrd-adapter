@@ -103,3 +103,7 @@ The first workflow target is a local `brrrd <dist/brrrd>` deploy harness, not
 fleet/AWS. Set `ADAPTER_DIR` to this checkout and `BRRRD_BIN` to a built brrrd
 runtime binary when running the scripts manually. Current official-suite
 coverage is tracked in `docs/next-official-harness-matrix.md`.
+
+The GitHub workflow checks out the private `burrr-ai/brrrd` runtime repo through
+the `RUNTIME_REPO_DEPLOY_KEY` secret. Use a read-only deploy key on the runtime
+repo rather than a broad personal token.

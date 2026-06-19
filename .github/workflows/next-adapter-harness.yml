@@ -27,11 +27,22 @@ jobs:
         with:
           path: adapter
 
+      - name: Check brrrd runtime checkout secret
+        env:
+          RUNTIME_REPO_DEPLOY_KEY: ${{ secrets.RUNTIME_REPO_DEPLOY_KEY }}
+        run: |
+          if [ -z "$RUNTIME_REPO_DEPLOY_KEY" ]; then
+            echo "::error::RUNTIME_REPO_DEPLOY_KEY is required to checkout private burrr-ai/brrrd"
+            exit 1
+          fi
+
       - name: Checkout brrrd runtime
         uses: actions/checkout@v4
         with:
           repository: burrr-ai/brrrd
           path: brrrd
+          ssh-key: ${{ secrets.RUNTIME_REPO_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Checkout Next.js
         uses: actions/checkout@v4
