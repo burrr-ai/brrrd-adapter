@@ -4,7 +4,7 @@ import type { Plugin } from "esbuild";
 import type { BuildContext } from "../types.js";
 import type { CompatibilityPolicy } from "./types.js";
 
-const TURBOPACK_SERVER_RUNTIME_RE = /[\\/]server[\\/]chunks[\\/]ssr[\\/]\[turbopack\]_runtime\.js$/;
+const TURBOPACK_SERVER_RUNTIME_RE = /[\\/]server[\\/]chunks[\\/](?:ssr[\\/])?\[turbopack\]_runtime\.js$/;
 const RUNTIME_ROOT_RE = /\b(?:var|const)\s+RUNTIME_ROOT\s*=\s*path\.resolve\(__filename,\s*relativePathToRuntimeRoot\);/;
 const ABSOLUTE_ROOT_RE = /\b(?:var|const)\s+ABSOLUTE_ROOT\s*=\s*path\.resolve\(__filename,\s*relativePathToDistRoot\);/;
 

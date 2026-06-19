@@ -663,32 +663,38 @@ test("onBuildComplete patches bundled Turbopack server runtime root", async () =
   const root = tempDir("turbopack-runtime-root");
   const distDir = path.join(root, ".next");
   const handler = path.join(distDir, "server", "pages", "404.js");
-  const runtime = path.join(distDir, "server", "chunks", "ssr", "[turbopack]_runtime.js");
+  const ssrRuntime = path.join(distDir, "server", "chunks", "ssr", "[turbopack]_runtime.js");
+  const routeRuntime = path.join(distDir, "server", "chunks", "[turbopack]_runtime.js");
   fs.mkdirSync(path.dirname(handler), { recursive: true });
-  fs.mkdirSync(path.dirname(runtime), { recursive: true });
+  fs.mkdirSync(path.dirname(ssrRuntime), { recursive: true });
+  fs.mkdirSync(path.dirname(routeRuntime), { recursive: true });
   fs.writeFileSync(
     handler,
     [
       'const R = require("../chunks/ssr/[turbopack]_runtime.js");',
-      "export function handler(_req, res) { res.end(String(R)); }",
+      'const R2 = require("../chunks/[turbopack]_runtime.js");',
+      "export function handler(_req, res) { res.end(String(R) + String(R2)); }",
     ].join("\n"),
     "utf8",
   );
-  fs.writeFileSync(runtime, [
+  const runtimeSource = [
     'var path = require("path");',
     'var relativePathToRuntimeRoot = "../../../..";',
     'var relativePathToDistRoot = "../../../..";',
     "const RUNTIME_ROOT = path.resolve(__filename, relativePathToRuntimeRoot);",
     "const ABSOLUTE_ROOT = path.resolve(__filename, relativePathToDistRoot);",
     "module.exports = { RUNTIME_ROOT, ABSOLUTE_ROOT };",
-  ].join("\n"), "utf8");
+  ].join("\n");
+  fs.writeFileSync(ssrRuntime, runtimeSource, "utf8");
+  fs.writeFileSync(routeRuntime, runtimeSource, "utf8");
 
   const context = minimalContext(root, distDir, {
     id: "/404",
     pathname: "/404",
     filePath: handler,
     assets: {
-      runtime,
+      ssrRuntime,
+      routeRuntime,
     },
   });
   context.outputs.appPages = [];
@@ -698,7 +704,8 @@ test("onBuildComplete patches bundled Turbopack server runtime root", async () =
       pathname: "/404",
       filePath: handler,
       assets: {
-        runtime,
+        ssrRuntime,
+        routeRuntime,
       },
     },
   ];
@@ -710,8 +717,14 @@ test("onBuildComplete patches bundled Turbopack server runtime root", async () =
     "utf8",
   );
   assert.match(appBundle, /__brrrd_turbopack_runtime_root/);
-  assert.match(appBundle, /globalThis\.__brrrd_turbopack_runtime_root \|\| path\.resolve/);
-  assert.match(appBundle, /globalThis\.__brrrd_turbopack_dist_root \|\| path\.resolve/);
+  assert.equal(
+    appBundle.match(/globalThis\.__brrrd_turbopack_runtime_root \|\| path\.resolve/g)?.length,
+    2,
+  );
+  assert.equal(
+    appBundle.match(/globalThis\.__brrrd_turbopack_dist_root \|\| path\.resolve/g)?.length,
+    2,
+  );
 });
 
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
