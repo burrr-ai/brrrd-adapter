@@ -1,0 +1,88 @@
+name: next-adapter-harness
+
+on:
+  workflow_dispatch:
+    inputs:
+      nextjsRef:
+        description: Next.js repo ref, branch, tag, or SHA
+        default: canary
+        type: string
+      group:
+        description: Next e2e shard group
+        default: 1/16
+        type: string
+  schedule:
+    - cron: '0 7 * * 1'
+
+jobs:
+  deploy-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      NEXTJS_REF: ${{ github.event.inputs.nextjsRef || 'canary' }}
+      NEXT_TEST_GROUP: ${{ github.event.inputs.group || '1/16' }}
+    steps:
+      - name: Checkout adapter
+        uses: actions/checkout@v4
+        with:
+          path: adapter
+
+      - name: Checkout brrrd runtime
+        uses: actions/checkout@v4
+        with:
+          repository: burrr-ai/brrrd
+          path: brrrd
+
+      - name: Checkout Next.js
+        uses: actions/checkout@v4
+        with:
+          repository: vercel/next.js
+          ref: ${{ env.NEXTJS_REF }}
+          path: nextjs
+          fetch-depth: 25
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        run: npm i -g corepack@0.31 && corepack enable
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build and test adapter
+        working-directory: adapter
+        run: npm install && npm run build && npm test
+
+      - name: Build brrrd runtime
+        working-directory: brrrd
+        run: cargo build -p brrrd --bin brrrd
+
+      - name: Install and build Next.js
+        working-directory: nextjs
+        run: pnpm install && pnpm build && pnpm install
+
+      - name: Install Playwright Chromium
+        working-directory: nextjs
+        run: pnpm playwright install --with-deps chromium
+
+      - name: Make harness scripts executable
+        run: chmod +x adapter/scripts/e2e-deploy.sh adapter/scripts/e2e-logs.sh adapter/scripts/e2e-cleanup.sh
+
+      - name: Run official deploy adapter tests
+        working-directory: nextjs
+        env:
+          ADAPTER_DIR: ${{ github.workspace }}/adapter
+          BRRRD_BIN: ${{ github.workspace }}/brrrd/target/debug/brrrd
+          NEXT_TEST_MODE: deploy
+          NEXT_E2E_TEST_TIMEOUT: 240000
+          NEXT_EXTERNAL_TESTS_FILTERS: test/deploy-tests-manifest.json
+          NEXT_TEST_DEPLOY_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-deploy.sh
+          NEXT_TEST_DEPLOY_LOGS_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-logs.sh
+          NEXT_TEST_CLEANUP_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-cleanup.sh
+          NEXT_TELEMETRY_DISABLED: 1
+          IS_TURBOPACK_TEST: 1
+          NEXT_TEST_JOB: 1
+        run: node run-tests.js --timings -g "$NEXT_TEST_GROUP" -c 2 --type e2e

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUILD_LOG=".adapter-build.log"
+SERVER_LOG=".adapter-server.log"
+DEPLOYMENT_FILE=".brrrd-harness/deployment.json"
+
+marker_value() {
+  local name="$1"
+  local fallback="$2"
+  if [[ -f "$BUILD_LOG" ]]; then
+    local line
+    line="$(grep -m1 "^$name:" "$BUILD_LOG" || true)"
+    if [[ -n "$line" ]]; then
+      printf '%s\n' "${line#*: }"
+      return 0
+    fi
+  fi
+  printf '%s\n' "$fallback"
+}
+
+build_id_fallback="undefined"
+if [[ -f .next/BUILD_ID ]]; then
+  build_id_fallback="$(cat .next/BUILD_ID)"
+fi
+
+printf 'BUILD_ID: %s\n' "$(marker_value BUILD_ID "$build_id_fallback")"
+printf 'DEPLOYMENT_ID: %s\n' "$(marker_value DEPLOYMENT_ID undefined)"
+printf 'IMMUTABLE_ASSET_TOKEN: %s\n' "$(marker_value IMMUTABLE_ASSET_TOKEN undefined)"
+
+printf '\n=== brrrd harness environment ===\n'
+printf 'NEXT_TEST_DIR=%s\n' "${NEXT_TEST_DIR:-}"
+printf 'NEXT_TEST_DEPLOY_URL=%s\n' "${NEXT_TEST_DEPLOY_URL:-}"
+
+if [[ -f "$DEPLOYMENT_FILE" ]]; then
+  printf '\n=== %s ===\n' "$DEPLOYMENT_FILE"
+  cat "$DEPLOYMENT_FILE"
+fi
+
+if [[ -f "$BUILD_LOG" ]]; then
+  printf '\n=== %s ===\n' "$BUILD_LOG"
+  cat "$BUILD_LOG"
+fi
+
+if [[ -f "$SERVER_LOG" ]]; then
+  printf '\n=== %s ===\n' "$SERVER_LOG"
+  cat "$SERVER_LOG"
+fi

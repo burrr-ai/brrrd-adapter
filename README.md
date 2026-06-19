@@ -88,3 +88,18 @@ policies:
 
 > Version note: the adapter's manifest format is coupled to the brrrd runtime
 > version. Use an adapter release that matches your deployed runtime.
+
+## Next official adapter harness
+
+This repo includes the deploy/logs/cleanup script contract expected by Next's
+official adapter harness:
+
+- `scripts/e2e-deploy.sh`
+- `scripts/e2e-logs.sh`
+- `scripts/e2e-cleanup.sh`
+- `.github/workflows/next-adapter-harness.yml`
+
+The first workflow target is a local `brrrd <dist/brrrd>` deploy harness, not
+fleet/AWS. Set `ADAPTER_DIR` to this checkout and `BRRRD_BIN` to a built brrrd
+runtime binary when running the scripts manually. Current official-suite
+coverage is tracked in `docs/next-official-harness-matrix.md`.
