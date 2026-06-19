@@ -1,32 +1,109 @@
-// A-6: Implements the Next.js 16 CacheHandler interface and delegates to
-// brrrd's op_brrrd_cache_* ops. Registering this module as cacheHandlers.default
-// in the Next config routes ISR / fetch cache / use cache through the brrrd backend.
-//
-// Interface source: next/dist/server/lib/cache-handlers/types.d.ts (Next 16.x).
-//
-// Note:
-// - tag-based getExpiration returns Infinity because the backend doesn't know the
-//   timestamp, so Next determines staleness directly via the softTags passed to get.
-// - This module only works inside the brrrd isolate (it depends on Deno.core.ops).
-//   Importing it from another Next runtime throws a ReferenceError.
+// Implements the Next.js 16 cacheHandlers interface. This module is imported by
+// both the Next build process and the brrrd isolate, so the default export must
+// be a handler object and must not touch runtime-only Deno ops at module load.
+
+const memoryEntries = new Map();
+const memoryTagTimestamps = new Map();
+const pendingSets = new Map();
+
+function brrrdOps() {
+  return globalThis.Deno?.core?.ops;
+}
+
+function hasBrrrdCacheOps() {
+  const ops = brrrdOps();
+  return !!(
+    ops
+    && typeof ops.op_brrrd_cache_get === "function"
+    && typeof ops.op_brrrd_cache_set === "function"
+    && typeof ops.op_brrrd_cache_revalidate_tag === "function"
+  );
+}
+
+function streamFromBytes(bytes) {
+  const valueBuf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(valueBuf);
+      controller.close();
+    },
+  });
+}
+
+async function bytesFromStream(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged;
+}
+
+function maxTagTimestamp(tags) {
+  let max = 0;
+  for (const tag of tags || []) {
+    max = Math.max(max, memoryTagTimestamps.get(tag) || 0);
+  }
+  return max;
+}
+
+function isMemoryEntryExpired(entry, softTags) {
+  const now = Date.now();
+  if (entry.expire > 0 && now > entry.timestamp + entry.expire * 1000) return true;
+  if (entry.revalidate > 0 && now > entry.timestamp + entry.revalidate * 1000) return true;
+  const invalidatedAt = Math.max(
+    maxTagTimestamp(entry.tags),
+    maxTagTimestamp(softTags),
+  );
+  return invalidatedAt > entry.timestamp;
+}
+
+function cacheEntryFromStored(stored) {
+  return {
+    value: streamFromBytes(stored.bytes),
+    tags: stored.tags || [],
+    stale: stored.stale,
+    timestamp: stored.timestamp,
+    expire: stored.expire,
+    revalidate: stored.revalidate,
+  };
+}
 
 class BrrrdCacheHandler {
   async get(cacheKey, softTags) {
-    const res = await Deno.core.ops.op_brrrd_cache_get(cacheKey);
+    const pending = pendingSets.get(cacheKey);
+    if (pending) await pending;
+
+    const ops = brrrdOps();
+    if (!hasBrrrdCacheOps()) {
+      const entry = memoryEntries.get(cacheKey);
+      if (!entry || isMemoryEntryExpired(entry, softTags)) return undefined;
+      return cacheEntryFromStored(entry);
+    }
+
+    const res = await ops.op_brrrd_cache_get(cacheKey);
     if (!res) return undefined;
     if (res.is_expired) return undefined;
 
     const valueBuf = res.value instanceof Uint8Array
       ? res.value
       : new Uint8Array(res.value);
-    const value = new ReadableStream({
-      start(controller) {
-        controller.enqueue(valueBuf);
-        controller.close();
-      },
-    });
     return {
-      value,
+      value: streamFromBytes(valueBuf),
       tags: res.tags || [],
       stale: 60,
       timestamp: Date.now() - Math.floor((res.age_secs || 0) * 1000),
@@ -36,45 +113,63 @@ class BrrrdCacheHandler {
   }
 
   async set(cacheKey, pendingEntry) {
-    const entry = await pendingEntry;
-    const reader = entry.value.getReader();
-    const chunks = [];
-    let total = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      total += value.byteLength;
+    const setPromise = (async () => {
+      const entry = await pendingEntry;
+      const bytes = await bytesFromStream(entry.value);
+      const stored = {
+        bytes,
+        tags: entry.tags || [],
+        stale: entry.stale,
+        timestamp: entry.timestamp ?? Date.now(),
+        expire: entry.expire,
+        revalidate: entry.revalidate,
+      };
+
+      const ops = brrrdOps();
+      if (!hasBrrrdCacheOps()) {
+        memoryEntries.set(cacheKey, stored);
+        return;
+      }
+
+      await ops.op_brrrd_cache_set(
+        cacheKey,
+        bytes,
+        stored.tags,
+        stored.revalidate || 0,
+      );
+    })();
+    pendingSets.set(cacheKey, setPromise);
+    try {
+      await setPromise;
+    } finally {
+      pendingSets.delete(cacheKey);
     }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) {
-      merged.set(c, offset);
-      offset += c.byteLength;
-    }
-    await Deno.core.ops.op_brrrd_cache_set(
-      cacheKey,
-      merged,
-      entry.tags || [],
-      entry.revalidate || 0,
-    );
   }
 
   async refreshTags() {
-    // The backend determines staleness directly on every get. There is no local manifest.
+    // The brrrd backend and Node build fallback both check tags on read.
   }
 
-  async getExpiration(_tags) {
-    // Infinity makes Next pass softTags to get, delegating the staleness check to it.
-    return Infinity;
+  async getExpiration(tags) {
+    if (hasBrrrdCacheOps()) {
+      return Infinity;
+    }
+    return maxTagTimestamp(tags);
   }
 
   async updateTags(tags, _durations) {
+    const now = Date.now();
     for (const tag of tags) {
-      await Deno.core.ops.op_brrrd_cache_revalidate_tag(tag);
+      memoryTagTimestamps.set(tag, now);
+      const ops = brrrdOps();
+      if (hasBrrrdCacheOps()) {
+        await ops.op_brrrd_cache_revalidate_tag(tag);
+      }
     }
   }
 }
 
-export default BrrrdCacheHandler;
-export { BrrrdCacheHandler };
+const cacheHandler = new BrrrdCacheHandler();
+
+export default cacheHandler;
+export { BrrrdCacheHandler, cacheHandler };

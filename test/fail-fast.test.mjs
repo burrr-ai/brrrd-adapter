@@ -298,6 +298,71 @@ test("onBuildComplete resolves Pages Router prerender HTML from server/pages", a
   );
 });
 
+test("onBuildComplete resolves Pages Router prerender data JSON from server/pages", async () => {
+  const root = tempDir("pages-prerender-data-json");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const dataJson = path.join(distDir, "server", "pages", "gsp.json");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(dataJson), { recursive: true });
+  fs.writeFileSync(dataJson, JSON.stringify({ pageProps: { from: "gsp" } }), "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/gsp",
+    pathname: "/gsp",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/gsp",
+      pathname: "/gsp",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/_next/data/test-build/gsp.json",
+      pathname: "/_next/data/test-build/gsp.json",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "static", "_next", "data", "test-build", "gsp.json"),
+      "utf8",
+    ),
+    JSON.stringify({ pageProps: { from: "gsp" } }),
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => (
+      artifact.id === "prerender:_next-data-test-build-gsp_json"
+    )),
+    {
+      id: "prerender:_next-data-test-build-gsp_json",
+      kind: "prerender",
+      ownerRouteId: "prerender-_next-data-test-build-gsp_json",
+      sourcePath: ".next/server/pages/gsp.json",
+      packagePath: "static/_next/data/test-build/gsp.json",
+      mountPath: "/_next/data/test-build/gsp.json",
+      contentType: "application/json",
+      required: true,
+      reason: "Pages Router prerender data JSON served without invoking the handler",
+    },
+  );
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");

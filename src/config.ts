@@ -7,16 +7,8 @@ export function modifyConfig(
   config: NextConfigComplete,
   _ctx: { phase: string; nextVersion: string },
 ): NextConfigComplete {
-  // Disable image optimization (no sharp/squoosh in V8 Isolate)
-  config.images = { ...config.images, unoptimized: true };
-
-  // A-6 wiring: auto-register the cache handler polyfill.
-  // At build time, require.resolve succeeds against the real disk path of
-  // @brrrd/adapter/cache-handler. onBuildComplete also mounts that same file
-  // into the isolate at /bundle/brrrd-cache-handler.cjs. At runtime, when Next
-  // imports it, brrrd's ModuleLoader (pool.rs::load_bundle_module) looks only at
-  // the basename of the absolute disk path and remaps it to
-  // /bundle/brrrd-cache-handler.cjs (next step — pool.rs change).
+  // Modern `cacheHandlers` expects handler objects. The module is safe to import
+  // during `next build` and delegates to brrrd cache ops inside the isolate.
   config.cacheHandlers = config.cacheHandlers ?? {};
   if (!config.cacheHandlers.default) {
     try {

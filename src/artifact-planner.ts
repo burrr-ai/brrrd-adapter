@@ -89,42 +89,98 @@ function isPagesRouterPrerender(model: NextBuildModel, prerender: NormalizedOutp
   ));
 }
 
-function prerenderHtmlSourcePath(
+type PrerenderPublicArtifact = {
+  sourceAbsPath: string;
+  packagePath: string;
+  mountPath: string;
+  contentType?: string;
+  reason: string;
+};
+
+function nextDataRoutePathname(
+  model: NextBuildModel,
+  pathname: string,
+): string | null {
+  const match = pathname.match(/^\/_next\/data\/([^/]+)\/(.+\.json)$/);
+  if (!match) return null;
+  if (match[1] !== model.buildId) return null;
+  const rel = match[2];
+  if (rel.split("/").some((segment) => segment === ".." || segment === "")) return null;
+  return rel;
+}
+
+function prerenderHtmlArtifact(
   model: NextBuildModel,
   prerender: NormalizedOutput,
-  htmlName: string,
-): string {
-  if (prerender.filePath) return prerender.filePath;
+  prerenderPaths: string[],
+): PrerenderPublicArtifact {
+  const htmlName = prerender.pathname === "/"
+    ? "index.html"
+    : prerender.pathname.replace(/^\//, "") + ".html";
   const routeRoot = isPagesRouterPrerender(model, prerender) ? "pages" : "app";
-  return path.join(model.distDir, "server", routeRoot, htmlName);
+  const sourceAbsPath = prerender.filePath
+    ? prerender.filePath
+    : path.join(model.distDir, "server", routeRoot, htmlName);
+  const destName = prerender.pathname === "/"
+    ? "index"
+    : prerenderStaticFile(prerender.pathname, prerenderPaths).replace(/^\//, "");
+  return {
+    sourceAbsPath,
+    packagePath: packageJoin("static", destName),
+    mountPath: prerender.pathname,
+    reason: "static prerender HTML served without invoking the handler",
+  };
+}
+
+function prerenderDataArtifact(
+  model: NextBuildModel,
+  prerender: NormalizedOutput,
+  dataRel: string,
+): PrerenderPublicArtifact {
+  const sourceAbsPath = prerender.filePath
+    ? prerender.filePath
+    : path.join(model.distDir, "server", "pages", dataRel);
+  return {
+    sourceAbsPath,
+    packagePath: packageJoin("static", prerender.pathname),
+    mountPath: prerender.pathname,
+    contentType: "application/json",
+    reason: "Pages Router prerender data JSON served without invoking the handler",
+  };
+}
+
+function prerenderPublicArtifact(
+  model: NextBuildModel,
+  prerender: NormalizedOutput,
+  prerenderPaths: string[],
+): PrerenderPublicArtifact | null {
+  if (
+    prerender.pathname.includes(".rsc")
+    || prerender.pathname.includes(".segment")
+    || prerender.pathname.includes("[")
+  ) return null;
+
+  const dataRel = nextDataRoutePathname(model, prerender.pathname);
+  if (dataRel) return prerenderDataArtifact(model, prerender, dataRel);
+  return prerenderHtmlArtifact(model, prerender, prerenderPaths);
 }
 
 function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
   for (const prerender of model.outputs.prerenders) {
-    if (
-      prerender.pathname.includes(".rsc")
-      || prerender.pathname.includes(".segment")
-      || prerender.pathname.includes("[")
-    ) continue;
-
-    const htmlName = prerender.pathname === "/"
-      ? "index.html"
-      : prerender.pathname.replace(/^\//, "") + ".html";
-    const htmlPath = prerenderHtmlSourcePath(model, prerender, htmlName);
-    const destName = prerender.pathname === "/"
-      ? "index"
-      : prerenderStaticFile(prerender.pathname, prerenderPaths).replace(/^\//, "");
+    const artifact = prerenderPublicArtifact(model, prerender, prerenderPaths);
+    if (!artifact) continue;
     items.push(artifactItem(model, {
       id: `prerender:${sanitizeId(prerender.pathname)}`,
       kind: "prerender",
       ownerRouteId: `prerender-${sanitizeId(prerender.pathname)}`,
-      sourceAbsPath: htmlPath,
-      packagePath: packageJoin("static", destName),
-      mountPath: prerender.pathname,
+      sourceAbsPath: artifact.sourceAbsPath,
+      packagePath: artifact.packagePath,
+      mountPath: artifact.mountPath,
+      ...(artifact.contentType ? { contentType: artifact.contentType } : {}),
       required: true,
-      reason: "static prerender HTML served without invoking the handler",
+      reason: artifact.reason,
       precompress: true,
     }));
   }

@@ -56,8 +56,6 @@ const require = createRequire(import.meta.url);
 
 const nextConfig: NextConfig = {
   adapterPath: require.resolve("@brrrd/adapter"),
-  // brrrd isolates have no native addons → keep image optimization off.
-  images: { unoptimized: true },
 };
 export default nextConfig;
 ```
@@ -73,6 +71,9 @@ Then `next build` produces `dist/brrrd/`. Deploy it with `brrrd-fleet deploy
 - **No native `.node` addons** in the served request path. `next/og` image
   routes are handled through Next's WASM fallback path, so they do not need
   `export const runtime = "edge"` just to avoid optional `sharp` traces.
+- **Image config**: the adapter preserves Next's image rendering config instead
+  of forcing `images.unoptimized`. Apps may still opt into `unoptimized`
+  deliberately, but the compiler should not silently downgrade `<Image>` HTML.
 - **Middleware matcher**: standard Next matcher regexes, including common
   negative-lookahead patterns such as `/((?!api|...).*)`, are supported by the
   brrrd runtime.
