@@ -17,10 +17,40 @@ die() {
   exit 1
 }
 
+persist_diagnostics() {
+  if [[ -z "${GITHUB_WORKSPACE:-}" ]]; then
+    return 0
+  fi
+
+  local digest
+  digest="$(
+    node --input-type=module -e '
+      import crypto from "node:crypto";
+      console.log(crypto.createHash("sha1").update(process.cwd()).digest("hex"));
+    ' 2>/dev/null || printf unknown
+  )"
+  local dest="$GITHUB_WORKSPACE/harness-diagnostics/deploy-failed/$digest"
+  mkdir -p "$dest"
+  printf '%s\n' "$PWD" > "$dest/source.txt"
+
+  for file in "$BUILD_LOG" "$SERVER_LOG" "$DEPLOYMENT_FILE"; do
+    if [[ -f "$file" ]]; then
+      local safe_file="$file"
+      safe_file="${safe_file#.}"
+      safe_file="${safe_file//\/./\/}"
+      mkdir -p "$dest/$(dirname "$safe_file")"
+      cp "$file" "$dest/$safe_file"
+    fi
+  done
+}
+
 cleanup_on_error() {
   local status=$?
-  if [[ "$status" -ne 0 && -n "${PID:-}" ]] && kill -0 "$PID" 2>/dev/null; then
-    kill "$PID" 2>/dev/null || true
+  if [[ "$status" -ne 0 ]]; then
+    persist_diagnostics || true
+    if [[ -n "${PID:-}" ]] && kill -0 "$PID" 2>/dev/null; then
+      kill "$PID" 2>/dev/null || true
+    fi
   fi
 }
 
