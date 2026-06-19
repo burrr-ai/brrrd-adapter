@@ -363,6 +363,86 @@ test("onBuildComplete resolves Pages Router prerender data JSON from server/page
   );
 });
 
+test("onBuildComplete does not materialize route handler prerenders as page HTML", async () => {
+  const root = tempDir("app-route-prerender");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "routes", "[dyn]", "route.js");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('route handler'); }\n",
+    "utf8",
+  );
+
+  await onBuildComplete({
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [
+        {
+          source: "/routes/[dyn]",
+          sourceRegex: "^/routes/([^/]+?)(?:/)?$",
+          destination: "/routes/[dyn]",
+        },
+      ],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
+    outputs: {
+      pages: [],
+      appPages: [],
+      appRoutes: [
+        {
+          id: "/routes/[dyn]/route",
+          pathname: "/routes/[dyn]",
+          filePath: handler,
+          assets: {},
+        },
+      ],
+      pagesApi: [],
+      prerenders: [
+        {
+          id: "/routes/1",
+          pathname: "/routes/1",
+          parentOutputId: "/routes/[dyn]/route",
+        },
+      ],
+      staticFiles: [],
+    },
+    projectDir: root,
+    repoRoot: root,
+    distDir,
+    config: {},
+    nextVersion: "16.3.0-canary.58",
+    buildId: "test-build",
+  });
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => artifact.id === "prerender:routes-1"),
+    false,
+  );
+  assert.equal(
+    manifest.routes.some((route) => route.id === "prerender-routes-1"),
+    false,
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "routes-_dyn_-route"),
+    {
+      id: "routes-_dyn_-route",
+      pattern: "^/routes/([^/]+?)(?:/)?$",
+      type: "route",
+      runtime: "nodejs",
+      params: ["dyn"],
+    },
+  );
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");

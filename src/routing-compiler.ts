@@ -14,6 +14,10 @@ import type {
   BrrrdMiddlewareCondition,
 } from "./types.js";
 import {
+  isAuxiliaryPrerenderPath,
+  isRouteHandlerPrerender,
+} from "./prerender-classifier.js";
+import {
   listPrerenderPathnames,
   prerenderStaticFile,
   sanitizeId,
@@ -310,9 +314,8 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
   const handledPaths = new Set(allPages.map((p) => p.pathname));
   const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
   for (const pr of model.outputs.prerenders) {
-    if (pr.pathname.includes("[") || pr.pathname.includes(".rsc") || pr.pathname.includes(".segment")) {
-      continue;
-    }
+    if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
+    if (isRouteHandlerPrerender(model, pr)) continue;
     if (handledPaths.has(pr.pathname)) continue;
     routes.push({
       id: `prerender-${sanitizeId(pr.pathname)}`,

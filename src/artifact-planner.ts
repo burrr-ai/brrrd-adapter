@@ -5,6 +5,11 @@ import * as zlib from "node:zlib";
 
 import type { ManifestSupplement } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
+import {
+  findPrerenderOwner,
+  isAuxiliaryPrerenderPath,
+  isRouteHandlerPrerender,
+} from "./prerender-classifier.js";
 import type { BrrrdArtifact } from "./types.js";
 import {
   listPrerenderPathnames,
@@ -81,14 +86,6 @@ function staticArtifact(model: NextBuildModel, output: NormalizedOutput): Artifa
   });
 }
 
-function isPagesRouterPrerender(model: NextBuildModel, prerender: NormalizedOutput): boolean {
-  return model.outputs.pages.some((page) => (
-    page.pathname === prerender.pathname
-    || page.sourcePage === prerender.pathname
-    || prerender.sourcePage === page.pathname
-  ));
-}
-
 type PrerenderPublicArtifact = {
   sourceAbsPath: string;
   packagePath: string;
@@ -117,7 +114,8 @@ function prerenderHtmlArtifact(
   const htmlName = prerender.pathname === "/"
     ? "index.html"
     : prerender.pathname.replace(/^\//, "") + ".html";
-  const routeRoot = isPagesRouterPrerender(model, prerender) ? "pages" : "app";
+  const owner = findPrerenderOwner(model, prerender);
+  const routeRoot = owner.kind === "page" ? "pages" : "app";
   const sourceAbsPath = prerender.filePath
     ? prerender.filePath
     : path.join(model.distDir, "server", routeRoot, htmlName);
@@ -154,14 +152,11 @@ function prerenderPublicArtifact(
   prerender: NormalizedOutput,
   prerenderPaths: string[],
 ): PrerenderPublicArtifact | null {
-  if (
-    prerender.pathname.includes(".rsc")
-    || prerender.pathname.includes(".segment")
-    || prerender.pathname.includes("[")
-  ) return null;
+  if (isAuxiliaryPrerenderPath(prerender.pathname)) return null;
 
   const dataRel = nextDataRoutePathname(model, prerender.pathname);
   if (dataRel) return prerenderDataArtifact(model, prerender, dataRel);
+  if (isRouteHandlerPrerender(model, prerender)) return null;
   return prerenderHtmlArtifact(model, prerender, prerenderPaths);
 }
 
