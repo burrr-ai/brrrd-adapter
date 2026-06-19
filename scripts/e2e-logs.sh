@@ -5,6 +5,30 @@ BUILD_LOG=".adapter-build.log"
 SERVER_LOG=".adapter-server.log"
 DEPLOYMENT_FILE=".brrrd-harness/deployment.json"
 
+persist_diagnostics() {
+  if [[ -z "${GITHUB_WORKSPACE:-}" ]]; then
+    return 0
+  fi
+
+  local digest
+  digest="$(
+    node --input-type=module -e '
+      import crypto from "node:crypto";
+      console.log(crypto.createHash("sha1").update(process.cwd()).digest("hex"));
+    '
+  )"
+  local dest="$GITHUB_WORKSPACE/harness-diagnostics/live/$digest"
+  mkdir -p "$dest"
+  printf '%s\n' "$PWD" > "$dest/source.txt"
+
+  for file in "$BUILD_LOG" "$SERVER_LOG" "$DEPLOYMENT_FILE"; do
+    if [[ -f "$file" ]]; then
+      mkdir -p "$dest/$(dirname "$file")"
+      cp "$file" "$dest/$file"
+    fi
+  done
+}
+
 marker_value() {
   local name="$1"
   local fallback="$2"
@@ -23,6 +47,8 @@ build_id_fallback="undefined"
 if [[ -f .next/BUILD_ID ]]; then
   build_id_fallback="$(cat .next/BUILD_ID)"
 fi
+
+persist_diagnostics
 
 printf 'BUILD_ID: %s\n' "$(marker_value BUILD_ID "$build_id_fallback")"
 printf 'DEPLOYMENT_ID: %s\n' "$(marker_value DEPLOYMENT_ID undefined)"
