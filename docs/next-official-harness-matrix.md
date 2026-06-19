@@ -11,7 +11,8 @@ records whatever the checked-out Next canary uses when no bundler flag is suppli
 
 The workflow separates build and test jobs. It builds the adapter, brrrd runtime, and Next.js checkout once, saves that
 workspace, and fans out the requested test shards from the saved workspace. `group=1/64` runs one smoke shard,
-`group=1/64,2/64` runs an explicit subset, and `group=all` expands to all 64 shards for the selected bundler axis.
+`group=1/64,2/64` runs an explicit subset, and `group=all` expands to all 64 shards for the selected bundler axis. The
+build/test split itself has been smoke-validated on all three bundler axes.
 
 ## Failure categories
 
@@ -42,7 +43,10 @@ workspace, and fans out the requested test shards from the saved workspace. `gro
 | Official deploy suite `1/64` webpack current smoke | pass | 2026-06-19 run [`27844534055`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534055) at adapter `9276911` passed. |
 | Official deploy suite `1/64` Turbopack current smoke | pass | 2026-06-19 run [`27844534077`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534077) at adapter `9276911` passed after the adapter patched both Turbopack server runtime wrappers: `server/chunks/ssr/[turbopack]_runtime.js` and `server/chunks/[turbopack]_runtime.js`. |
 | Official deploy suite `1/64` Next default current smoke | pass | 2026-06-19 run [`27844534013`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27844534013) at adapter `9276911` passed. |
-| Full official deploy suite | pending | Use `group=all` once the smoke workflow shape is revalidated after the build/test split. Run per bundler axis first (`webpack`, then `turbopack`, then `next-default`) so failures can be classified without mixing bundler-specific output shapes. |
+| Official deploy suite `1/64` webpack build/test split smoke | pass | 2026-06-19 run [`27845076389`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27845076389) at adapter `11c37ba` passed with separate `plan`, `build`, and `Tests (1/64, webpack)` jobs. |
+| Official deploy suite `1/64` Turbopack build/test split smoke | pass | 2026-06-19 run [`27845076350`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27845076350) at adapter `11c37ba` passed with separate `plan`, `build`, and `Tests (1/64, turbopack)` jobs. |
+| Official deploy suite `1/64` Next default build/test split smoke | pass | 2026-06-19 run [`27845076374`](https://github.com/burrr-ai/brrrd-adapter/actions/runs/27845076374) at adapter `11c37ba` passed with separate `plan`, `build`, and `Tests (1/64, next-default)` jobs. |
+| Full official deploy suite | pending | Use `group=all` for the selected bundler axis. Run per bundler axis first (`webpack`, then `turbopack`, then `next-default`) so failures can be classified without mixing bundler-specific output shapes. |
 
 ## Policy
 
