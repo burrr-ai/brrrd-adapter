@@ -509,6 +509,154 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
     ),
     "{}",
   );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.filter((artifact) =>
+      artifact.packagePath === "runtime/.next/server/chunks/ssr/chunk.js"
+    ).length,
+    1,
+  );
+});
+
+test("onBuildComplete copies untraced Next server chunk graph files", async () => {
+  const root = tempDir("server-chunk-graph");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "pages", "404.js");
+  const untracedChunk = path.join(
+    distDir,
+    "server",
+    "chunks",
+    "ssr",
+    "template-page.js",
+  );
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(untracedChunk), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('404'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(`${handler}.nft.json`, JSON.stringify({
+    version: 1,
+    files: [],
+  }), "utf8");
+  fs.writeFileSync(untracedChunk, "module.exports = 'dynamic chunk';\n", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/404",
+    pathname: "/404",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/404",
+      pathname: "/404",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const packagePath = path.join(
+    root,
+    "dist",
+    "brrrd",
+    "runtime",
+    ".next",
+    "server",
+    "chunks",
+    "ssr",
+    "template-page.js",
+  );
+  assert.equal(
+    fs.readFileSync(packagePath, "utf8"),
+    "module.exports = 'dynamic chunk';\n",
+  );
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.packagePath === "runtime/.next/server/chunks/ssr/template-page.js"
+        && artifact.reason === "Next server runtime chunk graph"
+    ),
+    true,
+  );
+});
+
+test("onBuildComplete vendors traced node_modules runtime externals", async () => {
+  const root = tempDir("node-runtime-externals");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "pages", "404.js");
+  const external = path.join(
+    root,
+    "node_modules",
+    ".pnpm",
+    "next@16.3.0",
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "next-server",
+    "pages-turbo.runtime.prod.js",
+  );
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(external), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('404'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(`${handler}.nft.json`, JSON.stringify({
+    version: 1,
+    files: [
+      "../../../node_modules/.pnpm/next@16.3.0/node_modules/next/dist/compiled/next-server/pages-turbo.runtime.prod.js",
+    ],
+  }), "utf8");
+  fs.writeFileSync(external, "module.exports = { runtime: 'pages-turbo' };\n", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/404",
+    pathname: "/404",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/404",
+      pathname: "/404",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(
+        root,
+        "dist",
+        "brrrd",
+        "runtime",
+        "node_modules",
+        "next",
+        "dist",
+        "compiled",
+        "next-server",
+        "pages-turbo.runtime.prod.js",
+      ),
+      "utf8",
+    ),
+    "module.exports = { runtime: 'pages-turbo' };\n",
+  );
 });
 
 test("onBuildComplete patches bundled Turbopack server runtime root", async () => {

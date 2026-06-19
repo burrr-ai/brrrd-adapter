@@ -95,6 +95,133 @@ export function createRuntimeDependencyPlugin(ctx: BuildContext): Plugin {
 export function runtimeRequireBanner(): string {
   const emptyStubOptionalPackages = JSON.stringify(EMPTY_STUB_OPTIONAL_PACKAGES);
   return `
+var __brrrd_cjs_file_cache = Object.create(null);
+function __brrrd_builtin_module(id) {
+  var m = globalThis.__brrrd_modules && (globalThis.__brrrd_modules[id] || globalThis.__brrrd_modules["node:" + id]);
+  return m ? (m.default !== undefined ? m.default : m) : null;
+}
+function __brrrd_package_parts(id) {
+  var parts = String(id).split("/");
+  if (parts[0] && parts[0][0] === "@") {
+    if (parts.length < 2) return null;
+    return { name: parts[0] + "/" + parts[1], subpath: parts.length > 2 ? "./" + parts.slice(2).join("/") : "." };
+  }
+  return { name: parts[0], subpath: parts.length > 1 ? "./" + parts.slice(1).join("/") : "." };
+}
+function __brrrd_export_target(value) {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    for (var i = 0; i < value.length; i++) {
+      var arrayTarget = __brrrd_export_target(value[i]);
+      if (arrayTarget) return arrayTarget;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    return __brrrd_export_target(value.require)
+      || __brrrd_export_target(value.node)
+      || __brrrd_export_target(value.default);
+  }
+  return null;
+}
+function __brrrd_export_map_target(exportsMap, subpath) {
+  if (typeof exportsMap === "string" || Array.isArray(exportsMap)) {
+    return subpath === "." ? __brrrd_export_target(exportsMap) : null;
+  }
+  if (!exportsMap || typeof exportsMap !== "object") return null;
+  if (subpath === "." && !Object.prototype.hasOwnProperty.call(exportsMap, ".")) {
+    var rootTarget = __brrrd_export_target(exportsMap);
+    if (rootTarget) return rootTarget;
+  }
+  if (Object.prototype.hasOwnProperty.call(exportsMap, subpath)) {
+    return __brrrd_export_target(exportsMap[subpath]);
+  }
+  for (var key in exportsMap) {
+    if (key.indexOf("*") === -1) continue;
+    var parts = key.split("*");
+    if (parts.length !== 2 || !subpath.startsWith(parts[0]) || !subpath.endsWith(parts[1])) continue;
+    var matched = subpath.slice(parts[0].length, subpath.length - parts[1].length);
+    var patternTarget = __brrrd_export_target(exportsMap[key]);
+    if (patternTarget && patternTarget.indexOf("*") !== -1) return patternTarget.replace("*", matched);
+  }
+  return null;
+}
+function __brrrd_file_candidates(path, base) {
+  var candidates = [base];
+  if (!/\\.c?js$/.test(base)) {
+    candidates.push(base + ".js", base + ".cjs", path.join(base, "index.js"), path.join(base, "index.cjs"));
+  }
+  return candidates;
+}
+function __brrrd_pick_existing_file(fs, candidates) {
+  for (var i = 0; i < candidates.length; i++) {
+    try {
+      if (fs.existsSync(candidates[i]) && fs.statSync(candidates[i]).isFile()) return candidates[i];
+    } catch (_e) {}
+  }
+  return null;
+}
+function __brrrd_resolve_package_export(fs, path, id) {
+  if (id[0] === "/" || id[0] === ".") return null;
+  var parts = __brrrd_package_parts(id);
+  if (!parts || !parts.name) return null;
+  var root = path.resolve(globalThis.__brrrd_node_modules_root || "/bundle/node_modules", parts.name);
+  try {
+    var pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+    var target = __brrrd_export_map_target(pkg.exports, parts.subpath);
+    if (!target || target[0] !== ".") return null;
+    return __brrrd_pick_existing_file(fs, __brrrd_file_candidates(path, path.resolve(root, target)));
+  } catch (_e) {
+    return null;
+  }
+}
+function __brrrd_resolve_cjs_file(id, baseDir) {
+  if (typeof id !== "string" || id.length === 0) return null;
+  var fs = __brrrd_builtin_module("fs");
+  var path = __brrrd_builtin_module("path");
+  if (!fs || !path) return null;
+  var exportFile = __brrrd_resolve_package_export(fs, path, id);
+  if (exportFile) return exportFile;
+  var base = id[0] === "/"
+    ? id
+    : (id[0] === "."
+      ? path.resolve(baseDir || "/bundle", id)
+      : path.resolve(globalThis.__brrrd_node_modules_root || "/bundle/node_modules", id));
+  var candidates = __brrrd_file_candidates(path, base);
+  if (!/\\.c?js$/.test(base)) {
+    try {
+      var pkg = JSON.parse(fs.readFileSync(path.join(base, "package.json"), "utf8"));
+      if (pkg && typeof pkg.main === "string" && pkg.main.length > 0) {
+        candidates.push(path.join(base, pkg.main));
+      }
+    } catch (_e) {}
+  }
+  return __brrrd_pick_existing_file(fs, candidates);
+}
+function __brrrd_load_cjs_file(file) {
+  if (__brrrd_cjs_file_cache[file]) return __brrrd_cjs_file_cache[file].exports;
+  var fs = __brrrd_builtin_module("fs");
+  var path = __brrrd_builtin_module("path");
+  if (!fs || !path) {
+    var __brrrdFileErr = new Error("Cannot load runtime file '" + file + "' without fs/path builtins");
+    __brrrdFileErr.code = "MODULE_NOT_FOUND";
+    throw __brrrdFileErr;
+  }
+  var module = { exports: {} };
+  __brrrd_cjs_file_cache[file] = module;
+  var dirname = path.dirname(file);
+  var localRequire = (childId) => {
+    var resolved = __brrrd_resolve_cjs_file(String(childId), dirname);
+    return resolved ? __brrrd_load_cjs_file(resolved) : require(childId);
+  };
+  localRequire.resolve = (childId) => {
+    return __brrrd_resolve_cjs_file(String(childId), dirname) || String(childId);
+  };
+  var source = fs.readFileSync(file, "utf8");
+  var fn = new Function("exports", "module", "require", "__filename", "__dirname", source + "\\n//# sourceURL=file://" + file);
+  fn(module.exports, module, localRequire, file, dirname);
+  return module.exports;
+}
 var require = globalThis.__brrrd_require || ((id) => {
   var m = globalThis.__brrrd_modules && globalThis.__brrrd_modules[id];
   if (m) {
@@ -125,6 +252,8 @@ var require = globalThis.__brrrd_require || ((id) => {
     Module.prototype = { require: require, constructor: Module };
     return Module;
   }
+  var resolvedFile = __brrrd_resolve_cjs_file(id, "/bundle");
+  if (resolvedFile) return __brrrd_load_cjs_file(resolvedFile);
   var optionalEmptyModules = new Set(${emptyStubOptionalPackages});
   if (optionalEmptyModules.has(id)) {
     console.warn("[brrrd] require: optional module '" + id + "', returning empty stub");
@@ -139,6 +268,7 @@ var __filename = "/bundle/handler.js";
 var __dirname = "/bundle";
 globalThis.__brrrd_turbopack_runtime_root ??= "/bundle/.next";
 globalThis.__brrrd_turbopack_dist_root ??= "/bundle";
+globalThis.__brrrd_node_modules_root ??= "/bundle/node_modules";
 
 var __brrrd_timers = (globalThis.__brrrd_modules && (globalThis.__brrrd_modules['node:timers'] || globalThis.__brrrd_modules['timers'])) || null;
 if (__brrrd_timers) {

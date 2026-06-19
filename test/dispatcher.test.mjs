@@ -152,6 +152,134 @@ test("dispatcher bundling tolerates missing Next optional runtime dependencies",
   );
 });
 
+test("dispatcher loads packaged CommonJS runtime chunk files", async () => {
+  const root = tempDir("dispatcher-runtime-file-require");
+  const distDir = path.join(root, ".next");
+  const route = path.join(root, "route.cjs");
+  const chunk = path.join(distDir, "server", "chunks", "ssr", "external.js");
+  const nodeExternal = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "next-server",
+    "pages-turbo.runtime.prod.js",
+  );
+  const packageMainDir = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "source-map",
+  );
+  const swcHelpersRoot = path.join(root, "node_modules", "@swc", "helpers");
+  fs.mkdirSync(path.dirname(chunk), { recursive: true });
+  fs.mkdirSync(path.dirname(nodeExternal), { recursive: true });
+  fs.mkdirSync(packageMainDir, { recursive: true });
+  fs.mkdirSync(path.join(swcHelpersRoot, "cjs"), { recursive: true });
+  fs.writeFileSync(chunk, "module.exports = { answer: 'chunk-ok' };\n", "utf8");
+  fs.writeFileSync(
+    nodeExternal,
+    "const packageMain = require('next/dist/compiled/source-map');\nconst helper = require('@swc/helpers/_/_interop_require_default');\nmodule.exports = { runtime: 'pages-turbo', packageMain: packageMain.packageMain, helper: helper._() };\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(packageMainDir, "package.json"),
+    JSON.stringify({ main: "source-map.js" }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(packageMainDir, "source-map.js"),
+    "module.exports = { packageMain: 'source-map-ok' };\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(swcHelpersRoot, "package.json"),
+    JSON.stringify({
+      name: "@swc/helpers",
+      exports: {
+        "./_/_interop_require_default": {
+          import: "./esm/_interop_require_default.js",
+          default: "./cjs/_interop_require_default.cjs",
+        },
+      },
+    }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(swcHelpersRoot, "cjs", "_interop_require_default.cjs"),
+    "exports._ = function interop() { return 'swc-helper-ok'; };\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    route,
+    `
+const path = require('path');
+
+module.exports = {
+  handler(_req, res) {
+    const chunk = require(path.join(
+      globalThis.__brrrd_turbopack_runtime_root,
+      'server/chunks/ssr/external.js'
+    ));
+    const external = require(globalThis.__brrrd_external_runtime_spec);
+    res.end(chunk.answer + ':' + external.runtime + ':' + external.packageMain + ':' + external.helper);
+  },
+};
+`,
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "runtime-file", filePath: route }],
+    {
+      projectDir: root,
+      distDir,
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const previousModules = globalThis.__brrrd_modules;
+  const previousRuntimeRoot = globalThis.__brrrd_turbopack_runtime_root;
+  const previousNodeModulesRoot = globalThis.__brrrd_node_modules_root;
+  const previousExternalRuntimeSpec = globalThis.__brrrd_external_runtime_spec;
+  globalThis.__brrrd_modules = { fs, path };
+  globalThis.__brrrd_turbopack_runtime_root = distDir;
+  globalThis.__brrrd_node_modules_root = path.join(root, "node_modules");
+  globalThis.__brrrd_external_runtime_spec =
+    "next/dist/compiled/next-server/pages-turbo.runtime.prod.js";
+  try {
+    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const runtimeFileRes = res();
+    await dispatch("runtime-file", { headers: { host: "example.test" } }, runtimeFileRes);
+    assert.equal(runtimeFileRes.body, "chunk-ok:pages-turbo:source-map-ok:swc-helper-ok");
+  } finally {
+    if (previousModules === undefined) {
+      delete globalThis.__brrrd_modules;
+    } else {
+      globalThis.__brrrd_modules = previousModules;
+    }
+    if (previousRuntimeRoot === undefined) {
+      delete globalThis.__brrrd_turbopack_runtime_root;
+    } else {
+      globalThis.__brrrd_turbopack_runtime_root = previousRuntimeRoot;
+    }
+    if (previousNodeModulesRoot === undefined) {
+      delete globalThis.__brrrd_node_modules_root;
+    } else {
+      globalThis.__brrrd_node_modules_root = previousNodeModulesRoot;
+    }
+    if (previousExternalRuntimeSpec === undefined) {
+      delete globalThis.__brrrd_external_runtime_spec;
+    } else {
+      globalThis.__brrrd_external_runtime_spec = previousExternalRuntimeSpec;
+    }
+  }
+});
+
 test("dispatcher supplies Next-compatible no-op OpenTelemetry API", async () => {
   const root = tempDir("dispatcher-otel");
   const otelRoute = path.join(root, "otel-route.cjs");

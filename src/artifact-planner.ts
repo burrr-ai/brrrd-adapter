@@ -62,9 +62,45 @@ function readJsonIfExists(filePath: string): any | null {
   }
 }
 
+function walkFiles(root: string): string[] {
+  if (!fs.existsSync(root)) return [];
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const src = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(src);
+        continue;
+      }
+      if (entry.isFile()) out.push(src);
+    }
+  };
+  walk(root);
+  return out;
+}
+
 function isInsideDir(filePath: string, dir: string): boolean {
   const rel = path.relative(dir, filePath);
   return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+function isRegularFile(filePath: string): boolean {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function nodeModulePackageRel(sourceAbsPath: string): string | null {
+  const parts = sourceAbsPath.split(path.sep);
+  for (let i = parts.length - 2; i >= 0; i--) {
+    if (parts[i] !== "node_modules") continue;
+    const relParts = parts.slice(i + 1);
+    if (relParts.length === 0 || relParts[0] === ".pnpm") continue;
+    return relParts.join("/");
+  }
+  return null;
 }
 
 function sourceLabel(model: NextBuildModel, sourceAbsPath: string | undefined): string | undefined {
@@ -328,10 +364,25 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
   const seenPackagePaths = new Set<string>();
 
   const add = (sourceAbsPath: string, owner: NormalizedOutput, reason: string) => {
-    if (!fs.existsSync(sourceAbsPath)) return;
-    if (!isInsideDir(sourceAbsPath, model.distDir)) return;
-    const rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
-    const packagePath = packageJoin("runtime/.next", rel);
+    if (!isRegularFile(sourceAbsPath)) return;
+
+    let rel: string;
+    let packagePath: string;
+    let mountPath: string;
+    let artifactReason = reason;
+    if (isInsideDir(sourceAbsPath, model.distDir)) {
+      rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
+      packagePath = packageJoin("runtime/.next", rel);
+      mountPath = packageJoin(".next", rel);
+    } else {
+      const nodeRel = nodeModulePackageRel(sourceAbsPath);
+      if (!nodeRel) return;
+      rel = packageJoin("node_modules", nodeRel);
+      packagePath = packageJoin("runtime", rel);
+      mountPath = rel;
+      artifactReason = `${reason} for server external require`;
+    }
+
     if (seenPackagePaths.has(packagePath)) return;
     seenPackagePaths.add(packagePath);
     items.push(artifactItem(model, {
@@ -340,9 +391,9 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
       ownerRouteId: sanitizeId(owner.id),
       sourceAbsPath,
       packagePath,
-      mountPath: packageJoin(".next", rel),
+      mountPath,
       required: true,
-      reason,
+      reason: artifactReason,
     }));
   };
 
@@ -364,6 +415,23 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
   }
 
   return items;
+}
+
+function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const chunkRoot = path.join(model.distDir, "server", "chunks");
+  const files = walkFiles(chunkRoot);
+  return files.map((sourceAbsPath) => {
+    const rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
+    return artifactItem(model, {
+      id: `server-chunk:${sanitizeId(rel)}`,
+      kind: "runtime-file",
+      sourceAbsPath,
+      packagePath: packageJoin("runtime/.next", rel),
+      mountPath: packageJoin(".next", rel),
+      required: true,
+      reason: "Next server runtime chunk graph",
+    });
+  });
 }
 
 function cacheHandlerArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
@@ -415,6 +483,17 @@ function appBundleArtifact(model: NextBuildModel, outDir: string): ArtifactPlanI
   });
 }
 
+function dedupePlanItems(items: ArtifactPlanItem[]): ArtifactPlanItem[] {
+  const seen = new Set<string>();
+  const out: ArtifactPlanItem[] = [];
+  for (const item of items) {
+    if (seen.has(item.packagePath)) continue;
+    seen.add(item.packagePath);
+    out.push(item);
+  }
+  return out;
+}
+
 export function createArtifactPlan(
   model: NextBuildModel,
   supplement: ManifestSupplement,
@@ -422,7 +501,7 @@ export function createArtifactPlan(
   options: { hasAppBundle: boolean },
 ): ArtifactPlan {
   return {
-    items: [
+    items: dedupePlanItems([
       ...(options.hasAppBundle ? [appBundleArtifact(model, outDir)] : []),
       ...model.outputs.staticFiles.map((output) => staticArtifact(model, output)),
       ...prerenderArtifacts(model),
@@ -430,9 +509,10 @@ export function createArtifactPlan(
       ...clientReferenceArtifacts(model),
       ...appPrerenderRuntimeArtifacts(model),
       ...routeRuntimeDependencyArtifacts(model),
+      ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),
       ...middlewareArtifacts(model, supplement),
-    ],
+    ]),
   };
 }
 
