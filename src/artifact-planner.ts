@@ -7,16 +7,16 @@ import type { ManifestSupplement } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import { requestOutputs } from "./model.js";
 import {
+  publicArtifactPathnames,
+  publicStoragePackagePath,
+} from "./public-storage.js";
+import {
   findPrerenderOwner,
   isAuxiliaryPrerenderPath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
 import type { BrrrdArtifact } from "./types.js";
-import {
-  listPrerenderPathnames,
-  prerenderStaticFile,
-  sanitizeId,
-} from "./routing.js";
+import { sanitizeId } from "./routing.js";
 
 const require = createRequire(import.meta.url);
 
@@ -122,9 +122,16 @@ function artifactItem(
   };
 }
 
-function staticArtifact(model: NextBuildModel, output: NormalizedOutput): ArtifactPlanItem {
+function staticArtifact(
+  model: NextBuildModel,
+  output: NormalizedOutput,
+  allPublicPathnames: readonly string[],
+): ArtifactPlanItem {
   if (!output.filePath) throw new Error(`missing filePath for static file ${output.pathname}`);
-  const packagePath = packageJoin("static", output.pathname);
+  const packagePath = packageJoin(
+    "static",
+    publicStoragePackagePath(output.pathname, allPublicPathnames),
+  );
   return artifactItem(model, {
     id: `static:${sanitizeId(output.urlPath)}`,
     kind: output.kind === "public" ? "public" : "static",
@@ -164,7 +171,7 @@ function nextDataRoutePathname(
 function prerenderHtmlArtifact(
   model: NextBuildModel,
   prerender: NormalizedOutput,
-  prerenderPaths: string[],
+  allPublicPathnames: readonly string[],
 ): PrerenderPublicArtifact {
   const htmlName = prerender.pathname === "/"
     ? "index.html"
@@ -176,7 +183,7 @@ function prerenderHtmlArtifact(
     : path.join(model.distDir, "server", routeRoot, htmlName);
   const destName = prerender.pathname === "/"
     ? "index"
-    : prerenderStaticFile(prerender.pathname, prerenderPaths).replace(/^\//, "");
+    : publicStoragePackagePath(prerender.pathname, allPublicPathnames);
   return {
     sourceAbsPath,
     packagePath: packageJoin("static", destName),
@@ -205,21 +212,21 @@ function prerenderDataArtifact(
 function prerenderPublicArtifact(
   model: NextBuildModel,
   prerender: NormalizedOutput,
-  prerenderPaths: string[],
+  allPublicPathnames: readonly string[],
 ): PrerenderPublicArtifact | null {
   if (isAuxiliaryPrerenderPath(prerender.pathname)) return null;
 
   const dataRel = nextDataRoutePathname(model, prerender.pathname);
   if (dataRel) return prerenderDataArtifact(model, prerender, dataRel);
   if (isRouteHandlerPrerender(model, prerender)) return null;
-  return prerenderHtmlArtifact(model, prerender, prerenderPaths);
+  return prerenderHtmlArtifact(model, prerender, allPublicPathnames);
 }
 
 function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
-  const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
+  const allPublicPathnames = publicArtifactPathnames(model);
   for (const prerender of model.outputs.prerenders) {
-    const artifact = prerenderPublicArtifact(model, prerender, prerenderPaths);
+    const artifact = prerenderPublicArtifact(model, prerender, allPublicPathnames);
     if (!artifact) continue;
     items.push(artifactItem(model, {
       id: `prerender:${sanitizeId(prerender.pathname)}`,
@@ -500,10 +507,13 @@ export function createArtifactPlan(
   outDir: string,
   options: { hasAppBundle: boolean },
 ): ArtifactPlan {
+  const allPublicPathnames = publicArtifactPathnames(model);
   return {
     items: dedupePlanItems([
       ...(options.hasAppBundle ? [appBundleArtifact(model, outDir)] : []),
-      ...model.outputs.staticFiles.map((output) => staticArtifact(model, output)),
+      ...model.outputs.staticFiles.map((output) => (
+        staticArtifact(model, output, allPublicPathnames)
+      )),
       ...prerenderArtifacts(model),
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),

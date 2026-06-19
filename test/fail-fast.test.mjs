@@ -248,6 +248,84 @@ test("onBuildComplete maps Pages Router static index HTML to root route", async 
   );
 });
 
+test("onBuildComplete stores parent static HTML under index when child paths need a directory", async () => {
+  const root = tempDir("pages-static-parent-child");
+  const distDir = path.join(root, ".next");
+  const parentHtml = path.join(distDir, "server", "pages", "[post].html");
+  const childHtml = path.join(distDir, "server", "pages", "[post]", "comments.html");
+  fs.mkdirSync(path.dirname(parentHtml), { recursive: true });
+  fs.mkdirSync(path.dirname(childHtml), { recursive: true });
+  fs.writeFileSync(parentHtml, "<!doctype html><main>post</main>", "utf8");
+  fs.writeFileSync(childHtml, "<!doctype html><main>comments</main>", "utf8");
+
+  await onBuildComplete({
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
+    outputs: {
+      pages: [],
+      appPages: [],
+      appRoutes: [],
+      pagesApi: [],
+      prerenders: [],
+      staticFiles: [
+        {
+          id: "/[post]",
+          pathname: "/[post]",
+          filePath: parentHtml,
+        },
+        {
+          id: "/[post]/comments",
+          pathname: "/[post]/comments",
+          filePath: childHtml,
+        },
+      ],
+    },
+    projectDir: root,
+    repoRoot: root,
+    distDir,
+    config: {},
+    nextVersion: "16.3.0-canary.58",
+    buildId: "test-build",
+  });
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "[post]", "index"), "utf8"),
+    "<!doctype html><main>post</main>",
+  );
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "[post]", "comments"), "utf8"),
+    "<!doctype html><main>comments</main>",
+  );
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "static-_post_"),
+    {
+      id: "static-_post_",
+      pattern: "^/\\[post\\]$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/[post]/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "static:_post_").packagePath,
+    "static/[post]/index",
+  );
+});
+
 test("onBuildComplete resolves Pages Router prerender HTML from server/pages", async () => {
   const root = tempDir("pages-prerender-html");
   const distDir = path.join(root, ".next");

@@ -12,24 +12,6 @@ export function sanitizeId(id: string): string {
 }
 
 /**
- * Returns the on-disk file path for a prerender pathname, accounting for
- * collisions where a parent prerender (`/posts`) would shadow a directory
- * needed by nested prerenders (`/posts/1`). Such parent paths are stored as
- * `/posts/index` instead so the filesystem layout is consistent.
- */
-export function prerenderStaticFile(
-  pathname: string,
-  allPrerenderPaths: readonly string[],
-): string {
-  if (pathname === "/") return pathname;
-  const prefix = pathname + "/";
-  const hasChild = allPrerenderPaths.some(
-    (p) => p !== pathname && p.startsWith(prefix),
-  );
-  return hasChild ? `${pathname}/index` : pathname;
-}
-
-/**
  * Collect prerender pathnames that participate in parent/child collision
  * detection. Skip RSC / segment variants, but keep dynamic templates: even
  * though `/posts/[id]` is not itself written to disk, it signals that the

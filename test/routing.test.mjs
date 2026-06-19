@@ -142,10 +142,68 @@ test("static prerender routes are exposed before matching page handlers", () => 
   );
 });
 
-test("dynamic route table fails fast when Adapter API sourceRegex is missing", () => {
-  assert.throws(
-    () => compileRouteTable(context({ appPages: [appPage("/posts/[id]")] })),
-    /missing ctx\.routing\.dynamicRoutes sourceRegex/,
+test("dynamic route table derives a Next-compatible regex when Adapter API sourceRegex is missing", () => {
+  const routes = compileRouteTable(context({
+    appPages: [
+      appPage("/posts/[id]"),
+      appPage("/en/posts/[...slug]"),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "posts-_id_"),
+    {
+      id: "posts-_id_",
+      pattern: "^\\/posts\\/([^/]+?)(?:\\/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["id"],
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "en-posts-____slug_"),
+    {
+      id: "en-posts-____slug_",
+      pattern: "^\\/en\\/posts\\/(.+?)(?:\\/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["slug"],
+    },
+  );
+});
+
+test("public static file storage avoids parent file and child directory collisions", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    staticFiles: [
+      staticFile("/[post]", `${distDir}/server/pages/[post].html`),
+      staticFile("/[post]/comments", `${distDir}/server/pages/[post]/comments.html`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-_post_"),
+    {
+      id: "static-_post_",
+      pattern: "^/\\[post\\]$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/[post]/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-_post_-comments"),
+    {
+      id: "static-_post_-comments",
+      pattern: "^/\\[post\\]/comments$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/[post]/comments",
+      immutable: false,
+    },
   );
 });
 

@@ -5,6 +5,11 @@ import type {
   NormalizedOutput,
 } from "./model.js";
 import type { ManifestSupplement, SupplementRedirect } from "./manifest-supplement.js";
+import {
+  publicArtifactPathnames,
+  publicStorageFilePath,
+} from "./public-storage.js";
+import { routeRegexFromPathname } from "./route-pattern.js";
 import type {
   BrrrdHeaderRule,
   BrrrdRedirect,
@@ -17,11 +22,7 @@ import {
   isAuxiliaryPrerenderPath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import {
-  listPrerenderPathnames,
-  prerenderStaticFile,
-  sanitizeId,
-} from "./routing.js";
+import { sanitizeId } from "./routing.js";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -275,9 +276,7 @@ function handlerRoute(
   const sourceRegex = dynamicRegexes.get(output.pathname);
   if (!sourceRegex) {
     if (hasInterceptMarker(output.pathname)) return null;
-    throw new Error(
-      `missing ctx.routing.dynamicRoutes sourceRegex for dynamic route ${output.pathname} (${output.id})`,
-    );
+    return dynamicRoute(output, type, routeRegexFromPathname(output.pathname));
   }
   return dynamicRoute(output, type, sourceRegex);
 }
@@ -285,6 +284,7 @@ function handlerRoute(
 export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
   const dynamicRegexes = dynamicRegexByRoutePath(model);
+  const allPublicPathnames = publicArtifactPathnames(model);
 
   routes.push({
     id: "_next_static",
@@ -305,12 +305,11 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
       type: "static",
       runtime: "nodejs",
       bundle: "",
-      file: file.pathname,
+      file: publicStorageFilePath(file.pathname, allPublicPathnames),
       immutable: !!file.immutableHash,
     });
   }
 
-  const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
   for (const pr of model.outputs.prerenders) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
     if (isRouteHandlerPrerender(model, pr)) continue;
@@ -320,7 +319,7 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
       type: "prerender",
       runtime: "nodejs",
       bundle: "",
-      file: prerenderStaticFile(pr.pathname, prerenderPaths),
+      file: publicStorageFilePath(pr.pathname, allPublicPathnames),
     });
   }
 
