@@ -248,6 +248,56 @@ test("onBuildComplete maps Pages Router static index HTML to root route", async 
   );
 });
 
+test("onBuildComplete resolves Pages Router prerender HTML from server/pages", async () => {
+  const root = tempDir("pages-prerender-html");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const gspHtml = path.join(distDir, "server", "pages", "gsp.html");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(gspHtml), { recursive: true });
+  fs.writeFileSync(gspHtml, "<!doctype html><main>gsp</main>", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/gsp",
+    pathname: "/gsp",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/gsp",
+      pathname: "/gsp",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/gsp",
+      pathname: "/gsp",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "gsp"), "utf8"),
+    "<!doctype html><main>gsp</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender:gsp").sourcePath,
+    ".next/server/pages/gsp.html",
+  );
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");

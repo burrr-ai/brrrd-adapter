@@ -81,6 +81,24 @@ function staticArtifact(model: NextBuildModel, output: NormalizedOutput): Artifa
   });
 }
 
+function isPagesRouterPrerender(model: NextBuildModel, prerender: NormalizedOutput): boolean {
+  return model.outputs.pages.some((page) => (
+    page.pathname === prerender.pathname
+    || page.sourcePage === prerender.pathname
+    || prerender.sourcePage === page.pathname
+  ));
+}
+
+function prerenderHtmlSourcePath(
+  model: NextBuildModel,
+  prerender: NormalizedOutput,
+  htmlName: string,
+): string {
+  if (prerender.filePath) return prerender.filePath;
+  const routeRoot = isPagesRouterPrerender(model, prerender) ? "pages" : "app";
+  return path.join(model.distDir, "server", routeRoot, htmlName);
+}
+
 function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
@@ -94,7 +112,7 @@ function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
     const htmlName = prerender.pathname === "/"
       ? "index.html"
       : prerender.pathname.replace(/^\//, "") + ".html";
-    const htmlPath = prerender.filePath ?? path.join(model.distDir, "server/app", htmlName);
+    const htmlPath = prerenderHtmlSourcePath(model, prerender, htmlName);
     const destName = prerender.pathname === "/"
       ? "index"
       : prerenderStaticFile(prerender.pathname, prerenderPaths).replace(/^\//, "");
