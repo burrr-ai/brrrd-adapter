@@ -266,7 +266,7 @@ jobs:
             echo "::group::$file"
             tail -200 "$file" || true
             echo "::endgroup::"
-          done < <(find /tmp -maxdepth 4 -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0)
+          done < <(find /tmp -maxdepth 4 -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0 2>/dev/null || true)
 
       - name: Upload harness diagnostics
         if: always()
