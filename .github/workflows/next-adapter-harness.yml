@@ -11,10 +11,14 @@ on:
         description: Next e2e shard group
         default: 1/64
         type: string
-      turbopack:
-        description: Run the shard in Next's Turbopack test mode
-        default: false
-        type: boolean
+      bundler:
+        description: Bundler axis for Next deploy tests
+        default: webpack
+        type: choice
+        options:
+          - webpack
+          - turbopack
+          - next-default
   schedule:
     - cron: '0 7 * * 1'
 
@@ -96,17 +100,29 @@ jobs:
           NEXT_TEST_MODE: deploy
           NEXT_E2E_TEST_TIMEOUT: 240000
           NEXT_EXTERNAL_TESTS_FILTERS: test/deploy-tests-manifest.json
+          NEXT_TEST_SKIP_RESULT_CACHE: 1
           NEXT_TEST_DEPLOY_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-deploy.sh
           NEXT_TEST_DEPLOY_LOGS_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-logs.sh
           NEXT_TEST_CLEANUP_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-cleanup.sh
           NEXT_TELEMETRY_DISABLED: 1
           NEXT_TEST_JOB: 1
-          BRRRD_HARNESS_TURBOPACK: ${{ github.event.inputs.turbopack || 'false' }}
+          BRRRD_HARNESS_BUNDLER: ${{ github.event.inputs.bundler || 'webpack' }}
         run: |
           set -o pipefail
-          if [ "$BRRRD_HARNESS_TURBOPACK" = "true" ]; then
-            export IS_TURBOPACK_TEST=1
-          fi
+          case "$BRRRD_HARNESS_BUNDLER" in
+            webpack)
+              export IS_WEBPACK_TEST=1
+              ;;
+            turbopack)
+              export IS_TURBOPACK_TEST=1
+              ;;
+            next-default)
+              ;;
+            *)
+              echo "::error::Unsupported BRRRD_HARNESS_BUNDLER: $BRRRD_HARNESS_BUNDLER"
+              exit 1
+              ;;
+          esac
           node run-tests.js --timings -g "$NEXT_TEST_GROUP" -c 2 --type e2e 2>&1 \
             | tee "$GITHUB_WORKSPACE/next-adapter-harness.log"
 

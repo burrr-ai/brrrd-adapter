@@ -100,9 +100,10 @@ official adapter harness:
 - `.github/workflows/next-adapter-harness.yml`
 
 The first workflow target is a local `brrrd <dist/brrrd>` deploy harness, not
-fleet/AWS. The manual workflow defaults to a small `1/64` deploy-test shard in
-Next's regular deploy-test mode until early failures are classified. Turbopack
-coverage is available as an opt-in workflow input and is tracked separately.
+fleet/AWS. The manual workflow defaults to a small `1/64` deploy-test shard with
+`IS_WEBPACK_TEST=1` until early failures are classified. The workflow also has an
+explicit bundler input: `webpack`, `turbopack`, or `next-default`. This matters
+because current Next canary defaults an unqualified `next build` to Turbopack.
 Set `ADAPTER_DIR` to this checkout and `BRRRD_BIN` to a built brrrd runtime
 binary when running the scripts manually. Current official-suite coverage is
 tracked in `docs/next-official-harness-matrix.md`.
