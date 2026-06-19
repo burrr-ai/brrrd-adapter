@@ -68,6 +68,24 @@ function isNativeBinding(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === ".node";
 }
 
+function isEdgeRuntime(runtime: string | undefined): boolean {
+  return runtime === "edge" || runtime === "experimental-edge";
+}
+
+function assertNoUnsupportedEdgeOutputs(outputs: AdapterOutput[]): void {
+  const edgeOutputs = outputs.filter((output) => isEdgeRuntime(output.runtime));
+  if (edgeOutputs.length === 0) return;
+
+  throw new Error(
+    [
+      "edge app/page/api route outputs are not supported in brrrd isolates. Only Next proxy/middleware edge bundles use the dedicated edge bridge; app routes must use the nodejs runtime or be emitted as static assets.",
+      ...edgeOutputs.map((output) => (
+        `  - ${output.id} (${output.pathname}, runtime=${output.runtime ?? "unknown"})`
+      )),
+    ].join("\n"),
+  );
+}
+
 function assertNoNativeBindings(outputs: AdapterOutput[]): void {
   const nativeFiles: string[] = [];
   for (const output of outputs) {
@@ -372,6 +390,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     ...ctx.outputs.pages,
     ...ctx.outputs.pagesApi,
   ];
+  assertNoUnsupportedEdgeOutputs(allOutputs);
   assertNoNativeBindings([
     ...allOutputs,
     ...ctx.outputs.prerenders,

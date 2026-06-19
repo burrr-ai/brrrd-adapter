@@ -65,3 +65,44 @@ test("dispatcher resolves async webpack route module exports before calling hand
   await dispatch("async", { headers: { host: "example.test" } }, asyncRes);
   assert.equal(asyncRes.body, "async");
 });
+
+test("dispatcher loads only the requested route module", async () => {
+  const root = tempDir("dispatcher-lazy-route");
+  const healthyRoute = path.join(root, "healthy-route.mjs");
+  const brokenRoute = path.join(root, "broken-route.mjs");
+
+  fs.writeFileSync(
+    healthyRoute,
+    "export function handler(_req, res) { res.end('healthy'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    brokenRoute,
+    "throw new ReferenceError('self is not defined');\nexport function handler() {}\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [
+      { id: "healthy", filePath: healthyRoute },
+      { id: "broken", filePath: brokenRoute },
+    ],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const healthyRes = res();
+  await dispatch("healthy", { headers: { host: "example.test" } }, healthyRes);
+  assert.equal(healthyRes.body, "healthy");
+
+  await assert.rejects(
+    dispatch("broken", { headers: { host: "example.test" } }, res()),
+    /self is not defined/,
+  );
+});

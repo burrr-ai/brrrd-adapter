@@ -150,18 +150,12 @@ export async function bundleAppHandler(
   const outfile = path.join(ctx.outDir, "bundles", "app.js");
   fs.mkdirSync(path.dirname(outfile), { recursive: true });
 
-  const imports = outputs
-    .map((o, i) => `import * as mod_${i} from '${o.filePath}';`)
-    .join("\n");
-
   const moduleEntries = outputs
-    .map((o, i) => `  '${o.id}': mod_${i}`)
+    .map((o) => `  '${o.id}': () => Promise.resolve().then(() => require('${o.filePath}'))`)
     .join(",\n");
 
   const dispatcherCode = `
-${imports}
-
-const routeModules = {
+const routeLoaders = {
 ${moduleEntries}
 };
 
@@ -170,9 +164,10 @@ const resolvedHandlers = new Map();
 async function resolveHandler(routeId) {
   if (resolvedHandlers.has(routeId)) return resolvedHandlers.get(routeId);
 
-  const mod = routeModules[routeId];
-  if (!mod) return null;
+  const loadRoute = routeLoaders[routeId];
+  if (!loadRoute) return null;
 
+  const mod = await loadRoute();
   let target = mod.handler ?? mod.default ?? mod;
   target = await target;
 

@@ -67,6 +67,30 @@ test("onBuildComplete rejects native .node traced assets", async () => {
   );
 });
 
+test("onBuildComplete rejects unsupported edge app route outputs", async () => {
+  const root = tempDir("edge-app-route");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "throw new ReferenceError('self is not defined');\nexport function handler() {}\n",
+    "utf8",
+  );
+
+  await assert.rejects(
+    onBuildComplete(
+      minimalContext(root, distDir, {
+        id: "/apple-icon/route",
+        pathname: "/apple-icon",
+        runtime: "edge",
+        filePath: handler,
+        assets: {},
+      }),
+    ),
+    /edge app\/page\/api route outputs are not supported/,
+  );
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");
