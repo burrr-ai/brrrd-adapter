@@ -17,6 +17,7 @@
 // values separately).
 
 const BUF = globalThis.Buffer;
+const memoryEntries = new Map();
 
 // JSON.stringify replacer. We must inspect the original value via `this[key]` before
 // toJSON is applied in order to catch a Buffer.
@@ -49,13 +50,45 @@ function decodeReviver(_key, value) {
   return value;
 }
 
+function brrrdOps() {
+  return globalThis.Deno?.core?.ops;
+}
+
+function hasBrrrdCacheOps() {
+  const ops = brrrdOps();
+  return !!(
+    ops
+    && typeof ops.op_brrrd_cache_get === "function"
+    && typeof ops.op_brrrd_cache_set === "function"
+    && typeof ops.op_brrrd_cache_revalidate_tag === "function"
+  );
+}
+
+function isExpired(entry) {
+  return entry.expiresAt > 0 && Date.now() > entry.expiresAt;
+}
+
 class BrrrdLegacyCacheHandler {
   constructor(_ctx) {
     // ctx is ignored — brrrd's backend is global (injected into OpState).
   }
 
   async get(cacheKey, _ctx) {
-    const res = await Deno.core.ops.op_brrrd_cache_get(cacheKey);
+    const ops = brrrdOps();
+    if (!hasBrrrdCacheOps()) {
+      const entry = memoryEntries.get(cacheKey);
+      if (!entry || isExpired(entry)) {
+        if (entry) memoryEntries.delete(cacheKey);
+        return null;
+      }
+      try {
+        return JSON.parse(entry.text, decodeReviver);
+      } catch {
+        return null;
+      }
+    }
+
+    const res = await ops.op_brrrd_cache_get(cacheKey);
     if (!res) return null;
     if (res.is_expired) return null;
     try {
@@ -79,13 +112,29 @@ class BrrrdLegacyCacheHandler {
     const bytes = new TextEncoder().encode(text);
     const tags = (ctx && Array.isArray(ctx.tags)) ? ctx.tags : [];
     const ttl = (ctx && typeof ctx.revalidate === "number") ? ctx.revalidate : 0;
-    await Deno.core.ops.op_brrrd_cache_set(cacheKey, bytes, tags, ttl);
+    const ops = brrrdOps();
+    if (!hasBrrrdCacheOps()) {
+      memoryEntries.set(cacheKey, {
+        text,
+        tags,
+        expiresAt: ttl > 0 ? Date.now() + ttl * 1000 : 0,
+      });
+      return;
+    }
+    await ops.op_brrrd_cache_set(cacheKey, bytes, tags, ttl);
   }
 
   async revalidateTag(tags, _durations) {
     const arr = Array.isArray(tags) ? tags : [tags];
+    const ops = brrrdOps();
     for (const tag of arr) {
-      await Deno.core.ops.op_brrrd_cache_revalidate_tag(tag);
+      if (!hasBrrrdCacheOps()) {
+        for (const [key, entry] of memoryEntries) {
+          if (entry.tags.includes(tag)) memoryEntries.delete(key);
+        }
+        continue;
+      }
+      await ops.op_brrrd_cache_revalidate_tag(tag);
     }
   }
 
