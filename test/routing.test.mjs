@@ -9,6 +9,7 @@ function context({
   appRoutes = [],
   pages = [],
   pagesApi = [],
+  prerenders = [],
   staticFiles = [],
   dynamicRoutes = [],
 }) {
@@ -25,7 +26,7 @@ function context({
     },
     outputs: {
       staticFiles: [],
-      prerenders: [],
+      prerenders,
       appPages,
       appRoutes,
       pages,
@@ -110,6 +111,33 @@ test("static Pages Router index HTML is exposed at the public root path", () => 
       bundle: "",
       file: "/nested/index",
       immutable: false,
+    },
+  );
+});
+
+test("static prerender routes are exposed before matching page handlers", () => {
+  const routes = compileRouteTable(context({
+    appPages: [appPage("/server-action-inline")],
+    prerenders: [
+      {
+        id: "/server-action-inline",
+        pathname: "/server-action-inline",
+        parentOutputId: "/server-action-inline",
+      },
+    ],
+  }));
+
+  const ids = routes.map((route) => route.id);
+  assert.ok(ids.indexOf("prerender-server-action-inline") < ids.indexOf("server-action-inline"));
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-server-action-inline"),
+    {
+      id: "prerender-server-action-inline",
+      pattern: "^/server-action-inline$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/server-action-inline",
     },
   );
 });

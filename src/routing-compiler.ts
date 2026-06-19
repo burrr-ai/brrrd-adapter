@@ -310,13 +310,10 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
     });
   }
 
-  const allPages = [...model.outputs.appPages, ...model.outputs.pages];
-  const handledPaths = new Set(allPages.map((p) => p.pathname));
   const prerenderPaths = listPrerenderPathnames(model.outputs.prerenders);
   for (const pr of model.outputs.prerenders) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
     if (isRouteHandlerPrerender(model, pr)) continue;
-    if (handledPaths.has(pr.pathname)) continue;
     routes.push({
       id: `prerender-${sanitizeId(pr.pathname)}`,
       pattern: `^${escapeRegex(pr.pathname)}$`,
@@ -327,6 +324,7 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
     });
   }
 
+  const allPages = [...model.outputs.appPages, ...model.outputs.pages];
   const exactPages = sortBySpecificity(allPages.filter((p) => !p.pathname.includes("[")));
   const dynamicPages = sortBySpecificity(allPages.filter((p) => p.pathname.includes("[")));
   for (const page of exactPages) {
