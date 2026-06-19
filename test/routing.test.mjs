@@ -4,7 +4,14 @@ import test from "node:test";
 import { createNextBuildModel } from "../dist/model.js";
 import { compileRouteTable } from "../dist/routing-compiler.js";
 
-function context({ appPages = [], appRoutes = [], pages = [], pagesApi = [], dynamicRoutes = [] }) {
+function context({
+  appPages = [],
+  appRoutes = [],
+  pages = [],
+  pagesApi = [],
+  staticFiles = [],
+  dynamicRoutes = [],
+}) {
   return createNextBuildModel({
     routing: {
       beforeMiddleware: [],
@@ -23,6 +30,7 @@ function context({ appPages = [], appRoutes = [], pages = [], pagesApi = [], dyn
       appRoutes,
       pages,
       pagesApi,
+      staticFiles,
     },
     projectDir: "/tmp/brrrd-routing-test",
     repoRoot: "/tmp/brrrd-routing-test",
@@ -38,6 +46,14 @@ function appPage(pathname) {
     id: pathname,
     pathname,
     runtime: "nodejs",
+  };
+}
+
+function staticFile(pathname, filePath) {
+  return {
+    id: pathname,
+    pathname,
+    filePath,
   };
 }
 
@@ -61,6 +77,41 @@ test("dynamic route table uses ctx.routing sourceRegex instead of deriving from 
     runtime: "nodejs",
     params: ["id"],
   });
+});
+
+test("static Pages Router index HTML is exposed at the public root path", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    staticFiles: [
+      staticFile("/index", `${distDir}/server/pages/index.html`),
+      staticFile("/nested/index", `${distDir}/server/pages/nested/index.html`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-index"),
+    {
+      id: "static-index",
+      pattern: "^/$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-nested"),
+    {
+      id: "static-nested",
+      pattern: "^/nested$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/nested/index",
+      immutable: false,
+    },
+  );
 });
 
 test("dynamic route table fails fast when Adapter API sourceRegex is missing", () => {

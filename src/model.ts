@@ -131,7 +131,38 @@ export type NextBuildModel = {
   };
 };
 
-function normalizeOutput(raw: RawAdapterOutput, kind: NormalizedOutputKind): NormalizedOutput {
+function isInsideDir(filePath: string, dir: string): boolean {
+  const rel = path.relative(dir, filePath);
+  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+function normalizeIndexUrlPath(pathname: string): string {
+  if (pathname === "/index") return "/";
+  if (pathname.endsWith("/index")) return pathname.slice(0, -"/index".length) || "/";
+  return pathname;
+}
+
+function outputUrlPath(
+  raw: RawAdapterOutput,
+  kind: NormalizedOutputKind,
+  distDir?: string,
+): string {
+  if (kind !== "static" || !raw.filePath || !distDir) return raw.pathname;
+  const pagesDir = path.join(distDir, "server", "pages");
+  if (
+    path.extname(raw.filePath).toLowerCase() === ".html"
+    && isInsideDir(raw.filePath, pagesDir)
+  ) {
+    return normalizeIndexUrlPath(raw.pathname);
+  }
+  return raw.pathname;
+}
+
+function normalizeOutput(
+  raw: RawAdapterOutput,
+  kind: NormalizedOutputKind,
+  options: { distDir?: string } = {},
+): NormalizedOutput {
   const routeKind = kind === "app-route" || kind === "pages-api"
     ? "route"
     : kind === "static" || kind === "public"
@@ -150,7 +181,7 @@ function normalizeOutput(raw: RawAdapterOutput, kind: NormalizedOutputKind): Nor
     sourcePage: raw.sourcePage,
     routeKind,
     appPath: raw.sourcePage,
-    urlPath: raw.pathname,
+    urlPath: outputUrlPath(raw, kind, options.distDir),
     assets: raw.assets ?? {},
     wasmAssets: raw.wasmAssets ?? {},
     edgeRuntime: raw.edgeRuntime,
@@ -212,7 +243,9 @@ function collectPublicOutputs(projectDir: string): NormalizedOutput[] {
 }
 
 function mergePublicStaticFiles(ctx: AdapterBuildContext): NormalizedOutput[] {
-  const staticFiles = ctx.outputs.staticFiles.map((output) => normalizeOutput(output, "static"));
+  const staticFiles = ctx.outputs.staticFiles.map((output) => (
+    normalizeOutput(output, "static", { distDir: ctx.distDir })
+  ));
   const takenPaths = new Set<string>([
     ...staticFiles.map((output) => output.pathname),
     ...ctx.outputs.pages.map((output) => output.pathname),

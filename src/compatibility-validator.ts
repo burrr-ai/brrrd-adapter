@@ -73,6 +73,11 @@ export function validateCompatibility(
         detail: "next/og uses the edge/WASM renderer compatibility policy during bundling",
       },
       {
+        name: "runtime-dependency-policy",
+        action: "applied",
+        detail: "brrrd-provided builtins and missing optional Next runtime dependencies are handled by a shared bundler/runtime require policy",
+      },
+      {
         name: "next-version",
         action: "validated",
         detail: `build used Next.js ${model.nextVersion}`,

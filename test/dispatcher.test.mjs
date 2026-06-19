@@ -106,3 +106,48 @@ test("dispatcher loads only the requested route module", async () => {
     /self is not defined/,
   );
 });
+
+test("dispatcher bundling tolerates missing Next optional runtime dependencies", async () => {
+  const root = tempDir("dispatcher-optional-runtime-dep");
+  const healthyRoute = path.join(root, "healthy-route.mjs");
+  const optionalRoute = path.join(root, "optional-route.cjs");
+
+  fs.writeFileSync(
+    healthyRoute,
+    "export function handler(_req, res) { res.end('healthy'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    optionalRoute,
+    "const critters = require('critters');\nmodule.exports = { handler(_req, res) { res.end(String(critters)); } };\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [
+      { id: "healthy", filePath: healthyRoute },
+      { id: "optional", filePath: optionalRoute },
+    ],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const healthyRes = res();
+  await dispatch("healthy", { headers: { host: "example.test" } }, healthyRes);
+  assert.equal(healthyRes.body, "healthy");
+
+  await assert.rejects(
+    dispatch("optional", { headers: { host: "example.test" } }, res()),
+    (err) => {
+      assert.match(err.message, /Cannot find module 'critters'/);
+      assert.equal(err.code, "MODULE_NOT_FOUND");
+      return true;
+    },
+  );
+});

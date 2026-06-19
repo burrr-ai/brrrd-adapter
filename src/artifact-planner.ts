@@ -66,12 +66,12 @@ function staticArtifact(model: NextBuildModel, output: NormalizedOutput): Artifa
   if (!output.filePath) throw new Error(`missing filePath for static file ${output.pathname}`);
   const packagePath = packageJoin("static", output.pathname);
   return artifactItem(model, {
-    id: `static:${sanitizeId(output.pathname)}`,
+    id: `static:${sanitizeId(output.urlPath)}`,
     kind: output.kind === "public" ? "public" : "static",
-    ownerRouteId: `static-${sanitizeId(output.pathname)}`,
+    ownerRouteId: `static-${sanitizeId(output.urlPath)}`,
     sourceAbsPath: output.filePath,
     packagePath,
-    mountPath: output.pathname,
+    mountPath: output.urlPath,
     immutable: !!output.immutableHash,
     required: true,
     reason: output.kind === "public"

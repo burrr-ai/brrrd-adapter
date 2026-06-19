@@ -19,6 +19,7 @@ Next's `onBuildComplete(ctx)` contract into:
 NextBuildModel
   -> RoutingCompiler
   -> ArtifactPlanner
+  -> RuntimeDependencyPolicy
   -> CompatibilityValidator
   -> BrrrdManifestEmitter
 ```
@@ -85,6 +86,12 @@ policies:
 - `next/og`: routes using `ImageResponse` use Next's WASM renderer fallback.
   Optional traced `sharp` native files are excluded, and the edge/WASM renderer
   plus its fallback font are bundled into the request handler for isolates.
+
+Next server runtime dependency handling lives in `src/runtime-dependency-policy.ts`.
+It owns brrrd-provided Node builtins, always-external platform stubs, and
+optional Next/runtime packages that should be externalized only when absent from
+the app. Missing optional packages receive Node-shaped runtime behavior instead
+of failing esbuild at adapter compile time.
 
 > Version note: the adapter's manifest format is coupled to the brrrd runtime
 > version. Use an adapter release that matches your deployed runtime.

@@ -294,10 +294,10 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
   });
 
   for (const file of model.outputs.staticFiles) {
-    if (file.pathname.startsWith("/_next/static/")) continue;
+    if (file.urlPath.startsWith("/_next/static/")) continue;
     routes.push({
-      id: `static-${sanitizeId(file.pathname)}`,
-      pattern: `^${escapeRegex(file.pathname)}$`,
+      id: `static-${sanitizeId(file.urlPath)}`,
+      pattern: `^${escapeRegex(file.urlPath)}$`,
       type: "static",
       runtime: "nodejs",
       bundle: "",

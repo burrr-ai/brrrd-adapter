@@ -177,6 +177,77 @@ test("onBuildComplete copies app prerender artifacts into runtime fs", async () 
   assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id]", "page.js")), false);
 });
 
+test("onBuildComplete maps Pages Router static index HTML to root route", async () => {
+  const root = tempDir("pages-static-index");
+  const distDir = path.join(root, ".next");
+  const indexHtml = path.join(distDir, "server", "pages", "index.html");
+  fs.mkdirSync(path.dirname(indexHtml), { recursive: true });
+  fs.writeFileSync(indexHtml, "<!doctype html><main>home</main>", "utf8");
+
+  await onBuildComplete({
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
+    outputs: {
+      pages: [],
+      appPages: [],
+      appRoutes: [],
+      pagesApi: [],
+      prerenders: [],
+      staticFiles: [
+        {
+          id: "/index",
+          pathname: "/index",
+          filePath: indexHtml,
+        },
+      ],
+    },
+    projectDir: root,
+    repoRoot: root,
+    distDir,
+    config: {},
+    nextVersion: "16.3.0-canary.58",
+    buildId: "test-build",
+  });
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "static-index"),
+    {
+      id: "static-index",
+      pattern: "^/$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "static:index"),
+    {
+      id: "static:index",
+      kind: "static",
+      ownerRouteId: "static-index",
+      sourcePath: ".next/server/pages/index.html",
+      packagePath: "static/index",
+      mountPath: "/",
+      immutable: false,
+      required: true,
+      reason: "Next Adapter API staticFiles output",
+    },
+  );
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");
