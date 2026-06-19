@@ -35,6 +35,7 @@ function middlewareFromSupplement(
   const middleware = supplement.middleware;
   if (!middleware) return undefined;
   return {
+    files: middleware.files,
     runtime: middleware.runtimeRel,
     entry: middleware.entryRel,
     name: middleware.name,

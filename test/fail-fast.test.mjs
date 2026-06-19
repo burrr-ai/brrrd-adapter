@@ -443,6 +443,129 @@ test("onBuildComplete does not materialize route handler prerenders as page HTML
   );
 });
 
+test("onBuildComplete copies traced route runtime files from .next", async () => {
+  const root = tempDir("route-runtime-files");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "pages", "404.js");
+  const chunk = path.join(distDir, "server", "chunks", "ssr", "chunk.js");
+  const routeManifest = path.join(distDir, "server", "pages", "404", "react-loadable-manifest.json");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(chunk), { recursive: true });
+  fs.mkdirSync(path.dirname(routeManifest), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('404'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(`${handler}.nft.json`, JSON.stringify({
+    version: 1,
+    files: [
+      "../chunks/ssr/chunk.js",
+      "./404/react-loadable-manifest.json",
+    ],
+  }), "utf8");
+  fs.writeFileSync(chunk, "module.exports = [];\n", "utf8");
+  fs.writeFileSync(routeManifest, "{}", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/404",
+    pathname: "/404",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/404",
+      pathname: "/404",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "runtime", ".next", "server", "chunks", "ssr", "chunk.js"),
+      "utf8",
+    ),
+    "module.exports = [];\n",
+  );
+  assert.equal(
+    fs.readFileSync(
+      path.join(
+        root,
+        "dist",
+        "brrrd",
+        "runtime",
+        ".next",
+        "server",
+        "pages",
+        "404",
+        "react-loadable-manifest.json",
+      ),
+      "utf8",
+    ),
+    "{}",
+  );
+});
+
+test("onBuildComplete patches bundled Turbopack server runtime root", async () => {
+  const root = tempDir("turbopack-runtime-root");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "pages", "404.js");
+  const runtime = path.join(distDir, "server", "chunks", "ssr", "[turbopack]_runtime.js");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(runtime), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    [
+      'const R = require("../chunks/ssr/[turbopack]_runtime.js");',
+      "export function handler(_req, res) { res.end(String(R)); }",
+    ].join("\n"),
+    "utf8",
+  );
+  fs.writeFileSync(runtime, [
+    'var path = require("path");',
+    'var relativePathToRuntimeRoot = "../../../..";',
+    'var relativePathToDistRoot = "../../../..";',
+    "const RUNTIME_ROOT = path.resolve(__filename, relativePathToRuntimeRoot);",
+    "const ABSOLUTE_ROOT = path.resolve(__filename, relativePathToDistRoot);",
+    "module.exports = { RUNTIME_ROOT, ABSOLUTE_ROOT };",
+  ].join("\n"), "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/404",
+    pathname: "/404",
+    filePath: handler,
+    assets: {
+      runtime,
+    },
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/404",
+      pathname: "/404",
+      filePath: handler,
+      assets: {
+        runtime,
+      },
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const appBundle = fs.readFileSync(
+    path.join(root, "dist", "brrrd", "bundles", "app.js"),
+    "utf8",
+  );
+  assert.match(appBundle, /__brrrd_turbopack_runtime_root/);
+  assert.match(appBundle, /globalThis\.__brrrd_turbopack_runtime_root \|\| path\.resolve/);
+  assert.match(appBundle, /globalThis\.__brrrd_turbopack_dist_root \|\| path\.resolve/);
+});
+
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
   const root = tempDir("next-og");
   const distDir = path.join(root, ".next");
@@ -732,7 +855,7 @@ test("extractMiddlewareMeta rejects missing referenced files", () => {
     },
   });
 
-  assert.throws(() => extractMiddlewareMeta(distDir), /middleware runtime file missing/);
+  assert.throws(() => extractMiddlewareMeta(distDir), /middleware referenced file missing/);
 });
 
 test("extractMiddlewareMeta uses manifest entrypoint for proxy chunks", () => {
@@ -753,6 +876,36 @@ test("extractMiddlewareMeta uses manifest entrypoint for proxy chunks", () => {
   });
 
   const meta = extractMiddlewareMeta(distDir);
+  assert.deepEqual(meta.files, ["server/edge-runtime-webpack.js", "server/proxy.js"]);
   assert.equal(meta.entryRel, "server/proxy.js");
   assert.equal(meta.name, "proxy");
+});
+
+test("extractMiddlewareMeta preserves Turbopack middleware file order", () => {
+  const distDir = tempDir("turbopack-middleware");
+  const files = [
+    "server/edge/chunks/runtime.js",
+    "server/edge/chunks/support.js",
+    "server/edge/chunks/entry.js",
+  ];
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(distDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(distDir, file), "", "utf8");
+  }
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {
+      "/": {
+        files,
+        entrypoint: "server/edge/chunks/entry.js",
+        name: "middleware",
+        page: "/",
+        matchers: [],
+      },
+    },
+  });
+
+  const meta = extractMiddlewareMeta(distDir);
+  assert.deepEqual(meta.files, files);
+  assert.equal(meta.runtimeRel, "server/edge/chunks/runtime.js");
+  assert.equal(meta.entryRel, "server/edge/chunks/entry.js");
 });

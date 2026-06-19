@@ -5,6 +5,7 @@ import * as zlib from "node:zlib";
 
 import type { ManifestSupplement } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
+import { requestOutputs } from "./model.js";
 import {
   findPrerenderOwner,
   isAuxiliaryPrerenderPath,
@@ -46,6 +47,24 @@ function packageJoin(...parts: string[]): string {
   return path.posix.join(
     ...parts.map((part) => part.split(path.sep).join("/").replace(/^\/+/, "")),
   );
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function readJsonIfExists(filePath: string): any | null {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function isInsideDir(filePath: string, dir: string): boolean {
+  const rel = path.relative(dir, filePath);
+  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
 function sourceLabel(model: NextBuildModel, sourceAbsPath: string | undefined): string | undefined {
@@ -304,6 +323,49 @@ function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[]
   return items;
 }
 
+function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const items: ArtifactPlanItem[] = [];
+  const seenPackagePaths = new Set<string>();
+
+  const add = (sourceAbsPath: string, owner: NormalizedOutput, reason: string) => {
+    if (!fs.existsSync(sourceAbsPath)) return;
+    if (!isInsideDir(sourceAbsPath, model.distDir)) return;
+    const rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
+    const packagePath = packageJoin("runtime/.next", rel);
+    if (seenPackagePaths.has(packagePath)) return;
+    seenPackagePaths.add(packagePath);
+    items.push(artifactItem(model, {
+      id: `route-runtime:${sanitizeId(owner.id)}:${sanitizeId(rel)}`,
+      kind: "runtime-file",
+      ownerRouteId: sanitizeId(owner.id),
+      sourceAbsPath,
+      packagePath,
+      mountPath: packageJoin(".next", rel),
+      required: true,
+      reason,
+    }));
+  };
+
+  for (const output of requestOutputs(model)) {
+    for (const sourceAbsPath of Object.values(output.assets)) {
+      add(sourceAbsPath, output, "Next traced route runtime dependency");
+    }
+
+    if (!output.filePath) continue;
+    const tracePath = `${output.filePath}.nft.json`;
+    if (!fs.existsSync(tracePath)) continue;
+    const trace = readJsonIfExists(tracePath);
+    const files = Array.isArray(trace?.files) ? trace.files : [];
+    const traceDir = path.dirname(tracePath);
+    for (const rel of files) {
+      if (typeof rel !== "string" || rel.length === 0) continue;
+      add(path.resolve(traceDir, rel), output, "Next NFT route runtime dependency");
+    }
+  }
+
+  return items;
+}
+
 function cacheHandlerArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   return ["cache-handler", "cache-handler-legacy"].map((variant) => {
     const sourceAbsPath = require.resolve(`@brrrd/adapter/${variant}`);
@@ -326,19 +388,18 @@ function middlewareArtifacts(
   const middleware = supplement.middleware;
   if (!middleware) return [];
   const refs = [
-    middleware.runtimeRel,
-    middleware.entryRel,
+    ...middleware.files,
     ...middleware.wasm.map((file) => file.filePath),
     ...middleware.assets.map((file) => file.filePath),
   ];
-  return refs.map((rel) => artifactItem(model, {
+  return uniqueStrings(refs).map((rel) => artifactItem(model, {
     id: `middleware:${rel}`,
     kind: "middleware",
     sourceAbsPath: path.join(model.distDir, rel),
     packagePath: packageJoin("runtime", rel),
     mountPath: rel,
     required: true,
-    reason: "Next proxy/middleware webpack chunk or supporting asset",
+    reason: "Next proxy/middleware compiled chunk or supporting asset",
   }));
 }
 
@@ -368,6 +429,7 @@ export function createArtifactPlan(
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),
       ...appPrerenderRuntimeArtifacts(model),
+      ...routeRuntimeDependencyArtifacts(model),
       ...cacheHandlerArtifacts(model),
       ...middlewareArtifacts(model, supplement),
     ],

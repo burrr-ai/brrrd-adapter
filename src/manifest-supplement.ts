@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 
 export type MiddlewareMeta = {
+  files: string[];
   runtimeRel: string;
   entryRel: string;
   name: string;
@@ -79,8 +80,44 @@ function normalizeMiddlewareFiles(value: unknown): BrrrdMiddlewareFile[] {
   return out;
 }
 
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function middlewareEntryRel(mw: Record<string, unknown>, files: string[]): string {
+  if (typeof mw.entrypoint === "string" && mw.entrypoint.length > 0) {
+    return mw.entrypoint;
+  }
+  return files.find((f) => f.endsWith("middleware.js") || f.endsWith("proxy.js"))
+    ?? files[files.length - 1]
+    ?? "server/middleware.js";
+}
+
+function middlewareRuntimeRel(files: string[], entryRel: string): string {
+  return files.find((f) => f.includes("edge-runtime-webpack"))
+    ?? files.find((f) => f !== entryRel)
+    ?? entryRel
+    ?? "server/edge-runtime-webpack.js";
+}
+
+function middlewareFileRefs(mw: Record<string, unknown>, entryRel: string): string[] {
+  const files = Array.isArray(mw.files)
+    ? mw.files.filter((file): file is string => typeof file === "string" && file.length > 0)
+    : [];
+  if (entryRel.length > 0 && !files.includes(entryRel)) files.push(entryRel);
+  return uniqueStrings(files);
+}
+
+function assertFilesExist(distDir: string, files: string[], label: string): void {
+  for (const rel of files) {
+    if (!fs.existsSync(path.join(distDir, rel))) {
+      throw new Error(`${label} referenced file missing: ${rel}`);
+    }
+  }
+}
+
 /**
- * middleware-manifest.json supplements the Adapter API with concrete webpack
+ * middleware-manifest.json supplements the Adapter API with concrete compiled
  * chunk files. These chunks are raw-copied; they are not source-of-truth routing
  * rules for pages/app routes.
  */
@@ -99,19 +136,14 @@ export function extractMiddlewareMeta(distDir: string): MiddlewareMeta | null {
   if (!mountKey) return null;
   const mw = middlewareMap[mountKey];
   if (!mw) return null;
-  const filesArr: string[] = Array.isArray(mw.files) ? mw.files : [];
-  const runtimeRel = filesArr.find((f) => f.includes("edge-runtime-webpack"))
-    ?? "server/edge-runtime-webpack.js";
-  const entryRel = typeof mw.entrypoint === "string" && mw.entrypoint.length > 0
-    ? mw.entrypoint
-    : filesArr.find((f) => f.endsWith("middleware.js") || f.endsWith("proxy.js"))
-    ?? "server/middleware.js";
-  if (!fs.existsSync(path.join(distDir, runtimeRel))) {
-    throw new Error(`middleware runtime file missing: ${runtimeRel}`);
-  }
-  if (!fs.existsSync(path.join(distDir, entryRel))) {
-    throw new Error(`middleware entry file missing: ${entryRel}`);
-  }
+  const mwRecord = mw as Record<string, unknown>;
+  const rawFiles = Array.isArray(mwRecord.files)
+    ? mwRecord.files.filter((file): file is string => typeof file === "string")
+    : [];
+  const entryRel = middlewareEntryRel(mwRecord, rawFiles);
+  const files = middlewareFileRefs(mwRecord, entryRel);
+  const runtimeRel = middlewareRuntimeRel(files, entryRel);
+  assertFilesExist(distDir, files.length > 0 ? files : [runtimeRel, entryRel], "middleware");
 
   const matchersArr: Array<{
     regexp?: string;
@@ -137,6 +169,7 @@ export function extractMiddlewareMeta(distDir: string): MiddlewareMeta | null {
     if (typeof v === "string") env[k] = v;
   }
   return {
+    files: files.length > 0 ? files : uniqueStrings([runtimeRel, entryRel]),
     runtimeRel,
     entryRel,
     name: typeof mw.name === "string" ? mw.name : "middleware",

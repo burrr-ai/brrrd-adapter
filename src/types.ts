@@ -74,9 +74,11 @@ export interface BrrrdProxySpec {
 }
 
 export interface BrrrdMiddleware {
-  /** Next webpack edge runtime 의 절대 경로 (manifest outDir 기준 상대). */
+  /** Next proxy/middleware chunk files, in manifest evaluation order. */
+  files: string[];
+  /** Legacy single runtime chunk path retained for diagnostics and older webpack-shaped output. */
   runtime: string;
-  /** Next 가 생성한 proxy/middleware webpack chunk 의 상대 경로. */
+  /** Next proxy/middleware entry chunk. */
   entry: string;
   /** Next 의 _ENTRIES key suffix (보통 "middleware"). */
   name: string;

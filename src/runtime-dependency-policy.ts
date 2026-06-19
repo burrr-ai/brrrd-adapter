@@ -137,6 +137,8 @@ var require = globalThis.__brrrd_require || ((id) => {
 require.resolve = (id) => id;
 var __filename = "/bundle/handler.js";
 var __dirname = "/bundle";
+globalThis.__brrrd_turbopack_runtime_root ??= "/bundle/.next";
+globalThis.__brrrd_turbopack_dist_root ??= "/bundle";
 
 var __brrrd_timers = (globalThis.__brrrd_modules && (globalThis.__brrrd_modules['node:timers'] || globalThis.__brrrd_modules['timers'])) || null;
 if (__brrrd_timers) {
