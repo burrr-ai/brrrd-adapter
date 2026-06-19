@@ -1,5 +1,7 @@
 export interface BrrrdManifest {
-  version: 3;
+  schemaVersion: 4;
+  build: BrrrdBuildInfo;
+  /** Kept as a top-level convenience for artifact stores and fleet pointers. */
   buildId: string;
   appBundle?: string;
   routes: BrrrdRoute[];
@@ -7,11 +9,51 @@ export interface BrrrdManifest {
   prerendersDir: string;
   runtimeDir: string;
   env: Record<string, string>;
+  artifacts: BrrrdArtifact[];
+  compatibility: BrrrdCompatibilityReport;
   routing: BrrrdRouting;
   /** Next proxy/middleware phase bundle path + matcher metadata. */
   middleware?: BrrrdMiddleware;
   /** A-7: Partial Prerendering 활성 페이지 목록. 빈 배열이면 PPR 미사용. */
   pprPages?: string[];
+}
+
+export interface BrrrdBuildInfo {
+  buildId: string;
+  nextVersion: string;
+  adapterVersion?: string;
+  createdAt: string;
+}
+
+export interface BrrrdArtifact {
+  id: string;
+  kind:
+    | "app-bundle"
+    | "static"
+    | "public"
+    | "prerender"
+    | "runtime-manifest"
+    | "runtime-file"
+    | "middleware"
+    | "compatibility";
+  ownerRouteId?: string;
+  sourcePath?: string;
+  packagePath: string;
+  mountPath: string;
+  contentType?: string;
+  immutable?: boolean;
+  required: boolean;
+  reason: string;
+}
+
+export interface BrrrdCompatibilityReport {
+  policies: BrrrdCompatibilityPolicy[];
+}
+
+export interface BrrrdCompatibilityPolicy {
+  name: string;
+  action: "applied" | "validated" | "rejected";
+  detail?: string;
 }
 
 export interface BrrrdRouting {

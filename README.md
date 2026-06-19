@@ -6,6 +6,40 @@ comwit.io deployment plane). On `next build` it emits a `dist/brrrd/` package
 
 Requires **Next.js ≥ 16.2**.
 
+## Architecture direction
+
+This adapter is the source of truth for `@brrrd/adapter`; the historical
+`packages/adapter` inside the brrrd runtime repo is not used.
+
+The adapter should behave as a **Next build-output compiler**, not as a pile of
+case-specific `.next` copy rules. Its build pipeline is expected to normalize
+Next's `onBuildComplete(ctx)` contract into:
+
+```txt
+NextBuildModel
+  -> RoutingCompiler
+  -> ArtifactPlanner
+  -> CompatibilityValidator
+  -> BrrrdManifestEmitter
+```
+
+`ctx.routing` and `ctx.outputs` are the primary source of truth. Raw `.next`
+manifests may be read only through a supplementary layer for validation or gaps
+not exposed by the Adapter API. Because brrrd is currently internally opened,
+manifest/runtime backward compatibility is not a goal; prefer the clean final
+contract over bridge layers.
+
+Routing regexes come from the `sourceRegex` field on each `ctx.routing` phase
+entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.). Do not derive a
+source-of-truth regex from a pathname, and do not assume a top-level
+`ctx.routing.sourceRegex` field.
+
+The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
+adapter release must be tested with the matching brrrd runtime/fleet build before
+publish/deploy is considered complete. The minimum manifest contract is
+`schemaVersion`, `build`, `routes[]`, phase-aware `routing`,
+`artifacts[].packagePath`, and `compatibility`.
+
 ## Use
 
 ```sh

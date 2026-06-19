@@ -6,7 +6,9 @@ import path from "node:path";
 import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
-import { extractMiddlewareMeta, extractRoutingManifest } from "../dist/manifest.js";
+import { extractMiddlewareMeta } from "../dist/manifest-supplement.js";
+import { createNextBuildModel } from "../dist/model.js";
+import { compileRouting } from "../dist/routing-compiler.js";
 
 const require = createRequire(import.meta.url);
 
@@ -30,7 +32,16 @@ function symlinkDir(src, dest) {
 
 function minimalContext(projectDir, distDir, output) {
   return {
-    routing: {},
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
     outputs: {
       pages: [],
       appPages: [output],
@@ -89,6 +100,69 @@ test("onBuildComplete rejects unsupported edge app route outputs", async () => {
     ),
     /edge app\/page\/api route outputs are not supported/,
   );
+});
+
+test("onBuildComplete copies app prerender artifacts into runtime fs", async () => {
+  const root = tempDir("app-prerender-artifacts");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('ok'); }\n",
+    "utf8",
+  );
+
+  const appPrerenderDir = path.join(distDir, "server", "app", "posts");
+  const dynamicDir = path.join(appPrerenderDir, "[id]");
+  fs.mkdirSync(path.join(dynamicDir + ".segments", "posts", "$d$id"), { recursive: true });
+  fs.writeFileSync(path.join(appPrerenderDir, "[id].html"), "<!doctype html>", "utf8");
+  fs.writeFileSync(path.join(appPrerenderDir, "[id].meta"), "{}", "utf8");
+  fs.writeFileSync(path.join(appPrerenderDir, "[id].segments", "_tree.segment.rsc"), "tree", "utf8");
+  fs.writeFileSync(
+    path.join(appPrerenderDir, "[id].segments", "posts", "$d$id", "__PAGE__.segment.rsc"),
+    "page",
+    "utf8",
+  );
+  fs.mkdirSync(dynamicDir, { recursive: true });
+  fs.writeFileSync(path.join(dynamicDir, "page.js"), "server bundle", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/posts/[id]/page",
+    pathname: "/posts/[id]",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.prerenders = [
+    {
+      id: "/posts/[id]",
+      pathname: "/posts/[id]",
+      filePath: path.join(appPrerenderDir, "[id].html"),
+    },
+  ];
+  context.routing.dynamicRoutes = [
+    {
+      source: "/posts/[id]",
+      sourceRegex: "^/posts/([^/]+)$",
+      destination: "/posts/[id]",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const runtimeApp = path.join(root, "dist", "brrrd", "runtime", ".next", "server", "app");
+  assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id].html")), true);
+  assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id].meta")), true);
+  assert.equal(
+    fs.existsSync(path.join(runtimeApp, "posts", "[id].segments", "_tree.segment.rsc")),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(runtimeApp, "posts", "[id].segments", "posts", "$d$id", "__PAGE__.segment.rsc"),
+    ),
+    true,
+  );
+  assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id]", "page.js")), false);
 });
 
 test("onBuildComplete lets next/og fall back to WASM without traced sharp native files", async () => {
@@ -188,40 +262,50 @@ test("onBuildComplete rejects direct sharp usage even when next/og is present", 
   );
 });
 
-test("extractRoutingManifest preserves rewrite phases and conditions", () => {
-  const distDir = tempDir("before-files");
-  writeJson(path.join(distDir, "routes-manifest.json"), {
-    headers: [
-      {
-        regex: "^/with-header$",
-        source: "/with-header",
-        headers: [{ key: "x-from-header-rule", value: "yes" }],
-      },
-    ],
-    redirects: [
-      {
-        regex: "^/old$",
-        source: "/old",
-        destination: "/new",
-        statusCode: 308,
-        has: [{ type: "host", value: "example.com" }],
-      },
-    ],
-    rewrites: {
+test("compileRouting preserves Adapter API routing phases and conditions", () => {
+  const root = tempDir("ctx-routing");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    routing: {
+      beforeMiddleware: [
+        {
+          source: "/with-header",
+          sourceRegex: "^/with-header$",
+          headers: { "x-from-header-rule": "yes" },
+        },
+        {
+          source: "/old",
+          sourceRegex: "^/old$",
+          destination: "/new",
+          status: 308,
+          has: [{ type: "host", value: "example.com" }],
+        },
+      ],
       beforeFiles: [
         {
-          regex: "^/a$",
           source: "/a",
+          sourceRegex: "^/a$",
           destination: "/b",
           has: [{ type: "query", key: "modal", value: "1" }],
         },
       ],
-      afterFiles: [{ regex: "^/c$", source: "/c", destination: "/d" }],
-      fallback: [{ regex: "^/(.*)$", source: "/:path*", destination: "/legacy/:path*" }],
+      afterFiles: [{ source: "/c", sourceRegex: "^/c$", destination: "/d" }],
+      fallback: [
+        {
+          source: "/:path*",
+          sourceRegex: "^/(.*)$",
+          destination: "/legacy/:path*",
+        },
+      ],
     },
   });
 
-  assert.deepEqual(extractRoutingManifest(distDir), {
+  assert.deepEqual(compileRouting(model), {
     headers: [
       {
         regex: "^/with-header$",
@@ -254,38 +338,103 @@ test("extractRoutingManifest preserves rewrite phases and conditions", () => {
   });
 });
 
-test("extractRoutingManifest preserves Next regex without lookaround stripping", () => {
-  const distDir = tempDir("lookaround");
-  writeJson(path.join(distDir, "routes-manifest.json"), {
-    rewrites: {
-      beforeFiles: [
+test("compileRouting preserves Next sourceRegex without lookaround stripping", () => {
+  const root = tempDir("lookaround");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    routing: {
+      beforeFiles: [{
+        source: "/((?!api).*)",
+        sourceRegex: "^/((?!api).*)$",
+        destination: "/catch/$1",
+      }],
+    },
+  });
+
+  assert.equal(
+    compileRouting(model).rewrites.beforeFiles[0].regex,
+    "^/((?!api).*)$",
+  );
+});
+
+test("compileRouting upgrades Adapter API Location headers with redirect supplement", () => {
+  const root = tempDir("redirect-supplement");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    routing: {
+      beforeMiddleware: [
         {
-          regex: "^/((?!api).*)$",
-          source: "/((?!api).*)",
-          destination: "/catch/$1",
+          source: "/old-about",
+          sourceRegex: "^/old-about$",
+          headers: { Location: "/about" },
         },
       ],
     },
   });
 
-  assert.equal(
-    extractRoutingManifest(distDir).rewrites.beforeFiles[0].regex,
-    "^/((?!api).*)$",
-  );
+  assert.deepEqual(compileRouting(model, {
+    redirects: [{
+      regex: "^/old-about$",
+      source: "/old-about",
+      destination: "/about",
+      statusCode: 308,
+    }],
+  }), {
+    headers: [],
+    redirects: [{
+      regex: "^/old-about$",
+      source: "/old-about",
+      destination: "/about",
+      statusCode: 308,
+    }],
+    proxy: null,
+    rewrites: {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [],
+    },
+  });
 });
 
-test("extractRoutingManifest treats array rewrites as afterFiles", () => {
-  const distDir = tempDir("array-rewrites");
-  writeJson(path.join(distDir, "routes-manifest.json"), {
-    redirects: [],
-    rewrites: [{ regex: "^/array$", source: "/array", destination: "/target" }],
+test("compileRouting treats status plus Location as redirect only", () => {
+  const root = tempDir("status-location-redirect");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    routing: {
+      beforeMiddleware: [
+        {
+          source: "/:path+/",
+          sourceRegex: "^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$",
+          headers: { Location: "/$1" },
+          status: 308,
+        },
+      ],
+    },
   });
 
-  assert.deepEqual(extractRoutingManifest(distDir).rewrites, {
-    beforeFiles: [],
-    afterFiles: [{ regex: "^/array$", source: "/array", destination: "/target" }],
-    fallback: [],
-  });
+  const routing = compileRouting(model);
+  assert.deepEqual(routing.headers, []);
+  assert.deepEqual(routing.redirects, [{
+    regex: "^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$",
+    source: "/:path+/",
+    destination: "/$1",
+    statusCode: 308,
+  }]);
 });
 
 test("extractMiddlewareMeta rejects multiple middleware entries", () => {
