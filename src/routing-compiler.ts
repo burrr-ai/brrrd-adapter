@@ -182,6 +182,14 @@ function stripQuery(value: string): string {
   return value.split("?")[0];
 }
 
+function defaultLocale(config: unknown): string | null {
+  if (!config || typeof config !== "object") return null;
+  const i18n = (config as { i18n?: unknown }).i18n;
+  if (!i18n || typeof i18n !== "object") return null;
+  const value = (i18n as { defaultLocale?: unknown }).defaultLocale;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 function dynamicRegexByRoutePath(model: NextBuildModel): Map<string, string> {
   const out = new Map<string, string>();
   for (const route of model.routing.dynamicRoutes) {
@@ -274,6 +282,35 @@ function publicRoute(
   };
 }
 
+function publicRouteAlias(route: BrrrdRoute, aliasPathname: string): BrrrdRoute {
+  const { params: _params, ...rest } = route;
+  return {
+    ...rest,
+    id: `${route.id}-default-locale-alias`,
+    pattern: `^${escapeRegex(aliasPathname)}$`,
+  };
+}
+
+function defaultLocaleAliasPathname(
+  model: NextBuildModel,
+  pathname: string,
+): string | null {
+  const locale = defaultLocale(model.config);
+  if (!locale) return null;
+
+  const routePrefix = `/${locale}/`;
+  if (pathname.startsWith(routePrefix)) {
+    return `/${pathname.slice(routePrefix.length)}`;
+  }
+
+  const dataPrefix = `/_next/data/${model.buildId}/${locale}/`;
+  if (pathname.startsWith(dataPrefix)) {
+    return `/_next/data/${model.buildId}/${pathname.slice(dataPrefix.length)}`;
+  }
+
+  return null;
+}
+
 function dynamicRoute(
   output: NormalizedOutput,
   type: "page" | "route",
@@ -320,22 +357,28 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
 
   for (const file of sortBySpecificity(model.outputs.staticFiles)) {
     if (file.urlPath.startsWith("/_next/static/")) continue;
-    routes.push(publicRoute(
+    const route = publicRoute(
       file,
       "static",
       publicStorageFilePath(file.pathname, allPublicPathnames),
       !!file.immutableHash,
-    ));
+    );
+    routes.push(route);
+    const alias = defaultLocaleAliasPathname(model, file.urlPath);
+    if (alias) routes.push(publicRouteAlias(route, alias));
   }
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
     if (isRouteHandlerPrerender(model, pr)) continue;
-    routes.push(publicRoute(
+    const route = publicRoute(
       pr,
       "prerender",
       publicStorageFilePath(pr.pathname, allPublicPathnames),
-    ));
+    );
+    routes.push(route);
+    const alias = defaultLocaleAliasPathname(model, pr.pathname);
+    if (alias) routes.push(publicRouteAlias(route, alias));
   }
 
   const allPages = [...model.outputs.appPages, ...model.outputs.pages];

@@ -42,6 +42,9 @@ Pages Router automatic static optimization can emit dynamic static templates
 such as `/[post]` or `/[post]/[cmnt]`. Those are not literal bracket URL paths:
 the routing compiler registers them with Next's route-regex semantics while the
 artifact planner still stores the template under a collision-safe static path.
+For i18n SSG, default-locale files such as `/en/posts/a` and their
+`/_next/data/<build>/en/...` JSON siblings also get public unprefixed aliases
+(`/posts/a`, `/_next/data/<build>/...`) that point at the same stored artifact.
 
 The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
 adapter release must be tested with the matching brrrd runtime/fleet build before

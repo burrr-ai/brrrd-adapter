@@ -12,6 +12,7 @@ function context({
   prerenders = [],
   staticFiles = [],
   dynamicRoutes = [],
+  config = {},
 }) {
   return createNextBuildModel({
     routing: {
@@ -36,7 +37,7 @@ function context({
     projectDir: "/tmp/brrrd-routing-test",
     repoRoot: "/tmp/brrrd-routing-test",
     distDir: "/tmp/brrrd-routing-test/.next",
-    config: {},
+    config,
     nextVersion: "16.2.0",
     buildId: "test-build",
   });
@@ -233,6 +234,44 @@ test("auto-export dynamic static templates match concrete request paths after ex
   assert.ok(
     routes.findIndex((route) => route.id === "static-_post_-_cmnt_")
       < routes.findIndex((route) => route.id === "static-_post_"),
+  );
+});
+
+test("i18n default-locale prerenders are exposed at public unprefixed paths", () => {
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
+    prerenders: [
+      { id: "/en/posts/a", pathname: "/en/posts/a" },
+      {
+        id: "/_next/data/test-build/en/posts/a.json",
+        pathname: "/_next/data/test-build/en/posts/a.json",
+      },
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-en-posts-a-default-locale-alias"),
+    {
+      id: "prerender-en-posts-a-default-locale-alias",
+      pattern: "^/posts/a$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/en/posts/a",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "prerender-_next-data-test-build-en-posts-a_json-default-locale-alias"
+    )),
+    {
+      id: "prerender-_next-data-test-build-en-posts-a_json-default-locale-alias",
+      pattern: "^/_next/data/test-build/posts/a\\.json$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/_next/data/test-build/en/posts/a.json",
+    },
   );
 });
 
