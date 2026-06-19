@@ -43,6 +43,7 @@ jobs:
           path: brrrd
           ssh-key: ${{ secrets.RUNTIME_REPO_DEPLOY_KEY }}
           persist-credentials: false
+          submodules: recursive
 
       - name: Checkout Next.js
         uses: actions/checkout@v4
