@@ -100,11 +100,12 @@ official adapter harness:
 - `.github/workflows/next-adapter-harness.yml`
 
 The first workflow target is a local `brrrd <dist/brrrd>` deploy harness, not
-fleet/AWS. The manual workflow defaults to a small `1/64` deploy-test shard
-until early failures are classified. Set `ADAPTER_DIR` to this checkout and
-`BRRRD_BIN` to a built brrrd runtime binary when running the scripts manually.
-Current official-suite coverage is tracked in
-`docs/next-official-harness-matrix.md`.
+fleet/AWS. The manual workflow defaults to a small `1/64` deploy-test shard in
+Next's regular deploy-test mode until early failures are classified. Turbopack
+coverage is available as an opt-in workflow input and is tracked separately.
+Set `ADAPTER_DIR` to this checkout and `BRRRD_BIN` to a built brrrd runtime
+binary when running the scripts manually. Current official-suite coverage is
+tracked in `docs/next-official-harness-matrix.md`.
 
 The GitHub workflow checks out the private `burrr-ai/brrrd` runtime repo through
 the `RUNTIME_REPO_DEPLOY_KEY` secret. Use a read-only deploy key on the runtime

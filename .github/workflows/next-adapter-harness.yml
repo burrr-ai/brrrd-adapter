@@ -11,6 +11,10 @@ on:
         description: Next e2e shard group
         default: 1/64
         type: string
+      turbopack:
+        description: Run the shard in Next's Turbopack test mode
+        default: false
+        type: boolean
   schedule:
     - cron: '0 7 * * 1'
 
@@ -96,10 +100,13 @@ jobs:
           NEXT_TEST_DEPLOY_LOGS_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-logs.sh
           NEXT_TEST_CLEANUP_SCRIPT_PATH: ${{ github.workspace }}/adapter/scripts/e2e-cleanup.sh
           NEXT_TELEMETRY_DISABLED: 1
-          IS_TURBOPACK_TEST: 1
           NEXT_TEST_JOB: 1
+          BRRRD_HARNESS_TURBOPACK: ${{ github.event.inputs.turbopack || 'false' }}
         run: |
           set -o pipefail
+          if [ "$BRRRD_HARNESS_TURBOPACK" = "true" ]; then
+            export IS_TURBOPACK_TEST=1
+          fi
           node run-tests.js --timings -g "$NEXT_TEST_GROUP" -c 2 --type e2e 2>&1 \
             | tee "$GITHUB_WORKSPACE/next-adapter-harness.log"
 
@@ -120,6 +127,15 @@ jobs:
             tail -200 "$file" || true
             echo "::endgroup::"
           done < <(find . -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0)
+
+          while IFS= read -r -d '' file; do
+            dest="$GITHUB_WORKSPACE/harness-diagnostics/tmp-next-tests/${file#/tmp/}"
+            mkdir -p "$(dirname "$dest")"
+            cp "$file" "$dest"
+            echo "::group::$file"
+            tail -200 "$file" || true
+            echo "::endgroup::"
+          done < <(find /tmp -maxdepth 4 -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0)
 
       - name: Upload harness diagnostics
         if: always()
