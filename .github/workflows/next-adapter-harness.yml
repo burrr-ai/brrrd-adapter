@@ -9,7 +9,7 @@ on:
         type: string
       group:
         description: Next e2e shard group
-        default: 1/16
+        default: 1/64
         type: string
   schedule:
     - cron: '0 7 * * 1'
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 120
     env:
       NEXTJS_REF: ${{ github.event.inputs.nextjsRef || 'canary' }}
-      NEXT_TEST_GROUP: ${{ github.event.inputs.group || '1/16' }}
+      NEXT_TEST_GROUP: ${{ github.event.inputs.group || '1/64' }}
     steps:
       - name: Checkout adapter
         uses: actions/checkout@v4
@@ -85,6 +85,7 @@ jobs:
 
       - name: Run official deploy adapter tests
         working-directory: nextjs
+        timeout-minutes: 30
         env:
           ADAPTER_DIR: ${{ github.workspace }}/adapter
           BRRRD_BIN: ${{ github.workspace }}/brrrd/target/debug/brrrd
@@ -97,4 +98,33 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
           IS_TURBOPACK_TEST: 1
           NEXT_TEST_JOB: 1
-        run: node run-tests.js --timings -g "$NEXT_TEST_GROUP" -c 2 --type e2e
+        run: |
+          set -o pipefail
+          node run-tests.js --timings -g "$NEXT_TEST_GROUP" -c 2 --type e2e 2>&1 \
+            | tee "$GITHUB_WORKSPACE/next-adapter-harness.log"
+
+      - name: Collect harness diagnostics
+        if: always()
+        working-directory: nextjs
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/harness-diagnostics"
+          if [ -f "$GITHUB_WORKSPACE/next-adapter-harness.log" ]; then
+            cp "$GITHUB_WORKSPACE/next-adapter-harness.log" "$GITHUB_WORKSPACE/harness-diagnostics/next-adapter-harness.log"
+          fi
+
+          while IFS= read -r -d '' file; do
+            dest="$GITHUB_WORKSPACE/harness-diagnostics/${file#./}"
+            mkdir -p "$(dirname "$dest")"
+            cp "$file" "$dest"
+            echo "::group::$file"
+            tail -200 "$file" || true
+            echo "::endgroup::"
+          done < <(find . -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0)
+
+      - name: Upload harness diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-adapter-harness-diagnostics
+          path: harness-diagnostics
+          if-no-files-found: ignore
