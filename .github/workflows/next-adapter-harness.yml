@@ -130,13 +130,22 @@ jobs:
         if: always()
         working-directory: nextjs
         run: |
+          sanitize_diagnostic_path() {
+            local path="$1"
+            path="${path#.}"
+            path="${path#./}"
+            path="${path#/}"
+            path="${path//\/./\/}"
+            printf '%s\n' "$path"
+          }
+
           mkdir -p "$GITHUB_WORKSPACE/harness-diagnostics"
           if [ -f "$GITHUB_WORKSPACE/next-adapter-harness.log" ]; then
             cp "$GITHUB_WORKSPACE/next-adapter-harness.log" "$GITHUB_WORKSPACE/harness-diagnostics/next-adapter-harness.log"
           fi
 
           while IFS= read -r -d '' file; do
-            dest="$GITHUB_WORKSPACE/harness-diagnostics/${file#./}"
+            dest="$GITHUB_WORKSPACE/harness-diagnostics/$(sanitize_diagnostic_path "$file")"
             mkdir -p "$(dirname "$dest")"
             cp "$file" "$dest"
             echo "::group::$file"
@@ -145,7 +154,7 @@ jobs:
           done < <(find . -type f \( -name '.adapter-build.log' -o -name '.adapter-server.log' -o -path '*/.brrrd-harness/deployment.json' \) -print0)
 
           while IFS= read -r -d '' file; do
-            dest="$GITHUB_WORKSPACE/harness-diagnostics/tmp-next-tests/${file#/tmp/}"
+            dest="$GITHUB_WORKSPACE/harness-diagnostics/tmp-next-tests/$(sanitize_diagnostic_path "${file#/tmp/}")"
             mkdir -p "$(dirname "$dest")"
             cp "$file" "$dest"
             echo "::group::$file"

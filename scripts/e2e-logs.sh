@@ -23,8 +23,11 @@ persist_diagnostics() {
 
   for file in "$BUILD_LOG" "$SERVER_LOG" "$DEPLOYMENT_FILE"; do
     if [[ -f "$file" ]]; then
-      mkdir -p "$dest/$(dirname "$file")"
-      cp "$file" "$dest/$file"
+      local safe_file="$file"
+      safe_file="${safe_file#.}"
+      safe_file="${safe_file//\/./\/}"
+      mkdir -p "$dest/$(dirname "$safe_file")"
+      cp "$file" "$dest/$safe_file"
     fi
   done
 }
