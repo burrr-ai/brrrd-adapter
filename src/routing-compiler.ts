@@ -6,6 +6,8 @@ import type {
 } from "./model.js";
 import type {
   ManifestSupplement,
+  SupplementAppPrerenderDataRoute,
+  SupplementPrefetchSegmentDataRoute,
   SupplementRedirect,
   SupplementRewrite,
   SupplementStaticRoute,
@@ -397,6 +399,49 @@ function publicRouteAlias(
   };
 }
 
+function pprSegmentStoragePattern(sourceRegex: string): string {
+  if (!sourceRegex.startsWith("^/")) return sourceRegex;
+  const optionalSlashSuffix = "(?:/)?$";
+  if (sourceRegex.endsWith(optionalSlashSuffix)) {
+    const body = sourceRegex.slice(2, -optionalSlashSuffix.length);
+    return `^/(${body})${optionalSlashSuffix}`;
+  }
+  if (sourceRegex.endsWith("$")) {
+    const body = sourceRegex.slice(2, -1);
+    return `^/(${body})$`;
+  }
+  return sourceRegex;
+}
+
+function pprSegmentPrefetchRoute(
+  route: SupplementPrefetchSegmentDataRoute,
+  index: number,
+): BrrrdRoute {
+  return {
+    id: `ppr-segment-${sanitizeId(route.page)}-${index}`,
+    pattern: pprSegmentStoragePattern(route.source),
+    type: "static",
+    runtime: "nodejs",
+    bundle: "",
+    file: "/",
+    params: ["path"],
+  };
+}
+
+function appPrerenderDataRoute(
+  model: NextBuildModel,
+  route: SupplementAppPrerenderDataRoute,
+): BrrrdRoute {
+  return {
+    id: `app-prerender-data-${sanitizeId(route.pathname)}`,
+    pattern: exactPathPattern(route.pathname, model.config),
+    type: "static",
+    runtime: "nodejs",
+    bundle: "",
+    file: route.pathname,
+  };
+}
+
 function defaultLocaleAliasPathname(
   model: NextBuildModel,
   pathname: string,
@@ -461,7 +506,10 @@ function handlerRoute(
 
 export function compileRouteTable(
   model: NextBuildModel,
-  supplement?: Pick<ManifestSupplement, "staticRoutes">,
+  supplement?: Pick<
+    ManifestSupplement,
+    "staticRoutes" | "appPrerenderDataRoutes" | "pprSegmentPrefetchRoutes"
+  >,
 ): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
   const dynamicRegexes = dynamicRegexByRoutePath(model);
@@ -505,6 +553,14 @@ export function compileRouteTable(
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, pr.pathname);
     if (alias) routes.push(publicRouteAlias(model, route, alias));
+  }
+
+  for (const route of supplement?.appPrerenderDataRoutes ?? []) {
+    routes.push(appPrerenderDataRoute(model, route));
+  }
+
+  for (const [index, route] of (supplement?.pprSegmentPrefetchRoutes ?? []).entries()) {
+    routes.push(pprSegmentPrefetchRoute(route, index));
   }
 
   const allPages = [...model.outputs.appPages, ...model.outputs.pages];

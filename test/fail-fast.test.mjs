@@ -7,8 +7,10 @@ import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
 import {
+  extractAppPrerenderDataRoutes,
   extractEdgeFunctions,
   extractMiddlewareMeta,
+  extractPprSegmentPrefetchRoutes,
   extractRewriteSupplement,
   extractStaticRouteSupplement,
 } from "../dist/manifest-supplement.js";
@@ -298,6 +300,156 @@ test("onBuildComplete copies app prerender artifacts into runtime fs", async () 
     true,
   );
   assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id]", "page.js")), false);
+});
+
+test("onBuildComplete exposes PPR segment prefetch artifacts through the static store", async () => {
+  const root = tempDir("ppr-segment-prefetch");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic'); }\n",
+    "utf8",
+  );
+
+  const segmentFile = path.join(
+    distDir,
+    "server",
+    "app",
+    "alpha.segments",
+    "$d$slug",
+    "__PAGE__.segment.rsc",
+  );
+  fs.mkdirSync(path.dirname(segmentFile), { recursive: true });
+  fs.writeFileSync(segmentFile, "segment", "utf8");
+  const routeRscFile = path.join(distDir, "server", "app", "alpha.rsc");
+  fs.writeFileSync(routeRscFile, "route-rsc", "utf8");
+  const treeSegmentFile = path.join(
+    distDir,
+    "server",
+    "app",
+    "alpha.segments",
+    "_tree.segment.rsc",
+  );
+  fs.writeFileSync(treeSegmentFile, "tree", "utf8");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    dynamicRoutes: [{
+      page: "/[slug]",
+      namedRegex: "^/(?<nxtPslug>[^/]+?)(?:/)?$",
+      prefetchSegmentDataRoutes: [{
+        source: "^/(?<nxtPslug>[^/]+?)\\.segments/\\$d\\$slug(?<segment>/__PAGE__\\.segment\\.rsc|\\.segment\\.rsc)(?:/)?$",
+        destination: "/[slug].segments/$d$slug$segment",
+      }],
+    }],
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/[slug]/page",
+    pathname: "/[slug]",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages.push({
+    id: "/[slug]/page.rsc",
+    pathname: "/[slug].rsc",
+    filePath: handler,
+    assets: {},
+  });
+  context.routing.dynamicRoutes = [
+    {
+      source: "/[slug]",
+      sourceRegex: "^/(?<nxtPslug>[^/]+?)(?:/)?$",
+      destination: "/[slug]",
+    },
+    {
+      source: "/[slug].rsc",
+      sourceRegex: "^/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      destination: "/[slug].rsc",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.existsSync(
+      path.join(root, "dist", "brrrd", "static", "alpha.segments", "$d$slug", "__PAGE__.segment.rsc"),
+    ),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(root, "dist", "brrrd", "static", "alpha.rsc")),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(root, "dist", "brrrd", "static", "alpha.segments", "_tree.segment.rsc")),
+    true,
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  const segmentRouteIndex = manifest.routes.findIndex((route) => (
+    route.id === "ppr-segment-_slug_-0"
+  ));
+  const dynamicRscIndex = manifest.routes.findIndex((route) => (
+    route.type === "page" && route.pattern.includes("rscSuffix")
+  ));
+  assert.ok(segmentRouteIndex >= 0);
+  assert.ok(dynamicRscIndex >= 0);
+  assert.ok(segmentRouteIndex < dynamicRscIndex);
+  assert.equal(manifest.routes[segmentRouteIndex].type, "static");
+  assert.equal(manifest.routes[segmentRouteIndex].file, "/");
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "app-prerender-data-alpha_rsc"),
+    {
+      id: "app-prerender-data-alpha_rsc",
+      pattern: "^/alpha\\.rsc$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/alpha.rsc",
+    },
+  );
+  assert.ok(manifest.artifacts.some((artifact) => (
+    artifact.packagePath === "static/alpha.segments/$d$slug/__PAGE__.segment.rsc"
+    && artifact.contentType === "text/x-component"
+  )));
+});
+
+test("extractPprSegmentPrefetchRoutes preserves dynamic route segment metadata", () => {
+  const root = tempDir("prefetch-segment-supplement");
+  const distDir = path.join(root, ".next");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    dynamicRoutes: [{
+      page: "/blog/[slug]",
+      prefetchSegmentDataRoutes: [{
+        source: "^/blog/(?<nxtPslug>[^/]+?)\\.segments/\\$d\\$slug(?<segment>/__PAGE__\\.segment\\.rsc|\\.segment\\.rsc)(?:/)?$",
+        destination: "/blog/[slug].segments/$d$slug$segment",
+      }],
+    }],
+  });
+
+  assert.deepEqual(extractPprSegmentPrefetchRoutes(distDir), [{
+    page: "/blog/[slug]",
+    source: "^/blog/(?<nxtPslug>[^/]+?)\\.segments/\\$d\\$slug(?<segment>/__PAGE__\\.segment\\.rsc|\\.segment\\.rsc)(?:/)?$",
+    destination: "/blog/[slug].segments/$d$slug$segment",
+  }]);
+});
+
+test("extractAppPrerenderDataRoutes discovers App Router RSC data artifacts", () => {
+  const root = tempDir("app-prerender-data-supplement");
+  const distDir = path.join(root, ".next");
+  const appDir = path.join(distDir, "server", "app");
+  fs.mkdirSync(path.join(appDir, "alpha.segments"), { recursive: true });
+  fs.writeFileSync(path.join(appDir, "alpha.rsc"), "route", "utf8");
+  fs.writeFileSync(path.join(appDir, "alpha.segments", "_tree.segment.rsc"), "tree", "utf8");
+
+  assert.deepEqual(extractAppPrerenderDataRoutes(distDir), [
+    { pathname: "/alpha.rsc", sourceRel: "alpha.rsc" },
+    {
+      pathname: "/alpha.segments/_tree.segment.rsc",
+      sourceRel: "alpha.segments/_tree.segment.rsc",
+    },
+  ]);
 });
 
 test("onBuildComplete maps Pages Router static index HTML to root route", async () => {

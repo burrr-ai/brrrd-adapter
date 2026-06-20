@@ -29,6 +29,8 @@ export type ManifestSupplement = {
   middleware: MiddlewareMeta | null;
   edgeFunctions: Map<string, BrrrdEdgeFunction>;
   pprPages: string[];
+  appPrerenderDataRoutes: SupplementAppPrerenderDataRoute[];
+  pprSegmentPrefetchRoutes: SupplementPrefetchSegmentDataRoute[];
   redirects: SupplementRedirect[];
   rewrites: SupplementRewritePhases;
   staticRoutes: SupplementStaticRoute[];
@@ -58,6 +60,17 @@ export type SupplementRewritePhases = {
 export type SupplementStaticRoute = {
   page: string;
   regex: string;
+};
+
+export type SupplementPrefetchSegmentDataRoute = {
+  page: string;
+  source: string;
+  destination: string;
+};
+
+export type SupplementAppPrerenderDataRoute = {
+  pathname: string;
+  sourceRel: string;
 };
 
 function readJsonIfExists(filePath: string): any | null {
@@ -138,6 +151,23 @@ function assertFilesExist(distDir: string, files: string[], label: string): void
       throw new Error(`${label} referenced file missing: ${rel}`);
     }
   }
+}
+
+function walkFiles(root: string): string[] {
+  if (!fs.existsSync(root)) return [];
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const src = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(src);
+        continue;
+      }
+      if (entry.isFile()) out.push(src);
+    }
+  };
+  walk(root);
+  return out;
 }
 
 /**
@@ -290,6 +320,20 @@ export function extractPprPages(distDir: string): string[] {
   return pages;
 }
 
+export function extractAppPrerenderDataRoutes(distDir: string): SupplementAppPrerenderDataRoute[] {
+  const appDir = path.join(distDir, "server", "app");
+  return walkFiles(appDir)
+    .filter((filePath) => filePath.endsWith(".rsc"))
+    .map((filePath) => {
+      const sourceRel = path.relative(appDir, filePath).split(path.sep).join("/");
+      return {
+        pathname: `/${sourceRel}`,
+        sourceRel,
+      };
+    })
+    .sort((a, b) => a.sourceRel.localeCompare(b.sourceRel));
+}
+
 export function extractRedirectSupplement(distDir: string): SupplementRedirect[] {
   const raw = readJsonIfExists(path.join(distDir, "routes-manifest.json"));
   if (!raw || !Array.isArray(raw.redirects)) return [];
@@ -363,11 +407,42 @@ export function extractStaticRouteSupplement(distDir: string): SupplementStaticR
   return staticRoutes;
 }
 
+export function extractPprSegmentPrefetchRoutes(
+  distDir: string,
+): SupplementPrefetchSegmentDataRoute[] {
+  const raw = readJsonIfExists(path.join(distDir, "routes-manifest.json"));
+  if (!raw || !Array.isArray(raw.dynamicRoutes)) return [];
+  const routes: SupplementPrefetchSegmentDataRoute[] = [];
+  for (const dynamicRoute of raw.dynamicRoutes) {
+    if (!dynamicRoute || typeof dynamicRoute !== "object") continue;
+    const record = dynamicRoute as Record<string, unknown>;
+    const page = record.page;
+    const prefetchRoutes = record.prefetchSegmentDataRoutes;
+    if (typeof page !== "string" || !Array.isArray(prefetchRoutes)) continue;
+    for (const rawPrefetch of prefetchRoutes) {
+      if (!rawPrefetch || typeof rawPrefetch !== "object") continue;
+      const prefetch = rawPrefetch as Record<string, unknown>;
+      if (
+        typeof prefetch.source !== "string"
+        || typeof prefetch.destination !== "string"
+      ) continue;
+      routes.push({
+        page,
+        source: prefetch.source,
+        destination: prefetch.destination,
+      });
+    }
+  }
+  return routes;
+}
+
 export function createManifestSupplement(distDir: string): ManifestSupplement {
   return {
     middleware: extractMiddlewareMeta(distDir),
     edgeFunctions: extractEdgeFunctions(distDir),
     pprPages: extractPprPages(distDir),
+    appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir),
+    pprSegmentPrefetchRoutes: extractPprSegmentPrefetchRoutes(distDir),
     redirects: extractRedirectSupplement(distDir),
     rewrites: extractRewriteSupplement(distDir),
     staticRoutes: extractStaticRouteSupplement(distDir),

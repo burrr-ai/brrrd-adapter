@@ -21,7 +21,7 @@ import { sanitizeId } from "./routing.js";
 const require = createRequire(import.meta.url);
 
 const COMPRESS_EXTENSIONS = new Set([
-  "js", "mjs", "css", "html", "json", "svg", "txt", "map", "xml", "wasm",
+  "js", "mjs", "css", "html", "json", "svg", "txt", "map", "xml", "wasm", "rsc",
 ]);
 const COMPRESS_MIN_BYTES = 1024;
 
@@ -367,6 +367,61 @@ function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[]
   return items;
 }
 
+function pprSegmentPrefetchArtifacts(
+  model: NextBuildModel,
+  supplement: ManifestSupplement,
+): ArtifactPlanItem[] {
+  if (supplement.pprSegmentPrefetchRoutes.length === 0) return [];
+  const serverDir = path.join(model.distDir, "server");
+  const appDir = path.join(serverDir, "app");
+  if (!fs.existsSync(appDir)) return [];
+
+  const sourceRegexes = supplement.pprSegmentPrefetchRoutes.map((route) => (
+    new RegExp(route.source)
+  ));
+  const items: ArtifactPlanItem[] = [];
+  for (const sourceAbsPath of walkFiles(appDir)) {
+    if (!sourceAbsPath.endsWith(".segment.rsc")) continue;
+    const rel = path.relative(appDir, sourceAbsPath).split(path.sep).join("/");
+    const publicPath = `/${rel}`;
+    if (!sourceRegexes.some((regex) => regex.test(publicPath))) continue;
+    items.push(artifactItem(model, {
+      id: `ppr-segment:${sanitizeId(publicPath)}`,
+      kind: "static",
+      ownerRouteId: `ppr-segment-${sanitizeId(publicPath)}`,
+      sourceAbsPath,
+      packagePath: packageJoin("static", rel),
+      mountPath: publicPath,
+      contentType: "text/x-component",
+      required: true,
+      reason: "Next PPR segment prefetch artifact served from the filesystem phase",
+      precompress: true,
+    }));
+  }
+  return items;
+}
+
+function appPrerenderDataArtifacts(
+  model: NextBuildModel,
+  supplement: ManifestSupplement,
+): ArtifactPlanItem[] {
+  return supplement.appPrerenderDataRoutes.map((route) => {
+    const sourceAbsPath = path.join(model.distDir, "server", "app", route.sourceRel);
+    return artifactItem(model, {
+      id: `app-prerender-data:${sanitizeId(route.pathname)}`,
+      kind: "static",
+      ownerRouteId: `app-prerender-data-${sanitizeId(route.pathname)}`,
+      sourceAbsPath,
+      packagePath: packageJoin("static", route.pathname),
+      mountPath: route.pathname,
+      contentType: "text/x-component",
+      required: true,
+      reason: "Next App Router prerender RSC data artifact served from the filesystem phase",
+      precompress: true,
+    });
+  });
+}
+
 function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   const seenPackagePaths = new Set<string>();
@@ -540,6 +595,8 @@ export function createArtifactPlan(
         staticArtifact(model, output, allPublicPathnames)
       )),
       ...prerenderArtifacts(model),
+      ...appPrerenderDataArtifacts(model, supplement),
+      ...pprSegmentPrefetchArtifacts(model, supplement),
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),
       ...appPrerenderRuntimeArtifacts(model),

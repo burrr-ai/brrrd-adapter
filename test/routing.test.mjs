@@ -382,3 +382,115 @@ test("exact handler routes use Next static route regex before dynamic routes", (
   const firstLoginMatch = routes.find((route) => new RegExp(route.pattern).test("/api/user/login/"));
   assert.equal(firstLoginMatch.id, "api-user-login");
 });
+
+test("PPR segment prefetch routes are filesystem static routes before dynamic RSC handlers", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/[slug]"),
+        appPage("/[slug].rsc"),
+      ],
+      dynamicRoutes: [
+        {
+          source: "/[slug]",
+          sourceRegex: "^/(?<nxtPslug>[^/]+?)(?:/)?$",
+          destination: "/[slug]",
+        },
+        {
+          source: "/[slug].rsc",
+          sourceRegex: "^/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+          destination: "/[slug].rsc",
+        },
+      ],
+    }),
+    {
+      appPrerenderDataRoutes: [],
+      staticRoutes: [],
+      pprSegmentPrefetchRoutes: [{
+        page: "/[slug]",
+        source: "^/(?<nxtPslug>[^/]+?)\\.segments/\\$d\\$slug(?<segment>/__PAGE__\\.segment\\.rsc|\\.segment\\.rsc)(?:/)?$",
+        destination: "/[slug].segments/$d$slug$segment",
+      }],
+    },
+  );
+
+  const segmentRoute = routes.find((route) => route.id === "ppr-segment-_slug_-0");
+  assert.deepEqual(segmentRoute, {
+    id: "ppr-segment-_slug_-0",
+    pattern: "^/((?<nxtPslug>[^/]+?)\\.segments/\\$d\\$slug(?<segment>/__PAGE__\\.segment\\.rsc|\\.segment\\.rsc))(?:/)?$",
+    type: "static",
+    runtime: "nodejs",
+    bundle: "",
+    file: "/",
+    params: ["path"],
+  });
+
+  const dynamicRscIndex = routes.findIndex((route) => route.id === "_slug__rsc");
+  const segmentIndex = routes.findIndex((route) => route.id === "ppr-segment-_slug_-0");
+  assert.ok(segmentIndex >= 0);
+  assert.ok(dynamicRscIndex >= 0);
+  assert.ok(segmentIndex < dynamicRscIndex);
+  const firstSegmentMatch = routes.find((route) => (
+    new RegExp(route.pattern).test("/alpha.segments/$d$slug/__PAGE__.segment.rsc")
+  ));
+  assert.equal(firstSegmentMatch.id, "ppr-segment-_slug_-0");
+});
+
+test("App prerender RSC data artifacts are exact static routes before dynamic RSC handlers", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/[slug].rsc"),
+      ],
+      dynamicRoutes: [
+        {
+          source: "/[slug].rsc",
+          sourceRegex: "^/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+          destination: "/[slug].rsc",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      appPrerenderDataRoutes: [
+        { pathname: "/alpha.rsc", sourceRel: "alpha.rsc" },
+        {
+          pathname: "/alpha.segments/_tree.segment.rsc",
+          sourceRel: "alpha.segments/_tree.segment.rsc",
+        },
+      ],
+      pprSegmentPrefetchRoutes: [],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "app-prerender-data-alpha_rsc"),
+    {
+      id: "app-prerender-data-alpha_rsc",
+      pattern: "^/alpha\\.rsc$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/alpha.rsc",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "app-prerender-data-alpha_segments-_tree_segment_rsc"),
+    {
+      id: "app-prerender-data-alpha_segments-_tree_segment_rsc",
+      pattern: "^/alpha\\.segments/_tree\\.segment\\.rsc$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/alpha.segments/_tree.segment.rsc",
+    },
+  );
+
+  const dynamicRscIndex = routes.findIndex((route) => route.id === "_slug__rsc");
+  const routeRscIndex = routes.findIndex((route) => route.id === "app-prerender-data-alpha_rsc");
+  const treeIndex = routes.findIndex((route) => (
+    route.id === "app-prerender-data-alpha_segments-_tree_segment_rsc"
+  ));
+  assert.ok(routeRscIndex < dynamicRscIndex);
+  assert.ok(treeIndex < dynamicRscIndex);
+});
