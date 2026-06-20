@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 import type {
   BrrrdEdgeFunction,
+  BrrrdHeaderPair,
   BrrrdMiddlewareCondition,
   BrrrdMiddlewareFile,
 } from "./types.js";
@@ -31,6 +32,7 @@ export type ManifestSupplement = {
   pprPages: string[];
   appPrerenderDataRoutes: SupplementAppPrerenderDataRoute[];
   pprSegmentPrefetchRoutes: SupplementPrefetchSegmentDataRoute[];
+  prerenderResponseMeta: SupplementPrerenderResponseMeta[];
   redirects: SupplementRedirect[];
   rewrites: SupplementRewritePhases;
   staticRoutes: SupplementStaticRoute[];
@@ -71,6 +73,12 @@ export type SupplementPrefetchSegmentDataRoute = {
 export type SupplementAppPrerenderDataRoute = {
   pathname: string;
   sourceRel: string;
+};
+
+export type SupplementPrerenderResponseMeta = {
+  pathname: string;
+  status?: number;
+  headers: BrrrdHeaderPair[];
 };
 
 function readJsonIfExists(filePath: string): any | null {
@@ -119,6 +127,28 @@ function normalizeMiddlewareFiles(value: unknown): BrrrdMiddlewareFile[] {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function normalizeResponseHeaders(value: unknown): BrrrdHeaderPair[] {
+  if (!value || typeof value !== "object") return [];
+  if (Array.isArray(value)) {
+    const out: BrrrdHeaderPair[] = [];
+    for (const raw of value) {
+      if (!raw || typeof raw !== "object") continue;
+      const item = raw as Record<string, unknown>;
+      const key = item.key ?? item.name;
+      const headerValue = item.value;
+      if (typeof key === "string" && typeof headerValue === "string") {
+        out.push({ key, value: headerValue });
+      }
+    }
+    return out;
+  }
+  return Object.entries(value as Record<string, unknown>)
+    .filter((entry): entry is [string, string] => (
+      entry[0].length > 0 && typeof entry[1] === "string"
+    ))
+    .map(([key, headerValue]) => ({ key, value: headerValue }));
 }
 
 function middlewareEntryRel(mw: Record<string, unknown>, files: string[]): string {
@@ -334,6 +364,34 @@ export function extractAppPrerenderDataRoutes(distDir: string): SupplementAppPre
     .sort((a, b) => a.sourceRel.localeCompare(b.sourceRel));
 }
 
+function appPrerenderMetaPathname(sourceRel: string): string {
+  const withoutExt = sourceRel.slice(0, -".meta".length);
+  if (withoutExt === "index") return "/";
+  return `/${withoutExt}`;
+}
+
+export function extractAppPrerenderResponseMeta(distDir: string): SupplementPrerenderResponseMeta[] {
+  const appDir = path.join(distDir, "server", "app");
+  const out: SupplementPrerenderResponseMeta[] = [];
+  for (const filePath of walkFiles(appDir).filter((file) => file.endsWith(".meta"))) {
+    const raw = readJsonIfExists(filePath);
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const status = typeof item.status === "number" && Number.isInteger(item.status)
+      ? item.status
+      : undefined;
+    const headers = normalizeResponseHeaders(item.headers);
+    if (status === undefined && headers.length === 0) continue;
+    const sourceRel = path.relative(appDir, filePath).split(path.sep).join("/");
+    out.push({
+      pathname: appPrerenderMetaPathname(sourceRel),
+      ...(status !== undefined ? { status } : {}),
+      headers,
+    });
+  }
+  return out.sort((a, b) => a.pathname.localeCompare(b.pathname));
+}
+
 export function extractRedirectSupplement(distDir: string): SupplementRedirect[] {
   const raw = readJsonIfExists(path.join(distDir, "routes-manifest.json"));
   if (!raw || !Array.isArray(raw.redirects)) return [];
@@ -443,6 +501,7 @@ export function createManifestSupplement(distDir: string): ManifestSupplement {
     pprPages: extractPprPages(distDir),
     appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir),
     pprSegmentPrefetchRoutes: extractPprSegmentPrefetchRoutes(distDir),
+    prerenderResponseMeta: extractAppPrerenderResponseMeta(distDir),
     redirects: extractRedirectSupplement(distDir),
     rewrites: extractRewriteSupplement(distDir),
     staticRoutes: extractStaticRouteSupplement(distDir),

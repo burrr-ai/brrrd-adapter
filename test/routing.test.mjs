@@ -143,6 +143,91 @@ test("static prerender routes are exposed before matching page handlers", () => 
   );
 });
 
+test("App prerender response metadata is emitted on filesystem routes", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [appPage("/redirect-page")],
+      prerenders: [
+        {
+          id: "/redirect-page",
+          pathname: "/redirect-page",
+          parentOutputId: "/redirect-page",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [{
+        pathname: "/redirect-page",
+        status: 307,
+        headers: [{ key: "location", value: "/" }],
+      }],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-redirect-page"),
+    {
+      id: "prerender-redirect-page",
+      pattern: "^/redirect-page$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/redirect-page",
+      status: 307,
+      headers: [{ key: "location", value: "/" }],
+    },
+  );
+});
+
+test("prerendered decoded public paths also match encoded request paths", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [appPage("/[id]"), appPage("/[id].rsc")],
+      prerenders: [
+        {
+          id: "/sticks & stones",
+          pathname: "/sticks & stones",
+          parentOutputId: "/[id]",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      appPrerenderDataRoutes: [
+        { pathname: "/sticks & stones.rsc", sourceRel: "sticks & stones.rsc" },
+      ],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-sticks & stones-encoded-alias"),
+    {
+      id: "prerender-sticks & stones-encoded-alias",
+      pattern: "^/sticks%20%26%20stones$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/sticks & stones",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "app-prerender-data-sticks & stones_rsc-encoded-alias"),
+    {
+      id: "app-prerender-data-sticks & stones_rsc-encoded-alias",
+      pattern: "^/sticks%20%26%20stones\\.rsc$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/sticks & stones.rsc",
+    },
+  );
+});
+
 test("dynamic route table derives a Next-compatible regex when Adapter API sourceRegex is missing", () => {
   const routes = compileRouteTable(context({
     appPages: [

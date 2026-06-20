@@ -8,6 +8,7 @@ import type {
   ManifestSupplement,
   SupplementAppPrerenderDataRoute,
   SupplementPrefetchSegmentDataRoute,
+  SupplementPrerenderResponseMeta,
   SupplementRedirect,
   SupplementRewrite,
   SupplementStaticRoute,
@@ -19,6 +20,7 @@ import {
 import { routeRegexFromPathname } from "./route-pattern.js";
 import type {
   BrrrdHeaderRule,
+  BrrrdHeaderPair,
   BrrrdRoutingI18n,
   BrrrdRedirect,
   BrrrdRewrite,
@@ -370,6 +372,7 @@ function publicRoute(
   type: "static" | "prerender",
   file: string,
   immutable?: boolean,
+  responseMeta?: { status?: number; headers?: BrrrdHeaderPair[] },
 ): BrrrdRoute {
   const dynamicPublicTemplate = output.kind !== "public" && output.pathname.includes("[");
   return {
@@ -382,6 +385,10 @@ function publicRoute(
     bundle: "",
     file,
     ...(immutable !== undefined ? { immutable } : {}),
+    ...(responseMeta?.status !== undefined ? { status: responseMeta.status } : {}),
+    ...(responseMeta?.headers && responseMeta.headers.length > 0
+      ? { headers: responseMeta.headers }
+      : {}),
     ...(dynamicPublicTemplate ? { params: segmentParamNames(output.pathname) } : {}),
   };
 }
@@ -390,11 +397,12 @@ function publicRouteAlias(
   model: NextBuildModel,
   route: BrrrdRoute,
   aliasPathname: string,
+  aliasKind: "default-locale" | "encoded",
 ): BrrrdRoute {
   const { params: _params, ...rest } = route;
   return {
     ...rest,
-    id: `${route.id}-default-locale-alias`,
+    id: `${route.id}-${aliasKind}-alias`,
     pattern: exactPathPattern(aliasPathname, model.config),
   };
 }
@@ -442,6 +450,14 @@ function appPrerenderDataRoute(
   };
 }
 
+function encodedPublicPathnameAlias(pathname: string): string | null {
+  const encoded = pathname.split("/").map((segment, index) => {
+    if (index === 0) return "";
+    return encodeURIComponent(segment);
+  }).join("/");
+  return encoded !== pathname ? encoded : null;
+}
+
 function defaultLocaleAliasPathname(
   model: NextBuildModel,
   pathname: string,
@@ -460,6 +476,14 @@ function defaultLocaleAliasPathname(
   }
 
   return null;
+}
+
+function prerenderResponseMetaByPathname(
+  metas: readonly SupplementPrerenderResponseMeta[] | undefined,
+): Map<string, SupplementPrerenderResponseMeta> {
+  const out = new Map<string, SupplementPrerenderResponseMeta>();
+  for (const meta of metas ?? []) out.set(meta.pathname, meta);
+  return out;
 }
 
 function dynamicRoute(
@@ -508,12 +532,16 @@ export function compileRouteTable(
   model: NextBuildModel,
   supplement?: Pick<
     ManifestSupplement,
-    "staticRoutes" | "appPrerenderDataRoutes" | "pprSegmentPrefetchRoutes"
+    | "staticRoutes"
+    | "appPrerenderDataRoutes"
+    | "pprSegmentPrefetchRoutes"
+    | "prerenderResponseMeta"
   >,
 ): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
   const dynamicRegexes = dynamicRegexByRoutePath(model);
   const staticRegexes = staticRegexByRoutePath(supplement?.staticRoutes);
+  const prerenderMeta = prerenderResponseMetaByPathname(supplement?.prerenderResponseMeta);
   const allPublicPathnames = publicArtifactPathnames(model);
 
   routes.push({
@@ -538,7 +566,9 @@ export function compileRouteTable(
     );
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, file.urlPath);
-    if (alias) routes.push(publicRouteAlias(model, route, alias));
+    if (alias) routes.push(publicRouteAlias(model, route, alias, "default-locale"));
+    const encodedAlias = encodedPublicPathnameAlias(file.urlPath);
+    if (encodedAlias) routes.push(publicRouteAlias(model, route, encodedAlias, "encoded"));
   }
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {
@@ -549,14 +579,21 @@ export function compileRouteTable(
       pr,
       "prerender",
       publicStorageFilePath(pr.pathname, allPublicPathnames),
+      undefined,
+      prerenderMeta.get(pr.pathname),
     );
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, pr.pathname);
-    if (alias) routes.push(publicRouteAlias(model, route, alias));
+    if (alias) routes.push(publicRouteAlias(model, route, alias, "default-locale"));
+    const encodedAlias = encodedPublicPathnameAlias(pr.pathname);
+    if (encodedAlias) routes.push(publicRouteAlias(model, route, encodedAlias, "encoded"));
   }
 
   for (const route of supplement?.appPrerenderDataRoutes ?? []) {
-    routes.push(appPrerenderDataRoute(model, route));
+    const entry = appPrerenderDataRoute(model, route);
+    routes.push(entry);
+    const encodedAlias = encodedPublicPathnameAlias(route.pathname);
+    if (encodedAlias) routes.push(publicRouteAlias(model, entry, encodedAlias, "encoded"));
   }
 
   for (const [index, route] of (supplement?.pprSegmentPrefetchRoutes ?? []).entries()) {

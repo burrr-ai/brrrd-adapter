@@ -8,6 +8,7 @@ import test from "node:test";
 import { onBuildComplete } from "../dist/build.js";
 import {
   extractAppPrerenderDataRoutes,
+  extractAppPrerenderResponseMeta,
   extractEdgeFunctions,
   extractMiddlewareMeta,
   extractPprSegmentPrefetchRoutes,
@@ -300,6 +301,93 @@ test("onBuildComplete copies app prerender artifacts into runtime fs", async () 
     true,
   );
   assert.equal(fs.existsSync(path.join(runtimeApp, "posts", "[id]", "page.js")), false);
+});
+
+test("onBuildComplete emits App prerender response metadata from .meta files", async () => {
+  const root = tempDir("app-prerender-response-meta");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic'); }\n",
+    "utf8",
+  );
+
+  const appDir = path.join(distDir, "server", "app");
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(path.join(appDir, "redirect-page.html"), "<!doctype html>", "utf8");
+  writeJson(path.join(appDir, "redirect-page.meta"), {
+    status: 307,
+    headers: {
+      location: "/",
+      "x-nextjs-prerender": "1",
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/redirect-page/page",
+    pathname: "/redirect-page",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.prerenders = [
+    {
+      id: "/redirect-page",
+      pathname: "/redirect-page",
+      filePath: path.join(appDir, "redirect-page.html"),
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "prerender-redirect-page"),
+    {
+      id: "prerender-redirect-page",
+      pattern: "^/redirect-page$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/redirect-page",
+      status: 307,
+      headers: [
+        { key: "location", value: "/" },
+        { key: "x-nextjs-prerender", value: "1" },
+      ],
+    },
+  );
+});
+
+test("extractAppPrerenderResponseMeta reads status and headers from App .meta files", () => {
+  const root = tempDir("app-prerender-meta-supplement");
+  const distDir = path.join(root, ".next");
+  const appDir = path.join(distDir, "server", "app");
+  writeJson(path.join(appDir, "not-found-page.meta"), {
+    status: 404,
+    headers: {
+      "x-nextjs-prerender": "1",
+    },
+  });
+  writeJson(path.join(appDir, "index.meta"), {
+    headers: {
+      "x-next-cache-tags": "_N_T_/",
+    },
+  });
+
+  assert.deepEqual(extractAppPrerenderResponseMeta(distDir), [
+    {
+      pathname: "/",
+      headers: [{ key: "x-next-cache-tags", value: "_N_T_/" }],
+    },
+    {
+      pathname: "/not-found-page",
+      status: 404,
+      headers: [{ key: "x-nextjs-prerender", value: "1" }],
+    },
+  ]);
 });
 
 test("onBuildComplete exposes PPR segment prefetch artifacts through the static store", async () => {

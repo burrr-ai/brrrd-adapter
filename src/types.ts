@@ -177,6 +177,11 @@ export interface BrrrdHeaderRule {
   internal?: boolean;
 }
 
+export interface BrrrdHeaderPair {
+  key: string;
+  value: string;
+}
+
 export interface BrrrdRoute {
   id: string;
   pattern: string;
@@ -187,6 +192,8 @@ export interface BrrrdRoute {
   file?: string;
   params?: string[];
   immutable?: boolean;
+  status?: number;
+  headers?: BrrrdHeaderPair[];
 }
 
 export interface BuildContext {
