@@ -1,8 +1,10 @@
 import * as path from "node:path";
 
 import { shouldIgnoreNativeAssetForCompatibility } from "./compatibility/index.js";
+import type { ManifestSupplement } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import type { BrrrdCompatibilityReport } from "./types.js";
+import { sanitizeId } from "./routing.js";
 
 function isNativeBinding(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === ".node";
@@ -12,18 +14,24 @@ function isEdgeRuntime(runtime: string | undefined): boolean {
   return runtime === "edge" || runtime === "experimental-edge";
 }
 
-function assertNoUnsupportedEdgeOutputs(outputs: NormalizedOutput[]): void {
+function assertEdgeOutputsHaveFunctionMetadata(
+  outputs: NormalizedOutput[],
+  supplement: Pick<ManifestSupplement, "edgeFunctions">,
+): void {
   const edgeOutputs = outputs.filter((output) => isEdgeRuntime(output.runtime));
   if (edgeOutputs.length === 0) return;
 
-  throw new Error(
-    [
-      "edge app/page/api route outputs are not supported in brrrd isolates. Only Next proxy/middleware edge bundles use the dedicated edge bridge; app routes must use the nodejs runtime or be emitted as static assets.",
-      ...edgeOutputs.map((output) => (
-        `  - ${output.id} (${output.pathname}, runtime=${output.runtime ?? "unknown"})`
-      )),
-    ].join("\n"),
-  );
+  const missing = edgeOutputs.filter((output) => (
+    !supplement.edgeFunctions.has(sanitizeId(output.id))
+  ));
+  if (missing.length === 0) return;
+
+  throw new Error([
+    "edge app/page/api route outputs are missing middleware-manifest.functions metadata.",
+    ...missing.map((output) => (
+      `  - ${output.id} (${output.pathname}, runtime=${output.runtime ?? "unknown"})`
+    )),
+  ].join("\n"));
 }
 
 function assertNoNativeBindings(outputs: NormalizedOutput[]): void {
@@ -52,8 +60,9 @@ export function validateCompatibility(
   model: NextBuildModel,
   requestOutputs: NormalizedOutput[],
   allOutputs: NormalizedOutput[],
+  supplement: Pick<ManifestSupplement, "edgeFunctions">,
 ): BrrrdCompatibilityReport {
-  assertNoUnsupportedEdgeOutputs(requestOutputs);
+  assertEdgeOutputsHaveFunctionMetadata(requestOutputs, supplement);
   assertNoNativeBindings(allOutputs);
   return {
     policies: [
@@ -65,7 +74,7 @@ export function validateCompatibility(
       {
         name: "edge-app-route-outputs",
         action: "validated",
-        detail: "edge app/page/api outputs are rejected; proxy/middleware is handled separately",
+        detail: "edge app/page/api outputs are backed by middleware-manifest.functions metadata and executed through the edge bridge",
       },
       {
         name: "next-og",

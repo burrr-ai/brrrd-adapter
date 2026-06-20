@@ -30,6 +30,12 @@ not exposed by the Adapter API. Because brrrd is currently internally opened,
 manifest/runtime backward compatibility is not a goal; prefer the clean final
 contract over bridge layers.
 
+One important supplement is Next's `middleware-manifest.json`: proxy/middleware
+records provide matcher/env/wasm metadata, and `functions` records describe
+Edge app/page/API route chunks. The adapter compiles those function records into
+`manifest.edgeFunctions`; it does not infer Edge runtime files from hard-coded
+`.next` filenames.
+
 Routing regexes come from the `sourceRegex` field on each `ctx.routing` phase
 entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.) whenever Next
 provides one. Some Adapter API outputs currently omit a `dynamicRoutes[]` entry
@@ -50,7 +56,8 @@ The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
 adapter release must be tested with the matching brrrd runtime/fleet build before
 publish/deploy is considered complete. The minimum manifest contract is
 `schemaVersion`, `build`, `routes[]`, phase-aware `routing`,
-`artifacts[].packagePath`, and `compatibility`.
+`artifacts[].packagePath`, optional `middleware`, optional `edgeFunctions`, and
+`compatibility`.
 
 ## Use
 

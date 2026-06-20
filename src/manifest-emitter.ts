@@ -6,6 +6,7 @@ import type { NextBuildModel } from "./model.js";
 import type {
   BrrrdArtifact,
   BrrrdCompatibilityReport,
+  BrrrdEdgeFunction,
   BrrrdManifest,
   BrrrdMiddleware,
   BrrrdRoute,
@@ -33,10 +34,11 @@ export function writeManifest(
   compatibility: BrrrdCompatibilityReport,
   appBundle: string | undefined,
   middleware?: BrrrdMiddleware,
+  edgeFunctions?: Record<string, BrrrdEdgeFunction>,
   pprPages: string[] = [],
 ): void {
   const manifest: BrrrdManifest = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     build: {
       buildId: model.buildId,
       nextVersion: model.nextVersion,
@@ -54,6 +56,7 @@ export function writeManifest(
     compatibility,
     routing,
     middleware,
+    edgeFunctions,
     pprPages,
   };
 

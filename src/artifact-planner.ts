@@ -40,6 +40,7 @@ export type ArtifactCopySummary = {
   prerenderCount: number;
   runtimeCount: number;
   middlewareCount: number;
+  edgeFunctionCount: number;
   compressedCount: number;
 };
 
@@ -478,6 +479,29 @@ function middlewareArtifacts(
   }));
 }
 
+function edgeFunctionArtifacts(
+  model: NextBuildModel,
+  supplement: ManifestSupplement,
+): ArtifactPlanItem[] {
+  const refs: string[] = [];
+  for (const edgeFn of supplement.edgeFunctions.values()) {
+    refs.push(
+      ...edgeFn.files,
+      ...edgeFn.wasm.map((file) => file.filePath),
+      ...edgeFn.assets.map((file) => file.filePath),
+    );
+  }
+  return uniqueStrings(refs).map((rel) => artifactItem(model, {
+    id: `edge-function:${rel}`,
+    kind: "edge-function",
+    sourceAbsPath: path.join(model.distDir, rel),
+    packagePath: packageJoin("runtime", rel),
+    mountPath: rel,
+    required: true,
+    reason: "Next Edge app/page/API compiled chunk or supporting asset",
+  }));
+}
+
 function appBundleArtifact(model: NextBuildModel, outDir: string): ArtifactPlanItem {
   return artifactItem(model, {
     id: "bundle:app",
@@ -522,6 +546,7 @@ export function createArtifactPlan(
       ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),
       ...middlewareArtifacts(model, supplement),
+      ...edgeFunctionArtifacts(model, supplement),
     ]),
   };
 }
@@ -580,6 +605,7 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
     prerenderCount: 0,
     runtimeCount: 0,
     middlewareCount: 0,
+    edgeFunctionCount: 0,
     compressedCount: 0,
   };
 
@@ -615,6 +641,9 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
         break;
       case "middleware":
         summary.middlewareCount++;
+        break;
+      case "edge-function":
+        summary.edgeFunctionCount++;
         break;
       case "app-bundle":
         break;

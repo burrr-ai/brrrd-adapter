@@ -18,7 +18,7 @@ import {
 } from "./model.js";
 import { compileRouteTable, compileRouting } from "./routing-compiler.js";
 import { sanitizeId } from "./routing.js";
-import type { BuildContext, BrrrdMiddleware } from "./types.js";
+import type { BuildContext, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
 
 function proxySourceFor(middleware: BrrrdMiddleware): "middleware" | "proxy" {
   const probe = [
@@ -47,6 +47,31 @@ function middlewareFromSupplement(
   };
 }
 
+function edgeFunctionsFromSupplement(
+  supplement: ManifestSupplement,
+): Record<string, BrrrdEdgeFunction> | undefined {
+  if (supplement.edgeFunctions.size === 0) return undefined;
+  return Object.fromEntries(supplement.edgeFunctions);
+}
+
+function isEdgeRuntime(runtime: string | undefined): boolean {
+  return runtime === "edge" || runtime === "experimental-edge";
+}
+
+function writeFallbackAppBundle(outDir: string): void {
+  fs.writeFileSync(
+    path.join(outDir, "bundles", "app.js"),
+    [
+      "export default async function brrrdFallbackHandler(_routeId, _req, res) {",
+      "  res.writeHead(404, { 'content-type': 'text/plain' });",
+      "  res.end('Not Found');",
+      "}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
 export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   const outDir = path.join(ctx.projectDir, "dist", "brrrd");
 
@@ -57,7 +82,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   const model = createNextBuildModel(ctx);
   const supplement = createManifestSupplement(model.distDir);
   const requestOutputList = requestOutputs(model);
-  const compatibility = validateCompatibility(model, requestOutputList, allOutputs(model));
+  const compatibility = validateCompatibility(model, requestOutputList, allOutputs(model), supplement);
 
   const buildCtx: BuildContext = {
     projectDir: model.projectDir,
@@ -73,7 +98,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const nodeOutputs = requestOutputList
     .filter((output): output is typeof output & { filePath: string } => (
-      typeof output.filePath === "string"
+      typeof output.filePath === "string" && !isEdgeRuntime(output.runtime)
     ))
     .map((output) => ({ ...output, id: sanitizeId(output.id) }));
 
@@ -81,9 +106,14 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     await bundleAppHandler(nodeOutputs, buildCtx);
     console.log(`  Bundled ${nodeOutputs.length} handlers into app.js`);
   }
+  const hasEdgeFunctions = supplement.edgeFunctions.size > 0;
+  if (nodeOutputs.length === 0 && hasEdgeFunctions) {
+    writeFallbackAppBundle(outDir);
+    console.log("  Wrote fallback dispatcher for edge-only app");
+  }
 
   const artifactPlan = createArtifactPlan(model, supplement, outDir, {
-    hasAppBundle: nodeOutputs.length > 0,
+    hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
   });
   const copySummary = executeArtifactPlan(artifactPlan, outDir);
   console.log(
@@ -94,10 +124,14 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   if (copySummary.middlewareCount > 0) {
     console.log(`  Copied ${copySummary.middlewareCount} proxy/middleware files`);
   }
+  if (copySummary.edgeFunctionCount > 0) {
+    console.log(`  Copied ${copySummary.edgeFunctionCount} edge function files`);
+  }
 
   const routes = compileRouteTable(model);
   const routing = compileRouting(model, supplement);
   const middleware = middlewareFromSupplement(supplement);
+  const edgeFunctions = edgeFunctionsFromSupplement(supplement);
   if (middleware) {
     routing.proxy = {
       source: proxySourceFor(middleware),
@@ -120,6 +154,9 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
       `  PPR enabled for ${supplement.pprPages.length} page(s): ${supplement.pprPages.join(", ")}`,
     );
   }
+  if (edgeFunctions) {
+    console.log(`  Edge functions: ${Object.keys(edgeFunctions).length}`);
+  }
 
   const env: Record<string, string> = {
     NODE_ENV: "production",
@@ -135,8 +172,9 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     routing,
     manifestArtifacts(artifactPlan),
     compatibility,
-    nodeOutputs.length > 0 ? "bundles/app.js" : undefined,
+    nodeOutputs.length > 0 || hasEdgeFunctions ? "bundles/app.js" : undefined,
     middleware,
+    edgeFunctions,
     supplement.pprPages,
   );
   console.log(`  Manifest written to ${path.join(outDir, "manifest.json")}`);

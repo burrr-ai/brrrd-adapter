@@ -1,5 +1,5 @@
 export interface BrrrdManifest {
-  schemaVersion: 4;
+  schemaVersion: 5;
   build: BrrrdBuildInfo;
   /** Kept as a top-level convenience for artifact stores and fleet pointers. */
   buildId: string;
@@ -14,6 +14,8 @@ export interface BrrrdManifest {
   routing: BrrrdRouting;
   /** Next proxy/middleware phase bundle path + matcher metadata. */
   middleware?: BrrrdMiddleware;
+  /** Next Edge app/page/API route functions, keyed by route id. */
+  edgeFunctions?: Record<string, BrrrdEdgeFunction>;
   /** A-7: Partial Prerendering 활성 페이지 목록. 빈 배열이면 PPR 미사용. */
   pprPages?: string[];
 }
@@ -35,6 +37,7 @@ export interface BrrrdArtifact {
     | "runtime-manifest"
     | "runtime-file"
     | "middleware"
+    | "edge-function"
     | "compatibility";
   ownerRouteId?: string;
   sourcePath?: string;
@@ -94,6 +97,29 @@ export interface BrrrdMiddleware {
   env: Record<string, string>;
 }
 
+export interface BrrrdEdgeFunction {
+  /** Next middleware-manifest.functions key or adapter route id. */
+  id: string;
+  /** Next edge chunk files, in manifest evaluation order. */
+  files: string[];
+  /** Legacy single runtime chunk path retained for diagnostics. */
+  runtime: string;
+  /** Next edge function entry chunk. */
+  entry: string;
+  /** Next _ENTRIES key suffix, usually app/.../route or pages/api/... */
+  name: string;
+  /** Next page field, usually /app/.../route. */
+  page: string;
+  /** Export to invoke from the registered entry. */
+  handlerExport: "default" | "handler";
+  /** middleware-manifest.functions[].wasm refs copied into runtime/. */
+  wasm: BrrrdMiddlewareFile[];
+  /** middleware-manifest.functions[].assets refs copied into runtime/. */
+  assets: BrrrdMiddlewareFile[];
+  /** build-time env merged before evaluating the function bundle. */
+  env: Record<string, string>;
+}
+
 export interface BrrrdMiddlewareMatcher {
   regexp: string;
   originalSource: string;
@@ -144,7 +170,8 @@ export interface BrrrdRoute {
   id: string;
   pattern: string;
   type: "page" | "route" | "static" | "prerender";
-  runtime: "nodejs";
+  runtime: "nodejs" | "edge";
+  edgeFunction?: string;
   bundle?: string;
   file?: string;
   params?: string[];

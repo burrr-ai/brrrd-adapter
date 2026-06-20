@@ -143,7 +143,7 @@ export default async function dispatch(routeId, req, res) {
   return outfile;
 }
 
-// bundleEdgeHandler removed — all routes use Node.js runtime.
-// bundleMiddleware removed — Next compiled proxy/middleware entries are webpack
-// chunks, so re-bundling with esbuild breaks them. build.ts raw-copies the edge
-// runtime chunk plus the proxy/middleware entry chunk into runtime/server/.
+// bundleMiddleware removed — Next compiled proxy/middleware and Edge route
+// entries are already runtime-shaped chunks. Re-bundling them with esbuild
+// breaks Next's registration format, so build.ts raw-copies the manifest-listed
+// files into runtime/server/.

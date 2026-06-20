@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
-import { extractMiddlewareMeta } from "../dist/manifest-supplement.js";
+import { extractEdgeFunctions, extractMiddlewareMeta } from "../dist/manifest-supplement.js";
 import { createNextBuildModel } from "../dist/model.js";
 import { compileRouting } from "../dist/routing-compiler.js";
 
@@ -90,7 +90,7 @@ test("onBuildComplete rejects native .node traced assets", async () => {
   );
 });
 
-test("onBuildComplete rejects unsupported edge app route outputs", async () => {
+test("onBuildComplete rejects edge app route outputs without function metadata", async () => {
   const root = tempDir("edge-app-route");
   const distDir = path.join(root, ".next");
   const handler = path.join(root, "handler.js");
@@ -110,7 +110,73 @@ test("onBuildComplete rejects unsupported edge app route outputs", async () => {
         assets: {},
       }),
     ),
-    /edge app\/page\/api route outputs are not supported/,
+    /edge app\/page\/api route outputs are missing middleware-manifest\.functions metadata/,
+  );
+});
+
+test("onBuildComplete emits edge app route function metadata and artifacts", async () => {
+  const root = tempDir("edge-app-route");
+  const distDir = path.join(root, ".next");
+  const edgeFiles = [
+    "server/chunks/edge-runtime.js",
+    "server/app/api/edge/route.js",
+  ];
+  for (const file of edgeFiles) {
+    fs.mkdirSync(path.dirname(path.join(distDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(distDir, file), "", "utf8");
+  }
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {},
+    functions: {
+      "/api/edge/route": {
+        files: edgeFiles,
+        entrypoint: "server/app/api/edge/route.js",
+        name: "app/api/edge/route",
+        page: "/api/edge/route",
+        wasm: [],
+        assets: [],
+        env: { __NEXT_BUILD_ID: "test-build" },
+      },
+    },
+  });
+
+  await onBuildComplete({
+    ...minimalContext(root, distDir, {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "unused.js"),
+    }),
+    outputs: {
+      pages: [],
+      appPages: [],
+      appRoutes: [{
+        id: "app/api/edge/route",
+        pathname: "/api/edge",
+        runtime: "edge",
+        filePath: path.join(distDir, "server", "app", "api", "edge", "route.js"),
+        assets: {},
+      }],
+      pagesApi: [],
+      middleware: undefined,
+      prerenders: [],
+      staticFiles: [],
+    },
+  });
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(manifest.schemaVersion, 5);
+  assert.equal(manifest.routes.find((route) => route.id === "app-api-edge-route").runtime, "edge");
+  assert.equal(
+    manifest.edgeFunctions["app-api-edge-route"].entry,
+    "server/app/api/edge/route.js",
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(root, "dist", "brrrd", "runtime", "server", "app", "api", "edge", "route.js"),
+    ),
+    true,
   );
 });
 

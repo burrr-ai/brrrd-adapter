@@ -2,9 +2,11 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type {
+  BrrrdEdgeFunction,
   BrrrdMiddlewareCondition,
   BrrrdMiddlewareFile,
 } from "./types.js";
+import { sanitizeId } from "./routing.js";
 
 export type MiddlewareMeta = {
   files: string[];
@@ -25,6 +27,7 @@ export type MiddlewareMeta = {
 
 export type ManifestSupplement = {
   middleware: MiddlewareMeta | null;
+  edgeFunctions: Map<string, BrrrdEdgeFunction>;
   pprPages: string[];
   redirects: SupplementRedirect[];
 };
@@ -181,6 +184,76 @@ export function extractMiddlewareMeta(distDir: string): MiddlewareMeta | null {
   };
 }
 
+function edgeFunctionId(fnKey: string, fnRecord: Record<string, unknown>): string {
+  const name = fnRecord.name;
+  if (typeof name === "string" && name.length > 0) return name;
+  return fnKey.replace(/^\/+/, "");
+}
+
+function edgeHandlerExport(fnRecord: Record<string, unknown>): "default" | "handler" {
+  const value = fnRecord.handlerExport;
+  return value === "handler" ? "handler" : "default";
+}
+
+function edgeFunctionFiles(fnRecord: Record<string, unknown>, fnKey: string): {
+  files: string[];
+  entryRel: string;
+  runtimeRel: string;
+} {
+  const rawFiles = Array.isArray(fnRecord.files)
+    ? fnRecord.files.filter((file): file is string => typeof file === "string" && file.length > 0)
+    : [];
+  const entryRel = typeof fnRecord.entrypoint === "string" && fnRecord.entrypoint.length > 0
+    ? fnRecord.entrypoint
+    : rawFiles[rawFiles.length - 1] ?? "";
+
+  if (rawFiles.length === 0 || entryRel.length === 0) {
+    throw new Error(
+      `edge function ${fnKey} missing middleware-manifest.functions files/entrypoint metadata`,
+    );
+  }
+
+  const files = uniqueStrings(rawFiles.includes(entryRel) ? rawFiles : [...rawFiles, entryRel]);
+  const runtimeRel = files.find((f) => f !== entryRel) ?? entryRel;
+  return { files, entryRel, runtimeRel };
+}
+
+export function extractEdgeFunctions(distDir: string): Map<string, BrrrdEdgeFunction> {
+  const manifestPath = path.join(distDir, "server", "middleware-manifest.json");
+  const raw = readJsonIfExists(manifestPath);
+  const functionMap = raw?.functions;
+  const out = new Map<string, BrrrdEdgeFunction>();
+  if (!functionMap || typeof functionMap !== "object") return out;
+
+  for (const [fnKey, rawFn] of Object.entries(functionMap)) {
+    if (!rawFn || typeof rawFn !== "object") continue;
+    const fnRecord = rawFn as Record<string, unknown>;
+    const { files, entryRel, runtimeRel } = edgeFunctionFiles(fnRecord, fnKey);
+    assertFilesExist(distDir, files, "edge function");
+
+    const envIn = fnRecord.env && typeof fnRecord.env === "object" ? fnRecord.env : {};
+    const env: Record<string, string> = {};
+    for (const [k, v] of Object.entries(envIn)) {
+      if (typeof v === "string") env[k] = v;
+    }
+
+    const id = sanitizeId(edgeFunctionId(fnKey, fnRecord));
+    out.set(id, {
+      id,
+      files,
+      runtime: runtimeRel,
+      entry: entryRel,
+      name: typeof fnRecord.name === "string" ? fnRecord.name : id,
+      page: typeof fnRecord.page === "string" ? fnRecord.page : fnKey,
+      handlerExport: edgeHandlerExport(fnRecord),
+      wasm: normalizeMiddlewareFiles(fnRecord.wasm),
+      assets: normalizeMiddlewareFiles(fnRecord.assets),
+      env,
+    });
+  }
+  return out;
+}
+
 export function extractPprPages(distDir: string): string[] {
   const raw = readJsonIfExists(path.join(distDir, "prerender-manifest.json"));
   if (!raw) return [];
@@ -221,6 +294,7 @@ export function extractRedirectSupplement(distDir: string): SupplementRedirect[]
 export function createManifestSupplement(distDir: string): ManifestSupplement {
   return {
     middleware: extractMiddlewareMeta(distDir),
+    edgeFunctions: extractEdgeFunctions(distDir),
     pprPages: extractPprPages(distDir),
     redirects: extractRedirectSupplement(distDir),
   };

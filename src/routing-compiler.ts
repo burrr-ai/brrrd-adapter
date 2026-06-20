@@ -257,7 +257,7 @@ function exactRoute(output: NormalizedOutput, type: "page" | "route"): BrrrdRout
     id: sanitizeId(output.id),
     pattern: `^${escapeRegex(output.pathname)}$`,
     type,
-    runtime: "nodejs",
+    ...runtimeTarget(output),
   };
 }
 
@@ -320,8 +320,20 @@ function dynamicRoute(
     id: sanitizeId(output.id),
     pattern: sourceRegex,
     type,
-    runtime: "nodejs",
+    ...runtimeTarget(output),
     params: segmentParamNames(output.pathname),
+  };
+}
+
+function isEdgeOutput(output: NormalizedOutput): boolean {
+  return output.runtime === "edge" || output.runtime === "experimental-edge";
+}
+
+function runtimeTarget(output: NormalizedOutput): Pick<BrrrdRoute, "runtime" | "edgeFunction"> {
+  if (!isEdgeOutput(output)) return { runtime: "nodejs" };
+  return {
+    runtime: "edge",
+    edgeFunction: sanitizeId(output.id),
   };
 }
 
