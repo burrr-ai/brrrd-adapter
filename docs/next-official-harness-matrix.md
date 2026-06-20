@@ -4,10 +4,12 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 ## Status
 
-Initial local harness integration exists. The CI workflow runs deploy-test shards manually or on schedule. The current
-green shards are still a narrow compatibility signal, not the full official suite. The workflow makes the
-bundler axis explicit: `webpack` is the forced webpack baseline, `turbopack` is tracked separately, and `next-default`
-records whatever the checked-out Next canary uses when no bundler flag is supplied.
+Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or
+group against the local brrrd deploy scripts, so failures can be reproduced before waiting for GitHub Actions. The CI
+workflow still runs deploy-test shards manually or on schedule. The current green shards are a compatibility signal, not
+the full official suite. The workflow makes the bundler axis explicit: `webpack` is the forced webpack baseline,
+`turbopack` is tracked separately, and `next-default` records whatever the checked-out Next canary uses when no bundler
+flag is supplied.
 
 The workflow separates build and test jobs. It builds the adapter, brrrd runtime, and Next.js checkout once, saves that
 workspace, and fans out the requested test shards from the saved workspace. `group=1/64` runs one smoke shard,
@@ -29,6 +31,9 @@ build/test split itself has been smoke-validated on all three bundler axes.
 | Scope | Status | Notes |
 | --- | --- | --- |
 | Local deploy script smoke | pass | 2026-06-19: copied `brrrd/examples/nextjs-basic` to a temp app, ran `deploy -> curl / -> logs -> cleanup -> cleanup`; `/` returned 200 and required log markers were present. |
+| Local official harness runner | pass | 2026-06-19/20: `npm run harness:fixture` and `npm run harness:group` wrap `/Users/ggm/work/next.js` without modifying Next fixture sources. The runner writes `local-harness.json`, stdout/stderr, result JSON, and copied build/runtime manifests under `/Users/ggm/work/.brrrd-local-harness/<run>`. It also sets `TMPDIR`/`TEMP`/`TMP` inside the run artifact directory, avoiding macOS temp-volume `ENOSPC` during shard execution. |
+| Local official fixture `i18n-ignore-rewrite-source-locale` | runtime-bug | 2026-06-19/20: `npm run harness:fixture -- --fixture test/e2e/i18n-ignore-rewrite-source-locale/rewrites.test.ts --bundler webpack --name sample-i18n` reproduced the known default-locale rewrite gap in about 18s: prefixed `/en`, `/sv`, `/nl` variants passed, while unprefixed `/rewrite-files/file.txt` and `/rewrite-api/hello` returned default-locale 404 HTML. Diagnostics include Next route/prerender/middleware manifests plus `dist/brrrd/manifest.json`. |
+| Local official group `1/64` webpack | pass | 2026-06-19/20: `npm run harness:group -- --group 1/64 --bundler webpack --name smoke-group-1 --concurrency 1` selected 17 fixtures and passed locally in about 5 minutes using `/Users/ggm/work/next.js` canary `b216be9c`. |
 | Local Next canary Pages Router webpack smoke | pass | 2026-06-19: built and served a temp `next@16.3.0-canary.58` Pages Router app with `next build --webpack`, local `@brrrd/adapter`, and `brrrd <dist/brrrd>`. This covers the previous `pages.runtime.prod.js -> require("critters")` build blocker and the static Pages Router `/index` output normalization; `GET /` returned 200. |
 | Private runtime checkout | pass | 2026-06-19: configured `RUNTIME_REPO_DEPLOY_KEY` as a read-only deploy key for `burrr-ai/brrrd`; workflow now checks out runtime submodules recursively. |
 | Official deploy suite `1/16` | flaky-infra | 2026-06-19 run `27823794521` reached `Run official deploy adapter tests` after adapter/runtime/Next builds, then stayed in that step for more than 15 minutes without available logs. It was cancelled and the workflow was updated to use a smaller `1/64` smoke shard plus timeout and diagnostics collection. |

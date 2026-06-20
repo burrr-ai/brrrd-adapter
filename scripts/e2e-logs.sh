@@ -21,7 +21,21 @@ persist_diagnostics() {
   mkdir -p "$dest"
   printf '%s\n' "$PWD" > "$dest/source.txt"
 
-  for file in "$BUILD_LOG" "$SERVER_LOG" "$DEPLOYMENT_FILE"; do
+  local files=(
+    "$BUILD_LOG"
+    "$SERVER_LOG"
+    "$DEPLOYMENT_FILE"
+    ".next/routes-manifest.json"
+    ".next/prerender-manifest.json"
+    ".next/build-manifest.json"
+    ".next/app-build-manifest.json"
+    ".next/server/app-paths-manifest.json"
+    ".next/server/pages-manifest.json"
+    ".next/server/middleware-manifest.json"
+    "dist/brrrd/manifest.json"
+  )
+
+  for file in "${files[@]}"; do
     if [[ -f "$file" ]]; then
       local safe_file="$file"
       safe_file="${safe_file#.}"

@@ -38,3 +38,40 @@ test("e2e-logs prefers final harness markers over build-time echoes", () => {
   assert.match(out, /^IMMUTABLE_ASSET_TOKEN: immutable-token$/m);
   assert.doesNotMatch(out.split("\n").slice(0, 3).join("\n"), /undefined/);
 });
+
+test("e2e-logs persists route and runtime manifests into diagnostics", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-harness-diags-"));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-harness-workspace-"));
+  const files = [
+    ".adapter-build.log",
+    ".adapter-server.log",
+    ".brrrd-harness/deployment.json",
+    ".next/routes-manifest.json",
+    ".next/prerender-manifest.json",
+    ".next/build-manifest.json",
+    ".next/app-build-manifest.json",
+    ".next/server/app-paths-manifest.json",
+    ".next/server/pages-manifest.json",
+    ".next/server/middleware-manifest.json",
+    "dist/brrrd/manifest.json",
+  ];
+  for (const file of files) {
+    fs.mkdirSync(path.join(dir, path.dirname(file)), { recursive: true });
+    fs.writeFileSync(path.join(dir, file), "{}\n");
+  }
+
+  execFileSync(path.join(repoRoot, "scripts", "e2e-logs.sh"), {
+    cwd: dir,
+    encoding: "utf8",
+    env: { ...process.env, GITHUB_WORKSPACE: workspace },
+  });
+
+  const liveRoot = path.join(workspace, "harness-diagnostics", "live");
+  const runDirs = fs.readdirSync(liveRoot);
+  assert.equal(runDirs.length, 1);
+  const runDir = path.join(liveRoot, runDirs[0]);
+  for (const file of files) {
+    const copied = path.join(runDir, file.replace(/^\./, ""));
+    assert.equal(fs.existsSync(copied), true, `${file} should be copied`);
+  }
+});

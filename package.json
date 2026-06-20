@@ -29,7 +29,9 @@
     "prepack": "tsc",
     "publish:local": "pnpm publish --access public",
     "test": "tsc && node --test test/*.test.mjs",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "harness:fixture": "node scripts/local-harness.mjs fixture",
+    "harness:group": "node scripts/local-harness.mjs group"
   },
   "dependencies": {
     "esbuild": "^0.25.0"
