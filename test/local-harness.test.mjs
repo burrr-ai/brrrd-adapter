@@ -50,6 +50,8 @@ test("parseArgs supports fixture mode with explicit local paths", () => {
     "20",
     "--artifacts-dir",
     "/tmp/artifacts",
+    "--timeout-ms",
+    "12345",
   ], {});
 
   assert.equal(options.mode, "fixture");
@@ -59,6 +61,7 @@ test("parseArgs supports fixture mode with explicit local paths", () => {
   assert.equal(options.bundler, "turbopack");
   assert.equal(options.nodeVersion, "20");
   assert.equal(options.artifactsDir, "/tmp/artifacts");
+  assert.equal(options.timeoutMs, "12345");
 });
 
 test("parseArgs defaults group mode to 1/64 and rejects unknown bundlers", () => {
@@ -69,6 +72,10 @@ test("parseArgs defaults group mode to 1/64 and rejects unknown bundlers", () =>
   assert.throws(
     () => parseArgs(["group", "--bundler", "magic"], {}),
     /unsupported bundler/,
+  );
+  assert.throws(
+    () => parseArgs(["group", "--timeout-ms", "0"], {}),
+    /--timeout-ms must be a positive integer/,
   );
 });
 

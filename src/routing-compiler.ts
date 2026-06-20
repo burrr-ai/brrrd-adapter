@@ -407,6 +407,18 @@ function publicRouteAlias(
   };
 }
 
+function executableRouteAlias(
+  model: NextBuildModel,
+  route: BrrrdRoute,
+  aliasPathname: string,
+): BrrrdRoute {
+  const { params: _params, ...rest } = route;
+  return {
+    ...rest,
+    pattern: exactPathPattern(aliasPathname, model.config),
+  };
+}
+
 function pprSegmentStoragePattern(sourceRegex: string): string {
   if (!sourceRegex.startsWith("^/")) return sourceRegex;
   const optionalSlashSuffix = "(?:/)?$";
@@ -466,11 +478,17 @@ function defaultLocaleAliasPathname(
   if (!locale) return null;
 
   const routePrefix = `/${locale}/`;
+  if (pathname === `/${locale}`) {
+    return "/";
+  }
   if (pathname.startsWith(routePrefix)) {
     return `/${pathname.slice(routePrefix.length)}`;
   }
 
   const dataPrefix = `/_next/data/${model.buildId}/${locale}/`;
+  if (pathname === `/_next/data/${model.buildId}/${locale}.json`) {
+    return `/_next/data/${model.buildId}/index.json`;
+  }
   if (pathname.startsWith(dataPrefix)) {
     return `/_next/data/${model.buildId}/${pathname.slice(dataPrefix.length)}`;
   }
@@ -605,7 +623,11 @@ export function compileRouteTable(
   const dynamicPages = sortBySpecificity(allPages.filter((p) => p.pathname.includes("[")));
   for (const page of exactPages) {
     const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
-    if (route) routes.push(route);
+    if (route) {
+      routes.push(route);
+      const alias = defaultLocaleAliasPathname(model, page.pathname);
+      if (alias) routes.push(executableRouteAlias(model, route, alias));
+    }
   }
   for (const page of dynamicPages) {
     const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);

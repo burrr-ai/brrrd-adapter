@@ -205,6 +205,14 @@ resolve_installed_adapter() {
   '
 }
 
+resolve_adapter_entry() {
+  if [[ -f "$ADAPTER_DIR/dist/index.js" ]]; then
+    printf '%s\n' "$ADAPTER_DIR/dist/index.js"
+    return
+  fi
+  resolve_installed_adapter
+}
+
 wait_until_ready() {
   local url="$1"
   local pid="$2"
@@ -261,7 +269,7 @@ PM="${PACKAGE_MANAGER:-$(detect_package_manager)}"
 write_package_dependency
 pm_install
 
-NEXT_ADAPTER_PATH="${NEXT_ADAPTER_PATH:-$(resolve_installed_adapter)}"
+NEXT_ADAPTER_PATH="${NEXT_ADAPTER_PATH:-$(resolve_adapter_entry)}"
 export NEXT_ADAPTER_PATH
 export NEXT_TELEMETRY_DISABLED="${NEXT_TELEMETRY_DISABLED:-1}"
 DEPLOYMENT_ID="${BRRRD_DEPLOYMENT_ID:-${NEXT_DEPLOYMENT_ID:-brrrd-local-$(date +%s)-$$}}"

@@ -326,7 +326,12 @@ test("i18n default-locale prerenders are exposed at public unprefixed paths", ()
   const routes = compileRouteTable(context({
     config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
     prerenders: [
+      { id: "/en", pathname: "/en" },
       { id: "/en/posts/a", pathname: "/en/posts/a" },
+      {
+        id: "/_next/data/test-build/en.json",
+        pathname: "/_next/data/test-build/en.json",
+      },
       {
         id: "/_next/data/test-build/en/posts/a.json",
         pathname: "/_next/data/test-build/en/posts/a.json",
@@ -346,6 +351,30 @@ test("i18n default-locale prerenders are exposed at public unprefixed paths", ()
     },
   );
   assert.deepEqual(
+    routes.find((route) => route.id === "prerender-en-default-locale-alias"),
+    {
+      id: "prerender-en-default-locale-alias",
+      pattern: "^/$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/en/index",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "prerender-_next-data-test-build-en_json-default-locale-alias"
+    )),
+    {
+      id: "prerender-_next-data-test-build-en_json-default-locale-alias",
+      pattern: "^/_next/data/test-build/index\\.json$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/_next/data/test-build/en.json",
+    },
+  );
+  assert.deepEqual(
     routes.find((route) => (
       route.id === "prerender-_next-data-test-build-en-posts-a_json-default-locale-alias"
     )),
@@ -357,6 +386,44 @@ test("i18n default-locale prerenders are exposed at public unprefixed paths", ()
       bundle: "",
       file: "/_next/data/test-build/en/posts/a.json",
     },
+  );
+});
+
+test("i18n default-locale page handlers are exposed at public unprefixed paths", () => {
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
+    pages: [
+      appPage("/en"),
+      appPage("/fr"),
+      appPage("/_next/data/test-build/en.json"),
+      appPage("/_next/data/test-build/fr.json"),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "en" && route.pattern === "^/$"),
+    {
+      id: "en",
+      pattern: "^/$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "_next-data-test-build-en_json"
+      && route.pattern === "^/_next/data/test-build/index\\.json$"
+    )),
+    {
+      id: "_next-data-test-build-en_json",
+      pattern: "^/_next/data/test-build/index\\.json$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+  assert.equal(
+    routes.some((route) => route.id === "fr" && route.pattern === "^/$"),
+    false,
   );
 });
 

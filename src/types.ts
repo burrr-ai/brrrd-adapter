@@ -132,6 +132,7 @@ export interface BrrrdEdgeFunction {
 export interface BrrrdMiddlewareMatcher {
   regexp: string;
   originalSource: string;
+  locale?: false;
   has?: BrrrdMiddlewareCondition[];
   missing?: BrrrdMiddlewareCondition[];
 }

@@ -18,6 +18,7 @@ export type MiddlewareMeta = {
   matchers: Array<{
     regexp: string;
     originalSource: string;
+    locale?: false;
     has?: BrrrdMiddlewareCondition[];
     missing?: BrrrdMiddlewareCondition[];
   }>;
@@ -232,6 +233,7 @@ export function extractMiddlewareMeta(distDir: string): MiddlewareMeta | null {
   const matchersArr: Array<{
     regexp?: string;
     originalSource?: string;
+    locale?: unknown;
     has?: unknown;
     missing?: unknown;
   }> = Array.isArray(mw.matchers) ? mw.matchers : [];
@@ -243,6 +245,7 @@ export function extractMiddlewareMeta(distDir: string): MiddlewareMeta | null {
       return {
         regexp: m.regexp as string,
         originalSource: typeof m.originalSource === "string" ? m.originalSource : "",
+        ...(m.locale === false ? { locale: false as const } : {}),
         ...(has ? { has } : {}),
         ...(missing ? { missing } : {}),
       };

@@ -1694,6 +1694,35 @@ test("extractMiddlewareMeta uses manifest entrypoint for proxy chunks", () => {
   assert.equal(meta.name, "proxy");
 });
 
+test("extractMiddlewareMeta preserves matcher locale flag", () => {
+  const distDir = tempDir("middleware-matcher-locale");
+  fs.mkdirSync(path.join(distDir, "server"), { recursive: true });
+  fs.writeFileSync(path.join(distDir, "server", "edge-runtime-webpack.js"), "", "utf8");
+  fs.writeFileSync(path.join(distDir, "server", "middleware.js"), "", "utf8");
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {
+      "/": {
+        files: ["server/edge-runtime-webpack.js", "server/middleware.js"],
+        entrypoint: "server/middleware.js",
+        name: "middleware",
+        page: "/",
+        matchers: [{
+          regexp: "^/nl-NL/about$",
+          originalSource: "/nl-NL/about",
+          locale: false,
+        }],
+      },
+    },
+  });
+
+  const meta = extractMiddlewareMeta(distDir);
+  assert.deepEqual(meta.matchers, [{
+    regexp: "^/nl-NL/about$",
+    originalSource: "/nl-NL/about",
+    locale: false,
+  }]);
+});
+
 test("extractMiddlewareMeta preserves Turbopack middleware file order", () => {
   const distDir = tempDir("turbopack-middleware");
   const files = [

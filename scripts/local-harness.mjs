@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -38,6 +38,7 @@ Options:
   --concurrency <n>      run-tests concurrency for group mode. Default: 1.
   --artifacts-dir <path> Artifact root. Default: ../.brrrd-local-harness.
   --name <label>         Stable artifact label. Default: derived from mode/target.
+  --timeout-ms <ms>      Hard timeout for the harness child process. Default: BRRRD_LOCAL_HARNESS_TIMEOUT_MS or 3600000.
   --dry-run              Print the command and environment without executing it.
   --help                 Show this help.
 `;
@@ -69,6 +70,7 @@ export function parseArgs(argv, env = process.env) {
     concurrency: "1",
     artifactsDir: env.BRRRD_HARNESS_ARTIFACTS_DIR || env.BRRD_HARNESS_ARTIFACTS_DIR || null,
     name: null,
+    timeoutMs: env.BRRRD_LOCAL_HARNESS_TIMEOUT_MS || env.BRRRD_HARNESS_TIMEOUT_MS || "3600000",
     dryRun: false,
     help: false,
   };
@@ -116,6 +118,10 @@ export function parseArgs(argv, env = process.env) {
         options.name = popValue(args, i, arg);
         i += 1;
         break;
+      case "--timeout-ms":
+        options.timeoutMs = popValue(args, i, arg);
+        i += 1;
+        break;
       case "--dry-run":
         options.dryRun = true;
         break;
@@ -149,6 +155,9 @@ export function parseArgs(argv, env = process.env) {
   }
   if (!/^[1-9]\d*$/.test(String(options.concurrency))) {
     throw new Error(`--concurrency must be a positive integer: ${options.concurrency}`);
+  }
+  if (!/^[1-9]\d*$/.test(String(options.timeoutMs))) {
+    throw new Error(`--timeout-ms must be a positive integer: ${options.timeoutMs}`);
   }
   return options;
 }
@@ -363,7 +372,58 @@ function printDryRun({ invocation, env, artifactsDir }) {
   }, null, 2));
 }
 
-export function runHarness(options) {
+function terminateProcessGroup(child, signal) {
+  if (!child.pid) return;
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {}
+  }
+}
+
+function runProcess(invocation, env, timeoutMs) {
+  return new Promise((resolve) => {
+    const child = spawn(invocation.command, invocation.args, {
+      cwd: invocation.cwd,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      stderr += `\n[brrrd-local-harness] timed out after ${timeoutMs}ms; terminating process group\n`;
+      terminateProcessGroup(child, "SIGTERM");
+      setTimeout(() => {
+        if (!settled) terminateProcessGroup(child, "SIGKILL");
+      }, 5000).unref();
+    }, timeoutMs);
+    timeout.unref();
+
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", (error) => {
+      stderr += `\n[brrrd-local-harness] spawn error: ${error.message}\n`;
+    });
+    child.on("close", (status, signal) => {
+      settled = true;
+      clearTimeout(timeout);
+      resolve({ stdout, stderr, status, signal, timedOut });
+    });
+  });
+}
+
+export async function runHarness(options) {
   const nextDir = resolveNextDir(options);
   const brrrdBin = resolveExecutable(options);
   const artifactsDir = artifactRunDir(options);
@@ -386,6 +446,7 @@ export function runHarness(options) {
     artifactsDir,
     command: invocation.command,
     args: invocation.args,
+    timeoutMs: Number(options.timeoutMs),
     startedAt: new Date().toISOString(),
   };
   writeJson(path.join(artifactsDir, "local-harness.json"), metadata);
@@ -399,13 +460,7 @@ export function runHarness(options) {
   console.error(`[brrrd-local-harness] cwd: ${invocation.cwd}`);
   console.error(`[brrrd-local-harness] $ ${[invocation.command, ...invocation.args].join(" ")}`);
 
-  const result = spawnSync(invocation.command, invocation.args, {
-    cwd: invocation.cwd,
-    env,
-    stdio: ["ignore", "pipe", "pipe"],
-    encoding: "utf8",
-    maxBuffer: 100 * 1024 * 1024,
-  });
+  const result = await runProcess(invocation, env, Number(options.timeoutMs));
   fs.writeFileSync(path.join(artifactsDir, "stdout.log"), result.stdout ?? "");
   fs.writeFileSync(path.join(artifactsDir, "stderr.log"), result.stderr ?? "");
   if (result.stdout) process.stdout.write(result.stdout);
@@ -416,8 +471,9 @@ export function runHarness(options) {
     finishedAt: new Date().toISOString(),
     status: result.status,
     signal: result.signal,
-    error: result.error ? String(result.error) : undefined,
+    timedOut: result.timedOut,
   });
+  if (result.timedOut) return 124;
   return result.status ?? 1;
 }
 
@@ -429,7 +485,7 @@ async function main() {
       process.stdout.write(usage());
       return;
     }
-    process.exitCode = runHarness(options);
+    process.exitCode = await runHarness(options);
   } catch (error) {
     console.error(`[brrrd-local-harness] ${error.message}`);
     console.error("");
