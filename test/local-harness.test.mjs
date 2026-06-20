@@ -9,15 +9,19 @@ import {
   buildInvocation,
   harnessEnv,
   parseArgs,
+  resolveNodeRunner,
 } from "../scripts/local-harness.mjs";
 
 function tempDir(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), name));
 }
 
-function fakeNextCheckout() {
+function fakeNextCheckout({ nodeVersion } = {}) {
   const dir = tempDir("brrrd-local-next-");
   fs.writeFileSync(path.join(dir, "run-tests.js"), "");
+  if (nodeVersion) {
+    fs.writeFileSync(path.join(dir, ".node-version"), `${nodeVersion}\n`);
+  }
   const fixture = path.join(dir, "test", "e2e", "sample", "sample.test.ts");
   fs.mkdirSync(path.dirname(fixture), { recursive: true });
   fs.writeFileSync(fixture, "");
@@ -25,6 +29,9 @@ function fakeNextCheckout() {
   fs.mkdirSync(path.dirname(jest), { recursive: true });
   fs.writeFileSync(jest, "#!/usr/bin/env node\n");
   fs.chmodSync(jest, 0o755);
+  const jestJs = path.join(dir, "node_modules", "jest", "bin", "jest.js");
+  fs.mkdirSync(path.dirname(jestJs), { recursive: true });
+  fs.writeFileSync(jestJs, "");
   return dir;
 }
 
@@ -39,6 +46,8 @@ test("parseArgs supports fixture mode with explicit local paths", () => {
     "/tmp/brrrd",
     "--bundler",
     "turbopack",
+    "--node-version",
+    "20",
     "--artifacts-dir",
     "/tmp/artifacts",
   ], {});
@@ -48,6 +57,7 @@ test("parseArgs supports fixture mode with explicit local paths", () => {
   assert.equal(options.nextDir, "/tmp/next");
   assert.equal(options.brrrdBin, "/tmp/brrrd");
   assert.equal(options.bundler, "turbopack");
+  assert.equal(options.nodeVersion, "20");
   assert.equal(options.artifactsDir, "/tmp/artifacts");
 });
 
@@ -73,8 +83,9 @@ test("buildInvocation runs a single fixture through Jest", () => {
   const invocation = buildInvocation(options, nextDir);
 
   assert.equal(invocation.cwd, nextDir);
-  assert.equal(invocation.command, path.join(nextDir, "node_modules", ".bin", "jest"));
-  assert.deepEqual(invocation.args.slice(0, 5), [
+  assert.equal(invocation.command, process.execPath);
+  assert.deepEqual(invocation.args.slice(0, 6), [
+    path.join(nextDir, "node_modules", "jest", "bin", "jest.js"),
     "--ci",
     "--runInBand",
     "--forceExit",
@@ -101,6 +112,86 @@ test("buildInvocation runs shard groups through Next run-tests.js", () => {
     "2",
     "--type",
     "e2e",
+  ]);
+});
+
+test("resolveNodeRunner follows Next .node-version when current major differs", () => {
+  const nextDir = fakeNextCheckout({ nodeVersion: "20" });
+  const options = parseArgs(["group"], {});
+
+  const runner = resolveNodeRunner(options, nextDir, {
+    currentVersion: "24.16.0",
+    currentExecPath: "/current/node",
+  });
+
+  assert.equal(runner.command, "npx");
+  assert.deepEqual(runner.argsPrefix, ["-y", "node@20"]);
+  assert.equal(runner.selectedVersion, "20");
+  assert.equal(runner.source, "npx-node-package");
+});
+
+test("resolveNodeRunner keeps current node when major matches or is explicitly requested", () => {
+  const nextDir = fakeNextCheckout({ nodeVersion: "20" });
+
+  assert.deepEqual(
+    resolveNodeRunner(parseArgs(["group"], {}), nextDir, {
+      currentVersion: "20.20.2",
+      currentExecPath: "/node20",
+    }),
+    {
+      command: "/node20",
+      argsPrefix: [],
+      selectedVersion: "20.20.2",
+      source: "current-compatible",
+    },
+  );
+
+  assert.deepEqual(
+    resolveNodeRunner(parseArgs(["group", "--node-version", "current"], {}), nextDir, {
+      currentVersion: "24.16.0",
+      currentExecPath: "/node24",
+    }),
+    {
+      command: "/node24",
+      argsPrefix: [],
+      selectedVersion: "24.16.0",
+      source: "current",
+    },
+  );
+});
+
+test("buildInvocation can wrap fixtures and groups in an alternate node runner", () => {
+  const nextDir = fakeNextCheckout();
+  const nodeRunner = {
+    command: "npx",
+    argsPrefix: ["-y", "node@20"],
+    selectedVersion: "20",
+    source: "npx-node-package",
+  };
+
+  const fixtureInvocation = buildInvocation(
+    parseArgs(["fixture", "--fixture", "test/e2e/sample/sample.test.ts"], {}),
+    nextDir,
+    nodeRunner,
+  );
+  assert.equal(fixtureInvocation.command, "npx");
+  assert.deepEqual(fixtureInvocation.args.slice(0, 3), [
+    "-y",
+    "node@20",
+    path.join(nextDir, "node_modules", "jest", "bin", "jest.js"),
+  ]);
+
+  const groupInvocation = buildInvocation(
+    parseArgs(["group", "--group", "9/64"], {}),
+    nextDir,
+    nodeRunner,
+  );
+  assert.equal(groupInvocation.command, "npx");
+  assert.deepEqual(groupInvocation.args.slice(0, 4), [
+    "-y",
+    "node@20",
+    "run-tests.js",
+    "--timings",
   ]);
 });
 

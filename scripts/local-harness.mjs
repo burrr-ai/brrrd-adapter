@@ -32,6 +32,7 @@ Options:
   --next-dir <path>      Next.js checkout path. Default: NEXT_DIR, NEXTJS_DIR, /Users/ggm/work/next.js, /Users/ggm/work/nextjs.
   --brrrd-bin <path>     brrrd binary path. Default: BRRRD_BIN or /Users/ggm/work/brrrd/target/debug/brrrd.
   --bundler <name>       webpack, turbopack, or next-default. Default: webpack.
+  --node-version <ver>   Node version for Next tests. Default: Next checkout .node-version; use "current" to disable.
   --fixture <path>       Next fixture test file path, relative to next-dir or absolute.
   --group <n/m|all>      Next run-tests shard group. Default for group mode: 1/64.
   --concurrency <n>      run-tests concurrency for group mode. Default: 1.
@@ -62,6 +63,7 @@ export function parseArgs(argv, env = process.env) {
     nextDir: env.NEXT_DIR || env.NEXTJS_DIR || null,
     brrrdBin: env.BRRRD_BIN || env.BRRD_BIN || null,
     bundler: "webpack",
+    nodeVersion: env.BRRRD_HARNESS_NODE_VERSION || env.BRRRD_LOCAL_HARNESS_NODE_VERSION || null,
     fixture: null,
     group: null,
     concurrency: "1",
@@ -86,6 +88,11 @@ export function parseArgs(argv, env = process.env) {
         break;
       case "--bundler":
         options.bundler = popValue(args, i, arg);
+        i += 1;
+        break;
+      case "--node-version":
+      case "--node":
+        options.nodeVersion = popValue(args, i, arg);
         i += 1;
         break;
       case "--fixture":
@@ -179,6 +186,51 @@ function resolveNextDir(options) {
   return nextDir;
 }
 
+function readNextNodeVersion(nextDir) {
+  const file = path.join(nextDir, ".node-version");
+  if (!fs.existsSync(file)) return null;
+  const value = fs.readFileSync(file, "utf8").trim().split(/\s+/)[0];
+  return value ? value.replace(/^v/, "") : null;
+}
+
+function majorOf(version) {
+  const match = /^v?(\d+)/.exec(String(version || ""));
+  return match ? match[1] : null;
+}
+
+export function resolveNodeRunner(
+  options,
+  nextDir,
+  runtime = { currentVersion: process.versions.node, currentExecPath: process.execPath },
+) {
+  const requested = options.nodeVersion || readNextNodeVersion(nextDir);
+  if (!requested || requested === "current") {
+    return {
+      command: runtime.currentExecPath,
+      argsPrefix: [],
+      selectedVersion: runtime.currentVersion,
+      source: "current",
+    };
+  }
+
+  const requestedMajor = majorOf(requested);
+  if (requestedMajor && requestedMajor === majorOf(runtime.currentVersion)) {
+    return {
+      command: runtime.currentExecPath,
+      argsPrefix: [],
+      selectedVersion: runtime.currentVersion,
+      source: "current-compatible",
+    };
+  }
+
+  return {
+    command: "npx",
+    argsPrefix: ["-y", `node@${requested}`],
+    selectedVersion: requested,
+    source: "npx-node-package",
+  };
+}
+
 function sanitizeLabel(value) {
   return value
     .replace(/\\/g, "/")
@@ -243,30 +295,43 @@ function resolveFixture(nextDir, fixture) {
   return path.relative(nextDir, abs).split(path.sep).join("/");
 }
 
-export function buildInvocation(options, nextDir) {
+function withNodeRunner(nodeRunner, script, args) {
+  if (nodeRunner.argsPrefix.length === 0) {
+    return { command: nodeRunner.command, args: [script, ...args] };
+  }
+  return { command: nodeRunner.command, args: [...nodeRunner.argsPrefix, script, ...args] };
+}
+
+export function buildInvocation(options, nextDir, nodeRunner = {
+  command: process.execPath,
+  argsPrefix: [],
+  selectedVersion: process.versions.node,
+  source: "current",
+}) {
   if (options.mode === "fixture") {
     const fixture = resolveFixture(nextDir, options.fixture);
     const jestBin = path.join(nextDir, "node_modules", ".bin", "jest");
-    const command = fs.existsSync(jestBin) ? jestBin : "pnpm";
-    const args = fs.existsSync(jestBin)
-      ? ["--ci", "--runInBand", "--forceExit", "--no-cache", "--verbose", fixture]
-      : ["exec", "jest", "--ci", "--runInBand", "--forceExit", "--no-cache", "--verbose", fixture];
-    return { command, args, cwd: nextDir };
+    const jestJs = path.join(nextDir, "node_modules", "jest", "bin", "jest.js");
+    const jestArgs = ["--ci", "--runInBand", "--forceExit", "--no-cache", "--verbose", fixture];
+    if (fs.existsSync(jestJs)) {
+      const invocation = withNodeRunner(nodeRunner, jestJs, jestArgs);
+      return { ...invocation, cwd: nextDir };
+    }
+    if (fs.existsSync(jestBin) && nodeRunner.argsPrefix.length === 0) {
+      return { command: jestBin, args: jestArgs, cwd: nextDir };
+    }
+    return { command: "pnpm", args: ["exec", "jest", ...jestArgs], cwd: nextDir };
   }
-  return {
-    command: process.execPath,
-    args: [
-      "run-tests.js",
-      "--timings",
-      "-g",
-      options.group,
-      "-c",
-      options.concurrency,
-      "--type",
-      "e2e",
-    ],
-    cwd: nextDir,
-  };
+  const invocation = withNodeRunner(nodeRunner, "run-tests.js", [
+    "--timings",
+    "-g",
+    options.group,
+    "-c",
+    options.concurrency,
+    "--type",
+    "e2e",
+  ]);
+  return { ...invocation, cwd: nextDir };
 }
 
 function writeJson(file, data) {
@@ -305,10 +370,13 @@ export function runHarness(options) {
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   const env = harnessEnv({ options, nextDir, brrrdBin, artifactsDir });
-  const invocation = buildInvocation(options, nextDir);
+  const nodeRunner = resolveNodeRunner(options, nextDir);
+  const invocation = buildInvocation(options, nextDir, nodeRunner);
   const metadata = {
     mode: options.mode,
     bundler: options.bundler,
+    nodeVersion: nodeRunner.selectedVersion,
+    nodeSource: nodeRunner.source,
     fixture: options.fixture,
     group: options.group,
     concurrency: options.concurrency,
