@@ -337,3 +337,48 @@ test("dynamic routes are ordered by Next-style specificity after sourceRegex loo
   assert.equal(firstMatch.id, "posts-_id_");
   assert.equal(firstRscMatch.id, "posts-_id__rsc");
 });
+
+test("exact handler routes use Next static route regex before dynamic routes", () => {
+  const routes = compileRouteTable(
+    context({
+      pages: [
+        appPage("/router"),
+      ],
+      pagesApi: [
+        appPage("/api/user/login"),
+        appPage("/api/user/[id]"),
+      ],
+      dynamicRoutes: [
+        {
+          source: "/api/user/[id]",
+          sourceRegex: "^/api/user/(?<nxtPid>[^/]+?)(?:/)?$",
+          destination: "/api/user/[id]",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [
+        {
+          page: "/router",
+          regex: "^/router(?:/)?$",
+        },
+        {
+          page: "/api/user/login",
+          regex: "^/api/user/login(?:/)?$",
+        },
+      ],
+    },
+  );
+
+  assert.equal(
+    routes.find((route) => route.id === "router").pattern,
+    "^/router(?:/)?$",
+  );
+  assert.equal(
+    routes.find((route) => route.id === "api-user-login").pattern,
+    "^/api/user/login(?:/)?$",
+  );
+
+  const firstLoginMatch = routes.find((route) => new RegExp(route.pattern).test("/api/user/login/"));
+  assert.equal(firstLoginMatch.id, "api-user-login");
+});

@@ -6,7 +6,11 @@ import path from "node:path";
 import test from "node:test";
 
 import { onBuildComplete } from "../dist/build.js";
-import { extractEdgeFunctions, extractMiddlewareMeta } from "../dist/manifest-supplement.js";
+import {
+  extractEdgeFunctions,
+  extractMiddlewareMeta,
+  extractStaticRouteSupplement,
+} from "../dist/manifest-supplement.js";
 import { createNextBuildModel } from "../dist/model.js";
 import { compileRouting } from "../dist/routing-compiler.js";
 
@@ -588,6 +592,85 @@ test("onBuildComplete does not materialize route handler prerenders as page HTML
   );
 });
 
+test("onBuildComplete preserves exact route precedence after trailingSlash redirect", async () => {
+  const root = tempDir("trailing-slash-exact-routes");
+  const distDir = path.join(root, ".next");
+  const loginHandler = path.join(root, "pages", "api", "user", "login.js");
+  const dynamicHandler = path.join(root, "pages", "api", "user", "[id].js");
+  const helloHandler = path.join(root, "pages", "hello.js");
+  for (const handler of [loginHandler, dynamicHandler, helloHandler]) {
+    fs.mkdirSync(path.dirname(handler), { recursive: true });
+    fs.writeFileSync(handler, "export function handler(_req, res) { res.end('ok'); }\n", "utf8");
+  }
+
+  await onBuildComplete({
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [
+        {
+          source: "/api/user/[id]",
+          sourceRegex: "^/api/user/([^/]+?)(?:/)?$",
+          destination: "/api/user/[id]",
+        },
+      ],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
+    outputs: {
+      pages: [{
+        id: "/hello",
+        pathname: "/hello",
+        filePath: helloHandler,
+        assets: {},
+      }],
+      appPages: [],
+      appRoutes: [],
+      pagesApi: [
+        {
+          id: "/api/user/login",
+          pathname: "/api/user/login",
+          filePath: loginHandler,
+          assets: {},
+        },
+        {
+          id: "/api/user/[id]",
+          pathname: "/api/user/[id]",
+          filePath: dynamicHandler,
+          assets: {},
+        },
+      ],
+      prerenders: [],
+      staticFiles: [],
+    },
+    projectDir: root,
+    repoRoot: root,
+    distDir,
+    config: { trailingSlash: true },
+    nextVersion: "16.3.0-canary.58",
+    buildId: "test-build",
+  });
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.routes.find((route) => route.id === "api-user-login").pattern,
+    "^/api/user/login(?:/)?$",
+  );
+  assert.equal(
+    manifest.routes.find((route) => route.id === "hello").pattern,
+    "^/hello(?:/)?$",
+  );
+  assert.equal(
+    manifest.routes.find((route) => route.id === "api-user-_id_").pattern,
+    "^/api/user/([^/]+?)(?:/)?$",
+  );
+});
+
 test("onBuildComplete copies traced route runtime files from .next", async () => {
   const root = tempDir("route-runtime-files");
   const distDir = path.join(root, ".next");
@@ -1108,6 +1191,42 @@ test("compileRouting upgrades Adapter API Location headers with redirect supplem
       fallback: [],
     },
   });
+});
+
+test("extractStaticRouteSupplement preserves Next static route regexes", () => {
+  const root = tempDir("static-route-supplement");
+  const distDir = path.join(root, ".next");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    staticRoutes: [
+      {
+        page: "/router",
+        regex: "^/router(?:/)?$",
+      },
+      {
+        page: "/api/user/login",
+        regex: "^/api/user/login-fallback$",
+        namedRegex: "^/api/user/login(?:/)?$",
+      },
+      {
+        page: "",
+        regex: "^/ignored$",
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    extractStaticRouteSupplement(distDir),
+    [
+      {
+        page: "/router",
+        regex: "^/router(?:/)?$",
+      },
+      {
+        page: "/api/user/login",
+        regex: "^/api/user/login(?:/)?$",
+      },
+    ],
+  );
 });
 
 test("compileRouting treats status plus Location as redirect only", () => {

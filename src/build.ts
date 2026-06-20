@@ -128,7 +128,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     console.log(`  Copied ${copySummary.edgeFunctionCount} edge function files`);
   }
 
-  const routes = compileRouteTable(model);
+  const routes = compileRouteTable(model, supplement);
   const routing = compileRouting(model, supplement);
   const middleware = middlewareFromSupplement(supplement);
   const edgeFunctions = edgeFunctionsFromSupplement(supplement);

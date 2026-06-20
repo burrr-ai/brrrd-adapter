@@ -30,6 +30,7 @@ export type ManifestSupplement = {
   edgeFunctions: Map<string, BrrrdEdgeFunction>;
   pprPages: string[];
   redirects: SupplementRedirect[];
+  staticRoutes: SupplementStaticRoute[];
 };
 
 export type SupplementRedirect = {
@@ -37,6 +38,11 @@ export type SupplementRedirect = {
   source: string;
   destination: string;
   statusCode: number;
+};
+
+export type SupplementStaticRoute = {
+  page: string;
+  regex: string;
 };
 
 function readJsonIfExists(filePath: string): any | null {
@@ -291,11 +297,31 @@ export function extractRedirectSupplement(distDir: string): SupplementRedirect[]
   return redirects;
 }
 
+export function extractStaticRouteSupplement(distDir: string): SupplementStaticRoute[] {
+  const raw = readJsonIfExists(path.join(distDir, "routes-manifest.json"));
+  if (!raw || !Array.isArray(raw.staticRoutes)) return [];
+  const staticRoutes: SupplementStaticRoute[] = [];
+  for (const item of raw.staticRoutes) {
+    if (!item || typeof item !== "object") continue;
+    const page = (item as Record<string, unknown>).page;
+    const namedRegex = (item as Record<string, unknown>).namedRegex;
+    const regex = (item as Record<string, unknown>).regex;
+    if (typeof page !== "string" || page.length === 0) continue;
+    const routeRegex = typeof namedRegex === "string" && namedRegex.length > 0
+      ? namedRegex
+      : regex;
+    if (typeof routeRegex !== "string" || routeRegex.length === 0) continue;
+    staticRoutes.push({ page, regex: routeRegex });
+  }
+  return staticRoutes;
+}
+
 export function createManifestSupplement(distDir: string): ManifestSupplement {
   return {
     middleware: extractMiddlewareMeta(distDir),
     edgeFunctions: extractEdgeFunctions(distDir),
     pprPages: extractPprPages(distDir),
     redirects: extractRedirectSupplement(distDir),
+    staticRoutes: extractStaticRouteSupplement(distDir),
   };
 }

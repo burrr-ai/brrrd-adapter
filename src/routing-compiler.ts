@@ -4,7 +4,11 @@ import type {
   NextBuildModel,
   NormalizedOutput,
 } from "./model.js";
-import type { ManifestSupplement, SupplementRedirect } from "./manifest-supplement.js";
+import type {
+  ManifestSupplement,
+  SupplementRedirect,
+  SupplementStaticRoute,
+} from "./manifest-supplement.js";
 import {
   publicArtifactPathnames,
   publicStorageFilePath,
@@ -26,6 +30,33 @@ import { sanitizeId } from "./routing.js";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function trailingSlashEnabled(config: unknown): boolean {
+  return Boolean(
+    config
+    && typeof config === "object"
+    && (config as { trailingSlash?: unknown }).trailingSlash === true,
+  );
+}
+
+function looksLikeFilePath(pathname: string): boolean {
+  const lastSegment = pathname.split("/").filter(Boolean).at(-1) ?? "";
+  return lastSegment.includes(".");
+}
+
+function exactPathPattern(pathname: string, config: unknown): string {
+  const normalized = pathname !== "/" && pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
+  if (
+    trailingSlashEnabled(config)
+    && normalized !== "/"
+    && !looksLikeFilePath(normalized)
+  ) {
+    return `^${escapeRegex(normalized)}(?:/)?$`;
+  }
+  return `^${escapeRegex(normalized)}$`;
 }
 
 function normalizeConditions(
@@ -204,6 +235,16 @@ function dynamicRegexByRoutePath(model: NextBuildModel): Map<string, string> {
   return out;
 }
 
+function staticRegexByRoutePath(
+  staticRoutes: SupplementStaticRoute[] | undefined,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const route of staticRoutes ?? []) {
+    out.set(route.page, route.regex);
+  }
+  return out;
+}
+
 function hasInterceptMarker(pathname: string): boolean {
   return pathname.split("/").some((segment) => segment.startsWith("(.)"));
 }
@@ -252,16 +293,22 @@ function sortBySpecificity<T extends { pathname: string }>(routes: T[]): T[] {
   return [...routes].sort(compareRouteSpecificity);
 }
 
-function exactRoute(output: NormalizedOutput, type: "page" | "route"): BrrrdRoute {
+function exactRoute(
+  model: NextBuildModel,
+  output: NormalizedOutput,
+  type: "page" | "route",
+  staticRegexes: Map<string, string>,
+): BrrrdRoute {
   return {
     id: sanitizeId(output.id),
-    pattern: `^${escapeRegex(output.pathname)}$`,
+    pattern: staticRegexes.get(output.pathname) ?? exactPathPattern(output.pathname, model.config),
     type,
     ...runtimeTarget(output),
   };
 }
 
 function publicRoute(
+  model: NextBuildModel,
   output: NormalizedOutput,
   type: "static" | "prerender",
   file: string,
@@ -272,7 +319,7 @@ function publicRoute(
     id: `${type}-${sanitizeId(output.urlPath)}`,
     pattern: dynamicPublicTemplate
       ? routeRegexFromPathname(output.pathname)
-      : `^${escapeRegex(output.urlPath)}$`,
+      : exactPathPattern(output.urlPath, model.config),
     type,
     runtime: "nodejs",
     bundle: "",
@@ -282,12 +329,16 @@ function publicRoute(
   };
 }
 
-function publicRouteAlias(route: BrrrdRoute, aliasPathname: string): BrrrdRoute {
+function publicRouteAlias(
+  model: NextBuildModel,
+  route: BrrrdRoute,
+  aliasPathname: string,
+): BrrrdRoute {
   const { params: _params, ...rest } = route;
   return {
     ...rest,
     id: `${route.id}-default-locale-alias`,
-    pattern: `^${escapeRegex(aliasPathname)}$`,
+    pattern: exactPathPattern(aliasPathname, model.config),
   };
 }
 
@@ -338,11 +389,13 @@ function runtimeTarget(output: NormalizedOutput): Pick<BrrrdRoute, "runtime" | "
 }
 
 function handlerRoute(
+  model: NextBuildModel,
   output: NormalizedOutput,
   type: "page" | "route",
   dynamicRegexes: Map<string, string>,
+  staticRegexes: Map<string, string>,
 ): BrrrdRoute | null {
-  if (!output.pathname.includes("[")) return exactRoute(output, type);
+  if (!output.pathname.includes("[")) return exactRoute(model, output, type, staticRegexes);
   const sourceRegex = dynamicRegexes.get(output.pathname);
   if (!sourceRegex) {
     if (hasInterceptMarker(output.pathname)) return null;
@@ -351,9 +404,13 @@ function handlerRoute(
   return dynamicRoute(output, type, sourceRegex);
 }
 
-export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
+export function compileRouteTable(
+  model: NextBuildModel,
+  supplement?: Pick<ManifestSupplement, "staticRoutes">,
+): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
   const dynamicRegexes = dynamicRegexByRoutePath(model);
+  const staticRegexes = staticRegexByRoutePath(supplement?.staticRoutes);
   const allPublicPathnames = publicArtifactPathnames(model);
 
   routes.push({
@@ -370,6 +427,7 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
   for (const file of sortBySpecificity(model.outputs.staticFiles)) {
     if (file.urlPath.startsWith("/_next/static/")) continue;
     const route = publicRoute(
+      model,
       file,
       "static",
       publicStorageFilePath(file.pathname, allPublicPathnames),
@@ -377,41 +435,42 @@ export function compileRouteTable(model: NextBuildModel): BrrrdRoute[] {
     );
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, file.urlPath);
-    if (alias) routes.push(publicRouteAlias(route, alias));
+    if (alias) routes.push(publicRouteAlias(model, route, alias));
   }
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
     if (isRouteHandlerPrerender(model, pr)) continue;
     const route = publicRoute(
+      model,
       pr,
       "prerender",
       publicStorageFilePath(pr.pathname, allPublicPathnames),
     );
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, pr.pathname);
-    if (alias) routes.push(publicRouteAlias(route, alias));
+    if (alias) routes.push(publicRouteAlias(model, route, alias));
   }
 
   const allPages = [...model.outputs.appPages, ...model.outputs.pages];
   const exactPages = sortBySpecificity(allPages.filter((p) => !p.pathname.includes("[")));
   const dynamicPages = sortBySpecificity(allPages.filter((p) => p.pathname.includes("[")));
   for (const page of exactPages) {
-    const route = handlerRoute(page, "page", dynamicRegexes);
+    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
     if (route) routes.push(route);
   }
   for (const page of dynamicPages) {
-    const route = handlerRoute(page, "page", dynamicRegexes);
+    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
     if (route) routes.push(route);
   }
 
   for (const routeOutput of sortBySpecificity(model.outputs.appRoutes)) {
-    const route = handlerRoute(routeOutput, "route", dynamicRegexes);
+    const route = handlerRoute(model, routeOutput, "route", dynamicRegexes, staticRegexes);
     if (route) routes.push(route);
   }
 
   for (const api of sortBySpecificity(model.outputs.pagesApi)) {
-    const route = handlerRoute(api, "route", dynamicRegexes);
+    const route = handlerRoute(model, api, "route", dynamicRegexes, staticRegexes);
     if (route) routes.push(route);
   }
 
