@@ -7,6 +7,7 @@ import type {
 import type {
   ManifestSupplement,
   SupplementAppPrerenderDataRoute,
+  SupplementDynamicPrerenderRoute,
   SupplementPrefetchSegmentDataRoute,
   SupplementPrerenderResponseMeta,
   SupplementRedirect,
@@ -287,17 +288,51 @@ function defaultLocale(config: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function dynamicRegexByRoutePath(model: NextBuildModel): Map<string, string> {
+function dynamicRegexByRoutePath(
+  model: NextBuildModel,
+  dynamicPrerenderRoutes: SupplementDynamicPrerenderRoute[] | undefined,
+): Map<string, string> {
   const out = new Map<string, string>();
+  for (const route of dynamicPrerenderRoutes ?? []) {
+    out.set(route.page, route.routeRegex);
+  }
   for (const route of model.routing.dynamicRoutes) {
     const keys = [
       route.source,
       route.destination ? stripQuery(route.destination) : undefined,
     ].filter((value): value is string => typeof value === "string" && value.length > 0);
     for (const key of keys) {
-      out.set(key, route.sourceRegex);
+      if (!out.has(key)) out.set(key, route.sourceRegex);
     }
   }
+  return out;
+}
+
+function i18nLocales(config: unknown): string[] {
+  if (!config || typeof config !== "object") return [];
+  const i18n = (config as { i18n?: unknown }).i18n;
+  if (!i18n || typeof i18n !== "object") return [];
+  const locales = (i18n as { locales?: unknown }).locales;
+  if (!Array.isArray(locales)) return [];
+  return locales.filter((locale): locale is string => typeof locale === "string" && locale.length > 0);
+}
+
+function sourcePagePathname(model: NextBuildModel, output: NormalizedOutput): string {
+  for (const locale of i18nLocales(model.config)) {
+    const prefix = `/${locale}/`;
+    if (output.pathname.startsWith(prefix)) {
+      return `/${output.pathname.slice(prefix.length)}`;
+    }
+    if (output.pathname === `/${locale}`) return "/";
+  }
+  return output.pathname;
+}
+
+function dynamicPrerenderFallbackByPage(
+  routes: SupplementDynamicPrerenderRoute[] | undefined,
+): Map<string, false | null | string> {
+  const out = new Map<string, false | null | string>();
+  for (const route of routes ?? []) out.set(route.page, route.fallback);
   return out;
 }
 
@@ -525,16 +560,21 @@ function prerenderResponseMetaByPathname(
 }
 
 function dynamicRoute(
+  model: NextBuildModel,
   output: NormalizedOutput,
   type: "page" | "route",
   sourceRegex: string,
 ): BrrrdRoute {
+  const unprefixedI18nPage = type === "page"
+    && i18nLocales(model.config).length > 0
+    && sourcePagePathname(model, output) === output.pathname;
   return {
     id: sanitizeId(output.id),
     pattern: sourceRegex,
     type,
     ...runtimeTarget(output),
     params: segmentParamNames(output.pathname),
+    ...(unprefixedI18nPage ? { localeHandling: "unprefixed" as const } : {}),
   };
 }
 
@@ -556,14 +596,21 @@ function handlerRoute(
   type: "page" | "route",
   dynamicRegexes: Map<string, string>,
   staticRegexes: Map<string, string>,
+  dynamicPrerenderFallbacks: Map<string, false | null | string>,
 ): BrrrdRoute | null {
   if (!output.pathname.includes("[")) return exactRoute(model, output, type, staticRegexes);
+  if (
+    output.kind === "page"
+    && dynamicPrerenderFallbacks.get(sourcePagePathname(model, output)) === false
+  ) {
+    return null;
+  }
   const sourceRegex = dynamicRegexes.get(output.pathname);
   if (!sourceRegex) {
     if (hasInterceptMarker(output.pathname)) return null;
-    return dynamicRoute(output, type, routeRegexFromPathname(output.pathname));
+    return dynamicRoute(model, output, type, routeRegexFromPathname(output.pathname));
   }
-  return dynamicRoute(output, type, sourceRegex);
+  return dynamicRoute(model, output, type, sourceRegex);
 }
 
 export function compileRouteTable(
@@ -571,13 +618,15 @@ export function compileRouteTable(
   supplement?: Pick<
     ManifestSupplement,
     | "staticRoutes"
+    | "dynamicPrerenderRoutes"
     | "appPrerenderDataRoutes"
     | "pprSegmentPrefetchRoutes"
     | "prerenderResponseMeta"
   >,
 ): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
-  const dynamicRegexes = dynamicRegexByRoutePath(model);
+  const dynamicRegexes = dynamicRegexByRoutePath(model, supplement?.dynamicPrerenderRoutes);
+  const dynamicPrerenderFallbacks = dynamicPrerenderFallbackByPage(supplement?.dynamicPrerenderRoutes);
   const staticRegexes = staticRegexByRoutePath(supplement?.staticRoutes);
   const prerenderMeta = prerenderResponseMetaByPathname(supplement?.prerenderResponseMeta);
   const allPublicPathnames = publicArtifactPathnames(model);
@@ -643,7 +692,7 @@ export function compileRouteTable(
   const exactPages = sortBySpecificity(allPages.filter((p) => !p.pathname.includes("[")));
   const dynamicPages = sortBySpecificity(allPages.filter((p) => p.pathname.includes("[")));
   for (const page of exactPages) {
-    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
+    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenderFallbacks);
     if (route) {
       routes.push(route);
       const alias = defaultLocaleAliasPathname(model, page.urlPath);
@@ -651,17 +700,17 @@ export function compileRouteTable(
     }
   }
   for (const page of dynamicPages) {
-    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
+    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenderFallbacks);
     if (route) routes.push(route);
   }
 
   for (const routeOutput of sortBySpecificity(model.outputs.appRoutes)) {
-    const route = handlerRoute(model, routeOutput, "route", dynamicRegexes, staticRegexes);
+    const route = handlerRoute(model, routeOutput, "route", dynamicRegexes, staticRegexes, dynamicPrerenderFallbacks);
     if (route) routes.push(route);
   }
 
   for (const api of sortBySpecificity(model.outputs.pagesApi)) {
-    const route = handlerRoute(model, api, "route", dynamicRegexes, staticRegexes);
+    const route = handlerRoute(model, api, "route", dynamicRegexes, staticRegexes, dynamicPrerenderFallbacks);
     if (route) routes.push(route);
   }
 

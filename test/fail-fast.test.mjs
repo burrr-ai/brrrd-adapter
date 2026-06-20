@@ -9,6 +9,7 @@ import { onBuildComplete } from "../dist/build.js";
 import {
   extractAppPrerenderDataRoutes,
   extractAppPrerenderResponseMeta,
+  extractDynamicPrerenderRoutes,
   extractEdgeFunctions,
   extractMiddlewareMeta,
   extractPprSegmentPrefetchRoutes,
@@ -1612,6 +1613,50 @@ test("extractStaticRouteSupplement preserves Next static route regexes", () => {
       {
         page: "/api/user/login",
         regex: "^/api/user/login(?:/)?$",
+      },
+    ],
+  );
+});
+
+test("extractDynamicPrerenderRoutes preserves Next fallback modes", () => {
+  const root = tempDir("dynamic-prerender-routes");
+  const distDir = path.join(root, ".next");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/[first]": {
+        routeRegex: "^/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
+        fallback: false,
+      },
+      "/[first]/[second]": {
+        routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
+        fallback: null,
+      },
+      "/posts/[id]": {
+        routeRegex: "^/posts/([^/]+?)(?:/)?$",
+        fallback: "/posts/[id].html",
+      },
+    },
+  });
+
+  assert.deepEqual(
+    extractDynamicPrerenderRoutes(distDir),
+    [
+      {
+        page: "/[first]",
+        routeRegex: "^/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
+        fallback: false,
+      },
+      {
+        page: "/[first]/[second]",
+        routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
+        fallback: null,
+      },
+      {
+        page: "/posts/[id]",
+        routeRegex: "^/posts/([^/]+?)(?:/)?$",
+        fallback: "/posts/[id].html",
       },
     ],
   );

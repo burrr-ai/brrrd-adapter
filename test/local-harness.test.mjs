@@ -9,6 +9,7 @@ import {
   buildInvocation,
   harnessEnv,
   parseArgs,
+  removeGeneratedResultFiles,
   resolveNodeRunner,
 } from "../scripts/local-harness.mjs";
 
@@ -135,6 +136,20 @@ test("resolveNodeRunner follows Next .node-version when current major differs", 
   assert.deepEqual(runner.argsPrefix, ["-y", "node@20"]);
   assert.equal(runner.selectedVersion, "20");
   assert.equal(runner.source, "npx-node-package");
+});
+
+test("removeGeneratedResultFiles cleans stale Jest result artifacts only", () => {
+  const nextDir = fakeNextCheckout();
+  const stale = path.join(nextDir, "test", "e2e", "sample", "sample.test.ts.results.json");
+  const keep = path.join(nextDir, "test", "e2e", "sample", "fixture.json");
+  fs.writeFileSync(stale, "{}\n");
+  fs.writeFileSync(keep, "{}\n");
+
+  const result = removeGeneratedResultFiles(nextDir);
+
+  assert.deepEqual(result, { removed: 1 });
+  assert.equal(fs.existsSync(stale), false);
+  assert.equal(fs.existsSync(keep), true);
 });
 
 test("resolveNodeRunner keeps current node when major matches or is explicitly requested", () => {

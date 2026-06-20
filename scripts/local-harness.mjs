@@ -195,6 +195,27 @@ function resolveNextDir(options) {
   return nextDir;
 }
 
+export function removeGeneratedResultFiles(nextDir) {
+  const testDir = path.join(nextDir, "test");
+  if (!fs.existsSync(testDir)) return { removed: 0 };
+
+  let removed = 0;
+  const stack = [testDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith(".results.json")) {
+        fs.unlinkSync(fullPath);
+        removed += 1;
+      }
+    }
+  }
+  return { removed };
+}
+
 function readNextNodeVersion(nextDir) {
   const file = path.join(nextDir, ".node-version");
   if (!fs.existsSync(file)) return null;
@@ -428,6 +449,12 @@ export async function runHarness(options) {
   const brrrdBin = resolveExecutable(options);
   const artifactsDir = artifactRunDir(options);
   fs.mkdirSync(artifactsDir, { recursive: true });
+  const resultFileCleanup = removeGeneratedResultFiles(nextDir);
+  if (resultFileCleanup.removed > 0) {
+    console.error(
+      `[brrrd-local-harness] removed ${resultFileCleanup.removed} stale Next test result files`,
+    );
+  }
 
   const env = harnessEnv({ options, nextDir, brrrdBin, artifactsDir });
   const nodeRunner = resolveNodeRunner(options, nextDir);
@@ -444,6 +471,7 @@ export async function runHarness(options) {
     brrrdBin,
     adapterDir,
     artifactsDir,
+    resultFileCleanup,
     command: invocation.command,
     args: invocation.args,
     timeoutMs: Number(options.timeoutMs),

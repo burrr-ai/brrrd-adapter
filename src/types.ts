@@ -192,6 +192,7 @@ export interface BrrrdRoute {
   bundle?: string;
   file?: string;
   params?: string[];
+  localeHandling?: "unprefixed";
   immutable?: boolean;
   status?: number;
   headers?: BrrrdHeaderPair[];

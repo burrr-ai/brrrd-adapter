@@ -34,6 +34,7 @@ export type ManifestSupplement = {
   appPrerenderDataRoutes: SupplementAppPrerenderDataRoute[];
   pprSegmentPrefetchRoutes: SupplementPrefetchSegmentDataRoute[];
   prerenderResponseMeta: SupplementPrerenderResponseMeta[];
+  dynamicPrerenderRoutes: SupplementDynamicPrerenderRoute[];
   redirects: SupplementRedirect[];
   rewrites: SupplementRewritePhases;
   staticRoutes: SupplementStaticRoute[];
@@ -63,6 +64,13 @@ export type SupplementRewritePhases = {
 export type SupplementStaticRoute = {
   page: string;
   regex: string;
+};
+
+export type SupplementDynamicPrerenderRoute = {
+  page: string;
+  routeRegex: string;
+  dataRouteRegex?: string;
+  fallback: false | null | string;
 };
 
 export type SupplementPrefetchSegmentDataRoute = {
@@ -353,6 +361,35 @@ export function extractPprPages(distDir: string): string[] {
   return pages;
 }
 
+export function extractDynamicPrerenderRoutes(distDir: string): SupplementDynamicPrerenderRoute[] {
+  const raw = readJsonIfExists(path.join(distDir, "prerender-manifest.json"));
+  const dynamicRoutes = raw?.dynamicRoutes;
+  if (!dynamicRoutes || typeof dynamicRoutes !== "object") return [];
+
+  const out: SupplementDynamicPrerenderRoute[] = [];
+  for (const [page, meta] of Object.entries(dynamicRoutes)) {
+    if (!page || !meta || typeof meta !== "object") continue;
+    const item = meta as Record<string, unknown>;
+    const routeRegex = item.routeRegex;
+    if (typeof routeRegex !== "string" || routeRegex.length === 0) continue;
+    const fallback = item.fallback;
+    if (
+      fallback !== false
+      && fallback !== null
+      && typeof fallback !== "string"
+    ) continue;
+    out.push({
+      page,
+      routeRegex,
+      ...(typeof item.dataRouteRegex === "string" && item.dataRouteRegex.length > 0
+        ? { dataRouteRegex: item.dataRouteRegex }
+        : {}),
+      fallback,
+    });
+  }
+  return out.sort((a, b) => a.page.localeCompare(b.page));
+}
+
 export function extractAppPrerenderDataRoutes(distDir: string): SupplementAppPrerenderDataRoute[] {
   const appDir = path.join(distDir, "server", "app");
   return walkFiles(appDir)
@@ -505,6 +542,7 @@ export function createManifestSupplement(distDir: string): ManifestSupplement {
     appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir),
     pprSegmentPrefetchRoutes: extractPprSegmentPrefetchRoutes(distDir),
     prerenderResponseMeta: extractAppPrerenderResponseMeta(distDir),
+    dynamicPrerenderRoutes: extractDynamicPrerenderRoutes(distDir),
     redirects: extractRedirectSupplement(distDir),
     rewrites: extractRewriteSupplement(distDir),
     staticRoutes: extractStaticRouteSupplement(distDir),

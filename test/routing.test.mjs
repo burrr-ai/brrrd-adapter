@@ -82,6 +82,63 @@ test("dynamic route table uses ctx.routing sourceRegex instead of deriving from 
   });
 });
 
+test("fallback false Pages SSG dynamic routes are not emitted as executable handlers", () => {
+  const routes = compileRouteTable(
+    context({
+      pages: [
+        appPage("/[first]"),
+        appPage("/en/[first]"),
+        appPage("/[first]/[second]"),
+      ],
+      dynamicRoutes: [
+        {
+          source: "/[first]",
+          sourceRegex: "^[/]?(?<nextLocale>[^/]{1,})/(?<nxtPfirst>[^/]+?)(?:/)?$",
+          destination: "/[first]",
+        },
+      ],
+      config: {
+        i18n: {
+          locales: ["en", "es"],
+          defaultLocale: "en",
+        },
+      },
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/[first]",
+          routeRegex: "^/([^/]+?)(?:/)?$",
+          fallback: false,
+        },
+        {
+          page: "/[first]/[second]",
+          routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
+          fallback: null,
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  assert.equal(routes.some((route) => route.id === "_first_"), false);
+  assert.equal(routes.some((route) => route.id === "en-_first_"), false);
+  assert.deepEqual(
+    routes.find((route) => route.id === "_first_-_second_"),
+    {
+      id: "_first_-_second_",
+      pattern: "^/([^/]+?)/([^/]+?)(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["first", "second"],
+      localeHandling: "unprefixed",
+    },
+  );
+});
+
 test("static Pages Router index HTML is exposed at the public root path", () => {
   const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(context({
