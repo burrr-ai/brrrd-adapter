@@ -146,6 +146,40 @@ test("executable Pages Router index handlers are exposed at public index paths",
   );
 });
 
+test("literal Pages Router index routes are not collapsed to their parent path", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    pages: [
+      appPage("/nested/index", `${distDir}/server/pages/nested/index/index.js`),
+    ],
+    staticFiles: [
+      staticFile("/static/index", `${distDir}/server/pages/static/index/index.html`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "nested-index"),
+    {
+      id: "nested-index",
+      pattern: "^/nested/index$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-static-index"),
+    {
+      id: "static-static-index",
+      pattern: "^/static/index$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/static/index",
+      immutable: false,
+    },
+  );
+});
+
 test("static prerender routes are exposed before matching page handlers", () => {
   const routes = compileRouteTable(context({
     appPages: [appPage("/server-action-inline")],

@@ -142,6 +142,17 @@ function normalizeIndexUrlPath(pathname: string): string {
   return pathname;
 }
 
+function outputMatchesPagesFile(raw: RawAdapterOutput, pagesDir: string): boolean {
+  if (!raw.filePath) return false;
+  const relative = path.relative(pagesDir, raw.filePath);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return false;
+  const routePath = "/" + relative
+    .split(path.sep)
+    .join("/")
+    .replace(/\.[^/.]+$/, "");
+  return routePath === raw.pathname;
+}
+
 function outputUrlPath(
   raw: RawAdapterOutput,
   kind: NormalizedOutputKind,
@@ -150,10 +161,18 @@ function outputUrlPath(
   if (!raw.filePath || !distDir) return raw.pathname;
   const pagesDir = path.join(distDir, "server", "pages");
   const ext = path.extname(raw.filePath).toLowerCase();
-  if (kind === "static" && ext === ".html" && isInsideDir(raw.filePath, pagesDir)) {
+  if (
+    kind === "static"
+    && ext === ".html"
+    && outputMatchesPagesFile(raw, pagesDir)
+  ) {
     return normalizeIndexUrlPath(raw.pathname);
   }
-  if (kind === "page" && isInsideDir(raw.filePath, pagesDir) && !raw.pathname.startsWith("/_next/data/")) {
+  if (
+    kind === "page"
+    && !raw.pathname.startsWith("/_next/data/")
+    && outputMatchesPagesFile(raw, pagesDir)
+  ) {
     return normalizeIndexUrlPath(raw.pathname);
   }
   return raw.pathname;
