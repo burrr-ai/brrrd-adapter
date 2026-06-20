@@ -147,12 +147,13 @@ function outputUrlPath(
   kind: NormalizedOutputKind,
   distDir?: string,
 ): string {
-  if (kind !== "static" || !raw.filePath || !distDir) return raw.pathname;
+  if (!raw.filePath || !distDir) return raw.pathname;
   const pagesDir = path.join(distDir, "server", "pages");
-  if (
-    path.extname(raw.filePath).toLowerCase() === ".html"
-    && isInsideDir(raw.filePath, pagesDir)
-  ) {
+  const ext = path.extname(raw.filePath).toLowerCase();
+  if (kind === "static" && ext === ".html" && isInsideDir(raw.filePath, pagesDir)) {
+    return normalizeIndexUrlPath(raw.pathname);
+  }
+  if (kind === "page" && isInsideDir(raw.filePath, pagesDir) && !raw.pathname.startsWith("/_next/data/")) {
     return normalizeIndexUrlPath(raw.pathname);
   }
   return raw.pathname;
@@ -271,7 +272,7 @@ export function createNextBuildModel(ctx: AdapterBuildContext): NextBuildModel {
     buildId: ctx.buildId,
     routing: normalizeRouting(ctx.routing),
     outputs: {
-      pages: ctx.outputs.pages.map((output) => normalizeOutput(output, "page")),
+      pages: ctx.outputs.pages.map((output) => normalizeOutput(output, "page", { distDir: ctx.distDir })),
       appPages: ctx.outputs.appPages.map((output) => normalizeOutput(output, "app-page")),
       appRoutes: ctx.outputs.appRoutes.map((output) => normalizeOutput(output, "app-route")),
       pagesApi: ctx.outputs.pagesApi.map((output) => normalizeOutput(output, "pages-api")),

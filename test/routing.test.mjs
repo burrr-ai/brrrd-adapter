@@ -43,11 +43,12 @@ function context({
   });
 }
 
-function appPage(pathname) {
+function appPage(pathname, filePath) {
   return {
     id: pathname,
     pathname,
     runtime: "nodejs",
+    ...(filePath ? { filePath } : {}),
   };
 }
 
@@ -112,6 +113,35 @@ test("static Pages Router index HTML is exposed at the public root path", () => 
       bundle: "",
       file: "/nested/index",
       immutable: false,
+    },
+  );
+});
+
+test("executable Pages Router index handlers are exposed at public index paths", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    pages: [
+      appPage("/index", `${distDir}/server/pages/index.js`),
+      appPage("/nested/index", `${distDir}/server/pages/nested/index.js`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "index"),
+    {
+      id: "index",
+      pattern: "^/$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "nested-index"),
+    {
+      id: "nested-index",
+      pattern: "^/nested$",
+      type: "page",
+      runtime: "nodejs",
     },
   );
 });

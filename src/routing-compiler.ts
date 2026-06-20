@@ -360,7 +360,9 @@ function exactRoute(
 ): BrrrdRoute {
   return {
     id: sanitizeId(output.id),
-    pattern: staticRegexes.get(output.pathname) ?? exactPathPattern(output.pathname, model.config),
+    pattern: staticRegexes.get(output.urlPath)
+      ?? staticRegexes.get(output.pathname)
+      ?? exactPathPattern(output.urlPath, model.config),
     type,
     ...runtimeTarget(output),
   };
@@ -625,7 +627,7 @@ export function compileRouteTable(
     const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes);
     if (route) {
       routes.push(route);
-      const alias = defaultLocaleAliasPathname(model, page.pathname);
+      const alias = defaultLocaleAliasPathname(model, page.urlPath);
       if (alias) routes.push(executableRouteAlias(model, route, alias));
     }
   }
