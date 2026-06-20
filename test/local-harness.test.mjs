@@ -219,6 +219,23 @@ test("harnessEnv wires official deploy scripts and bundler axis", () => {
   assert.equal(env.IS_TURBOPACK_TEST, undefined);
 });
 
+test("harnessEnv keeps next-default free of explicit bundler test flags", () => {
+  const nextDir = fakeNextCheckout();
+  const options = parseArgs(["group", "--bundler", "next-default"], {
+    IS_WEBPACK_TEST: "1",
+    IS_TURBOPACK_TEST: "1",
+  });
+  const env = harnessEnv({
+    options,
+    nextDir,
+    brrrdBin: "/tmp/brrrd-bin",
+    artifactsDir: "/tmp/artifacts",
+  });
+
+  assert.equal(env.IS_WEBPACK_TEST, undefined);
+  assert.equal(env.IS_TURBOPACK_TEST, undefined);
+});
+
 test("artifactRunDir derives a stable readable target label", () => {
   const options = parseArgs([
     "fixture",
