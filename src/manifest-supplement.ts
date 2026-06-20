@@ -30,6 +30,7 @@ export type ManifestSupplement = {
   edgeFunctions: Map<string, BrrrdEdgeFunction>;
   pprPages: string[];
   redirects: SupplementRedirect[];
+  rewrites: SupplementRewritePhases;
   staticRoutes: SupplementStaticRoute[];
 };
 
@@ -38,6 +39,20 @@ export type SupplementRedirect = {
   source: string;
   destination: string;
   statusCode: number;
+  locale?: false;
+};
+
+export type SupplementRewrite = {
+  regex: string;
+  source: string;
+  destination: string;
+  locale?: false;
+};
+
+export type SupplementRewritePhases = {
+  beforeFiles: SupplementRewrite[];
+  afterFiles: SupplementRewrite[];
+  fallback: SupplementRewrite[];
 };
 
 export type SupplementStaticRoute = {
@@ -293,9 +308,40 @@ export function extractRedirectSupplement(distDir: string): SupplementRedirect[]
       statusCode: typeof item.statusCode === "number"
         ? item.statusCode
         : (item.permanent ? 308 : 307),
+      ...(item.locale === false ? { locale: false as const } : {}),
     });
   }
   return redirects;
+}
+
+function extractRewriteArray(value: unknown): SupplementRewrite[] {
+  if (!Array.isArray(value)) return [];
+  const rewrites: SupplementRewrite[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    if (
+      typeof item.regex !== "string"
+      || typeof item.destination !== "string"
+    ) continue;
+    rewrites.push({
+      regex: item.regex,
+      source: typeof item.source === "string" ? item.source : "",
+      destination: item.destination,
+      ...(item.locale === false ? { locale: false as const } : {}),
+    });
+  }
+  return rewrites;
+}
+
+export function extractRewriteSupplement(distDir: string): SupplementRewritePhases {
+  const raw = readJsonIfExists(path.join(distDir, "routes-manifest.json"));
+  const rewrites = raw?.rewrites;
+  return {
+    beforeFiles: extractRewriteArray(rewrites?.beforeFiles),
+    afterFiles: extractRewriteArray(rewrites?.afterFiles),
+    fallback: extractRewriteArray(rewrites?.fallback),
+  };
 }
 
 export function extractStaticRouteSupplement(distDir: string): SupplementStaticRoute[] {
@@ -323,6 +369,7 @@ export function createManifestSupplement(distDir: string): ManifestSupplement {
     edgeFunctions: extractEdgeFunctions(distDir),
     pprPages: extractPprPages(distDir),
     redirects: extractRedirectSupplement(distDir),
+    rewrites: extractRewriteSupplement(distDir),
     staticRoutes: extractStaticRouteSupplement(distDir),
   };
 }

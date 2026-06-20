@@ -7,6 +7,7 @@ import type {
 import type {
   ManifestSupplement,
   SupplementRedirect,
+  SupplementRewrite,
   SupplementStaticRoute,
 } from "./manifest-supplement.js";
 import {
@@ -16,6 +17,7 @@ import {
 import { routeRegexFromPathname } from "./route-pattern.js";
 import type {
   BrrrdHeaderRule,
+  BrrrdRoutingI18n,
   BrrrdRedirect,
   BrrrdRewrite,
   BrrrdRouting,
@@ -104,6 +106,22 @@ function findRedirectSupplement(
   ));
 }
 
+function findRewriteSupplement(
+  route: AdapterRouteEntry,
+  rewrites: SupplementRewrite[],
+): SupplementRewrite | undefined {
+  return rewrites.find((rewrite) => (
+    rewrite.regex === route.sourceRegex
+    || (route.source && rewrite.source === route.source)
+    || (route.destination && rewrite.destination === route.destination && rewrite.regex === route.sourceRegex)
+  ));
+}
+
+function localeDisabled(route: AdapterRouteEntry, supplement?: { locale?: false }): false | undefined {
+  const routeLocale = (route as { locale?: unknown }).locale;
+  return routeLocale === false || supplement?.locale === false ? false : undefined;
+}
+
 function headerRule(route: AdapterRouteEntry, redirectSupplement?: SupplementRedirect): BrrrdHeaderRule | null {
   if (redirectSupplement || (locationHeader(route) && typeof route.status === "number")) {
     return null;
@@ -133,6 +151,7 @@ function redirectRule(
       source: sourceFor(route) || redirectSupplement.source,
       destination: redirectSupplement.destination,
       statusCode: redirectSupplement.statusCode,
+      ...(localeDisabled(route, redirectSupplement) === false ? { locale: false as const } : {}),
       ...(has ? { has } : {}),
       ...(missing ? { missing } : {}),
     };
@@ -146,27 +165,52 @@ function redirectRule(
     source: sourceFor(route),
     destination: route.destination ?? location ?? "",
     statusCode: route.status,
+    ...(localeDisabled(route) === false ? { locale: false as const } : {}),
     ...(has ? { has } : {}),
     ...(missing ? { missing } : {}),
   };
 }
 
-function rewriteRule(route: AdapterRouteEntry): BrrrdRewrite | null {
+function rewriteRule(route: AdapterRouteEntry, supplement?: SupplementRewrite): BrrrdRewrite | null {
   if (!route.destination) return null;
   const has = normalizeConditions(route.has);
   const missing = normalizeConditions(route.missing);
   return {
     regex: route.sourceRegex,
-    source: sourceFor(route),
+    source: sourceFor(route) || supplement?.source || "",
     destination: route.destination,
+    ...(localeDisabled(route, supplement) === false ? { locale: false as const } : {}),
     ...(has ? { has } : {}),
     ...(missing ? { missing } : {}),
   };
 }
 
+function routingI18n(config: unknown): BrrrdRoutingI18n | undefined {
+  if (!config || typeof config !== "object") return undefined;
+  const record = config as { i18n?: unknown; basePath?: unknown };
+  const i18n = record.i18n;
+  if (!i18n || typeof i18n !== "object") return undefined;
+  const i18nRecord = i18n as { locales?: unknown; defaultLocale?: unknown };
+  if (
+    !Array.isArray(i18nRecord.locales)
+    || typeof i18nRecord.defaultLocale !== "string"
+    || i18nRecord.defaultLocale.length === 0
+  ) return undefined;
+  const locales = i18nRecord.locales
+    .filter((locale): locale is string => typeof locale === "string" && locale.length > 0);
+  if (locales.length === 0) return undefined;
+  return {
+    locales,
+    defaultLocale: i18nRecord.defaultLocale,
+    ...(typeof record.basePath === "string" && record.basePath.length > 0
+      ? { basePath: record.basePath }
+      : {}),
+  };
+}
+
 export function compileRouting(
   model: NextBuildModel,
-  supplement?: Pick<ManifestSupplement, "redirects">,
+  supplement?: Pick<ManifestSupplement, "redirects" | "rewrites">,
 ): BrrrdRouting {
   const headers: BrrrdHeaderRule[] = [];
   const redirects: BrrrdRedirect[] = [];
@@ -179,16 +223,27 @@ export function compileRouting(
   }
 
   const beforeFiles = model.routing.beforeFiles
-    .map(rewriteRule)
+    .map((route) => rewriteRule(
+      route,
+      findRewriteSupplement(route, supplement?.rewrites?.beforeFiles ?? []),
+    ))
     .filter((route): route is BrrrdRewrite => route !== null);
   const afterFiles = model.routing.afterFiles
-    .map(rewriteRule)
+    .map((route) => rewriteRule(
+      route,
+      findRewriteSupplement(route, supplement?.rewrites?.afterFiles ?? []),
+    ))
     .filter((route): route is BrrrdRewrite => route !== null);
   const fallback = model.routing.fallback
-    .map(rewriteRule)
+    .map((route) => rewriteRule(
+      route,
+      findRewriteSupplement(route, supplement?.rewrites?.fallback ?? []),
+    ))
     .filter((route): route is BrrrdRewrite => route !== null);
 
+  const i18n = routingI18n(model.config);
   return {
+    ...(i18n ? { i18n } : {}),
     headers,
     redirects,
     proxy: null,

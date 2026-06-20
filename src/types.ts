@@ -60,10 +60,17 @@ export interface BrrrdCompatibilityPolicy {
 }
 
 export interface BrrrdRouting {
+  i18n?: BrrrdRoutingI18n;
   headers: BrrrdHeaderRule[];
   redirects: BrrrdRedirect[];
   proxy: BrrrdProxySpec | null;
   rewrites: BrrrdRewritePhases;
+}
+
+export interface BrrrdRoutingI18n {
+  locales: string[];
+  defaultLocale: string;
+  basePath?: string;
 }
 
 export interface BrrrdRewritePhases {
@@ -145,6 +152,7 @@ export interface BrrrdRedirect {
   source: string;
   destination: string;
   statusCode: number;
+  locale?: false;
   has?: BrrrdMiddlewareCondition[];
   missing?: BrrrdMiddlewareCondition[];
   internal?: boolean;
@@ -154,6 +162,7 @@ export interface BrrrdRewrite {
   regex: string;
   source: string;
   destination: string;
+  locale?: false;
   has?: BrrrdMiddlewareCondition[];
   missing?: BrrrdMiddlewareCondition[];
   internal?: boolean;

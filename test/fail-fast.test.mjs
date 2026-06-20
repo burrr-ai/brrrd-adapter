@@ -9,6 +9,7 @@ import { onBuildComplete } from "../dist/build.js";
 import {
   extractEdgeFunctions,
   extractMiddlewareMeta,
+  extractRewriteSupplement,
   extractStaticRouteSupplement,
 } from "../dist/manifest-supplement.js";
 import { createNextBuildModel } from "../dist/model.js";
@@ -1242,6 +1243,101 @@ test("compileRouting upgrades Adapter API Location headers with redirect supplem
       afterFiles: [],
       fallback: [],
     },
+  });
+});
+
+test("compileRouting preserves i18n locale-disabled rewrite semantics from routes manifest", () => {
+  const root = tempDir("locale-disabled-rewrite");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    config: {
+      basePath: "/basepath",
+      i18n: {
+        locales: ["en", "sv", "nl"],
+        defaultLocale: "en",
+      },
+    },
+    routing: {
+      beforeFiles: [{
+        source: "/:locale/rewrite-files/:path*",
+        sourceRegex: "^(?:\\/([^\\/]+?))\\/rewrite-files(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))?(?:\\/)?$",
+        destination: "/$2",
+      }],
+    },
+  });
+
+  assert.deepEqual(compileRouting(model, {
+    redirects: [],
+    rewrites: {
+      beforeFiles: [{
+        source: "/:locale/rewrite-files/:path*",
+        regex: "^(?:\\/([^\\/]+?))\\/rewrite-files(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))?(?:\\/)?$",
+        destination: "/$2",
+        locale: false,
+      }],
+      afterFiles: [],
+      fallback: [],
+    },
+  }), {
+    i18n: {
+      locales: ["en", "sv", "nl"],
+      defaultLocale: "en",
+      basePath: "/basepath",
+    },
+    headers: [],
+    redirects: [],
+    proxy: null,
+    rewrites: {
+      beforeFiles: [{
+        regex: "^(?:\\/([^\\/]+?))\\/rewrite-files(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))?(?:\\/)?$",
+        source: "/:locale/rewrite-files/:path*",
+        destination: "/$2",
+        locale: false,
+      }],
+      afterFiles: [],
+      fallback: [],
+    },
+  });
+});
+
+test("extractRewriteSupplement preserves locale false per rewrite phase", () => {
+  const root = tempDir("rewrite-supplement");
+  const distDir = path.join(root, ".next");
+  writeJson(path.join(distDir, "routes-manifest.json"), {
+    rewrites: {
+      beforeFiles: [{
+        source: "/:locale/rewrite-files/:path*",
+        destination: "/:path*",
+        regex: "^(?:/([^/]+?))/rewrite-files(?:/(.*))?$",
+        locale: false,
+      }],
+      afterFiles: [{
+        source: "/after",
+        destination: "/done",
+        regex: "^/after$",
+      }],
+      fallback: [],
+    },
+  });
+
+  assert.deepEqual(extractRewriteSupplement(distDir), {
+    beforeFiles: [{
+      source: "/:locale/rewrite-files/:path*",
+      destination: "/:path*",
+      regex: "^(?:/([^/]+?))/rewrite-files(?:/(.*))?$",
+      locale: false,
+    }],
+    afterFiles: [{
+      source: "/after",
+      destination: "/done",
+      regex: "^/after$",
+    }],
+    fallback: [],
   });
 });
 
