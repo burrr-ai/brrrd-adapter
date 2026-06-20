@@ -65,6 +65,13 @@ function exactPathPattern(pathname: string, config: unknown): string {
   return `^${escapeRegex(normalized)}$`;
 }
 
+function basePath(config: unknown): string {
+  if (!config || typeof config !== "object") return "";
+  const value = (config as { basePath?: unknown }).basePath;
+  if (typeof value !== "string" || value.length === 0 || value === "/") return "";
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
 function normalizeConditions(
   conditions: AdapterRouteCondition[] | undefined,
 ): BrrrdMiddlewareCondition[] | undefined {
@@ -464,6 +471,17 @@ function appPrerenderDataRoute(
   };
 }
 
+function imageOptimizerRoute(model: NextBuildModel): BrrrdRoute {
+  const pathname = `${basePath(model.config)}/_next/image`;
+  return {
+    id: "_next_image",
+    pattern: `^${escapeRegex(pathname)}(?:/)?$`,
+    type: "image-optimizer",
+    runtime: "nodejs",
+    bundle: "",
+  };
+}
+
 function encodedPublicPathnameAlias(pathname: string): string | null {
   const encoded = pathname.split("/").map((segment, index) => {
     if (index === 0) return "";
@@ -574,6 +592,7 @@ export function compileRouteTable(
     immutable: true,
     params: ["path"],
   });
+  routes.push(imageOptimizerRoute(model));
 
   for (const file of sortBySpecificity(model.outputs.staticFiles)) {
     if (file.urlPath.startsWith("/_next/static/")) continue;

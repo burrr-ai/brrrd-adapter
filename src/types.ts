@@ -186,7 +186,7 @@ export interface BrrrdHeaderPair {
 export interface BrrrdRoute {
   id: string;
   pattern: string;
-  type: "page" | "route" | "static" | "prerender";
+  type: "page" | "route" | "static" | "prerender" | "image-optimizer";
   runtime: "nodejs" | "edge";
   edgeFunction?: string;
   bundle?: string;

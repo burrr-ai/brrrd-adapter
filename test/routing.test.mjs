@@ -117,6 +117,45 @@ test("static Pages Router index HTML is exposed at the public root path", () => 
   );
 });
 
+test("Next image optimizer is emitted as an internal filesystem route", () => {
+  const routes = compileRouteTable(context({}));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "_next_image"),
+    {
+      id: "_next_image",
+      pattern: "^/_next/image(?:/)?$",
+      type: "image-optimizer",
+      runtime: "nodejs",
+      bundle: "",
+    },
+  );
+
+  const staticIndex = routes.findIndex((route) => route.id === "_next_static");
+  const imageIndex = routes.findIndex((route) => route.id === "_next_image");
+  const pageIndex = routes.findIndex((route) => route.type === "page");
+  assert.ok(staticIndex >= 0);
+  assert.ok(imageIndex > staticIndex);
+  if (pageIndex >= 0) assert.ok(imageIndex < pageIndex);
+});
+
+test("Next image optimizer route follows configured basePath", () => {
+  const routes = compileRouteTable(context({
+    config: { basePath: "/docs" },
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "_next_image"),
+    {
+      id: "_next_image",
+      pattern: "^/docs/_next/image(?:/)?$",
+      type: "image-optimizer",
+      runtime: "nodejs",
+      bundle: "",
+    },
+  );
+});
+
 test("executable Pages Router index handlers are exposed at public index paths", () => {
   const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(context({

@@ -44,6 +44,12 @@ persist_diagnostics() {
       cp "$file" "$dest/$safe_file"
     fi
   done
+
+  if [[ "${BRRRD_HARNESS_COPY_PACKAGE:-0}" == "1" && -d "dist/brrrd" ]]; then
+    rm -rf "$dest/dist/brrrd-package"
+    mkdir -p "$dest/dist"
+    cp -R "dist/brrrd" "$dest/dist/brrrd-package"
+  fi
 }
 
 marker_value() {
