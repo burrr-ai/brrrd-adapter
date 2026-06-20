@@ -10,7 +10,7 @@ type BuildBundler = "webpack" | "turbopack";
 type ModifyConfigContext = {
   phase: string;
   nextVersion: string;
-  projectDir: string;
+  projectDir?: string;
 };
 
 function envFlag(name: string): boolean | undefined {
@@ -93,12 +93,17 @@ function materializeSupportFile(projectDir: string, variant: string): string {
   return target;
 }
 
+function resolveProjectDir(ctx: ModifyConfigContext): string {
+  return ctx.projectDir ?? process.cwd();
+}
+
 export function modifyConfig(
   config: NextConfigComplete,
   ctx: ModifyConfigContext,
 ): NextConfigComplete {
-  const modernCacheHandler = materializeSupportFile(ctx.projectDir, "cache-handler");
-  const legacyCacheHandler = materializeSupportFile(ctx.projectDir, "cache-handler-legacy");
+  const projectDir = resolveProjectDir(ctx);
+  const modernCacheHandler = materializeSupportFile(projectDir, "cache-handler");
+  const legacyCacheHandler = materializeSupportFile(projectDir, "cache-handler-legacy");
 
   // Modern `cacheHandlers` expects handler objects. The module is safe to import
   // during `next build` and delegates to brrrd cache ops inside the isolate.

@@ -108,6 +108,41 @@ test("modifyConfig registers modern and legacy cache handlers for webpack builds
   );
 });
 
+test("modifyConfig falls back to cwd when Next omits projectDir", () => {
+  withEnv(
+    {
+      IS_WEBPACK_TEST: "1",
+      IS_TURBOPACK_TEST: undefined,
+      TURBOPACK: undefined,
+    },
+    () => {
+      const cwd = process.cwd();
+      const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-config-cwd-"));
+      const resolvedProjectDir = fs.realpathSync(projectDir);
+      process.chdir(projectDir);
+      try {
+        const out = modifyConfig({}, {
+          phase: "phase-production-build",
+          nextVersion: "16.2.9",
+        });
+
+        assert.equal(
+          out.cacheHandlers.default,
+          path.join(resolvedProjectDir, "node_modules", ".cache", "@brrrd", "adapter", "cache-handler.mjs"),
+        );
+        assert.equal(
+          out.cacheHandler,
+          path.join(resolvedProjectDir, "node_modules", ".cache", "@brrrd", "adapter", "cache-handler-legacy.mjs"),
+        );
+        assertMaterialized(out.cacheHandlers.default);
+        assertMaterialized(out.cacheHandler);
+      } finally {
+        process.chdir(cwd);
+      }
+    },
+  );
+});
+
 test("modifyConfig skips modern cacheHandlers during Turbopack builds", () => {
   withEnv(
     {
