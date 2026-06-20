@@ -98,7 +98,7 @@ export interface BrrrdMiddleware {
 }
 
 export interface BrrrdEdgeFunction {
-  /** Next middleware-manifest.functions key or adapter route id. */
+  /** Stable brrrd edge function id, usually the sanitized Adapter API output id. */
   id: string;
   /** Next edge chunk files, in manifest evaluation order. */
   files: string[];
@@ -106,15 +106,17 @@ export interface BrrrdEdgeFunction {
   runtime: string;
   /** Next edge function entry chunk. */
   entry: string;
+  /** Next _ENTRIES key from Adapter API edgeRuntime.entryKey or manifest fallback. */
+  entryKey: string;
   /** Next _ENTRIES key suffix, usually app/.../route or pages/api/... */
   name: string;
   /** Next page field, usually /app/.../route. */
   page: string;
   /** Export to invoke from the registered entry. */
   handlerExport: "default" | "handler";
-  /** middleware-manifest.functions[].wasm refs copied into runtime/. */
+  /** Adapter API wasmAssets or middleware-manifest.functions[].wasm refs copied into runtime/. */
   wasm: BrrrdMiddlewareFile[];
-  /** middleware-manifest.functions[].assets refs copied into runtime/. */
+  /** Adapter API assets or middleware-manifest.functions[].assets refs copied into runtime/. */
   assets: BrrrdMiddlewareFile[];
   /** build-time env merged before evaluating the function bundle. */
   env: Record<string, string>;

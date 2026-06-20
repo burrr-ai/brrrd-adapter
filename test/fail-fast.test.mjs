@@ -114,7 +114,55 @@ test("onBuildComplete rejects edge app route outputs without function metadata",
         assets: {},
       }),
     ),
-    /edge app\/page\/api route outputs are missing middleware-manifest\.functions metadata/,
+    /edge app\/page\/api route outputs are missing Adapter API edgeRuntime metadata or middleware-manifest\.functions fallback metadata/,
+  );
+});
+
+test("onBuildComplete uses Adapter API edgeRuntime metadata without middleware-manifest functions", async () => {
+  const root = tempDir("edge-runtime-adapter-api");
+  const distDir = path.join(root, ".next");
+  const runtimeRel = "server/chunks/edge-runtime.js";
+  const entryRel = "server/app/app-ssr-edge/page.js";
+  const runtimePath = path.join(distDir, runtimeRel);
+  const entryPath = path.join(distDir, entryRel);
+  for (const filePath of [runtimePath, entryPath]) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, "", "utf8");
+  }
+
+  await onBuildComplete(
+    minimalContext(root, distDir, {
+      id: "app/app-ssr-edge/page.rsc",
+      pathname: "/app-ssr-edge.rsc",
+      runtime: "edge",
+      filePath: entryPath,
+      sourcePage: "/app-ssr-edge/page",
+      edgeRuntime: {
+        modulePath: entryPath,
+        entryKey: "middleware_app/app-ssr-edge/page",
+        handlerExport: "handler",
+      },
+      assets: {
+        [runtimeRel]: runtimePath,
+        [entryRel]: entryPath,
+      },
+      wasmAssets: {},
+      config: { env: { EDGE_FLAG: "yes" } },
+    }),
+  );
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  const edgeFn = manifest.edgeFunctions["app-app-ssr-edge-page_rsc"];
+  assert.equal(edgeFn.entry, entryRel);
+  assert.equal(edgeFn.entryKey, "middleware_app/app-ssr-edge/page");
+  assert.equal(edgeFn.name, "app/app-ssr-edge/page");
+  assert.equal(edgeFn.handlerExport, "handler");
+  assert.deepEqual(edgeFn.env, { EDGE_FLAG: "yes" });
+  assert.equal(
+    fs.existsSync(path.join(root, "dist", "brrrd", "runtime", entryRel)),
+    true,
   );
 });
 
@@ -175,6 +223,10 @@ test("onBuildComplete emits edge app route function metadata and artifacts", asy
   assert.equal(
     manifest.edgeFunctions["app-api-edge-route"].entry,
     "server/app/api/edge/route.js",
+  );
+  assert.equal(
+    manifest.edgeFunctions["app-api-edge-route"].entryKey,
+    "middleware_app/api/edge/route",
   );
   assert.equal(
     fs.existsSync(

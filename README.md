@@ -30,9 +30,11 @@ not exposed by the Adapter API. Because brrrd is currently internally opened,
 manifest/runtime backward compatibility is not a goal; prefer the clean final
 contract over bridge layers.
 
-One important supplement is Next's `middleware-manifest.json`: proxy/middleware
-records provide matcher/env/wasm metadata, and `functions` records describe
-Edge app/page/API route chunks. The adapter compiles those function records into
+For Edge app/page/API routes, `ctx.outputs[].edgeRuntime` is the primary
+contract: it carries the canonical `_ENTRIES` key and entry module. Next's
+`middleware-manifest.json` remains a supplement for proxy/middleware
+matcher/env/wasm metadata and as a fallback for older/gap-shaped Edge function
+records. The adapter compiles these normalized Edge function records into
 `manifest.edgeFunctions`; it does not infer Edge runtime files from hard-coded
 `.next` filenames.
 

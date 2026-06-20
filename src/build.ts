@@ -8,6 +8,7 @@ import {
 } from "./artifact-planner.js";
 import { bundleAppHandler } from "./bundler.js";
 import { validateCompatibility } from "./compatibility-validator.js";
+import { compileEdgeFunctions } from "./edge-function-compiler.js";
 import { writeManifest } from "./manifest-emitter.js";
 import { createManifestSupplement, type ManifestSupplement } from "./manifest-supplement.js";
 import {
@@ -47,11 +48,11 @@ function middlewareFromSupplement(
   };
 }
 
-function edgeFunctionsFromSupplement(
-  supplement: ManifestSupplement,
+function edgeFunctionsToManifestRecord(
+  edgeFunctions: Map<string, BrrrdEdgeFunction>,
 ): Record<string, BrrrdEdgeFunction> | undefined {
-  if (supplement.edgeFunctions.size === 0) return undefined;
-  return Object.fromEntries(supplement.edgeFunctions);
+  if (edgeFunctions.size === 0) return undefined;
+  return Object.fromEntries(edgeFunctions);
 }
 
 function isEdgeRuntime(runtime: string | undefined): boolean {
@@ -81,8 +82,14 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const model = createNextBuildModel(ctx);
   const supplement = createManifestSupplement(model.distDir);
+  const compiledEdgeFunctions = compileEdgeFunctions(model, supplement);
   const requestOutputList = requestOutputs(model);
-  const compatibility = validateCompatibility(model, requestOutputList, allOutputs(model), supplement);
+  const compatibility = validateCompatibility(
+    model,
+    requestOutputList,
+    allOutputs(model),
+    { edgeFunctions: compiledEdgeFunctions },
+  );
 
   const buildCtx: BuildContext = {
     projectDir: model.projectDir,
@@ -106,13 +113,13 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     await bundleAppHandler(nodeOutputs, buildCtx);
     console.log(`  Bundled ${nodeOutputs.length} handlers into app.js`);
   }
-  const hasEdgeFunctions = supplement.edgeFunctions.size > 0;
+  const hasEdgeFunctions = compiledEdgeFunctions.size > 0;
   if (nodeOutputs.length === 0 && hasEdgeFunctions) {
     writeFallbackAppBundle(outDir);
     console.log("  Wrote fallback dispatcher for edge-only app");
   }
 
-  const artifactPlan = createArtifactPlan(model, supplement, outDir, {
+  const artifactPlan = createArtifactPlan(model, supplement, compiledEdgeFunctions, outDir, {
     hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
   });
   const copySummary = executeArtifactPlan(artifactPlan, outDir);
@@ -131,7 +138,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   const routes = compileRouteTable(model, supplement);
   const routing = compileRouting(model, supplement);
   const middleware = middlewareFromSupplement(supplement);
-  const edgeFunctions = edgeFunctionsFromSupplement(supplement);
+  const edgeFunctions = edgeFunctionsToManifestRecord(compiledEdgeFunctions);
   if (middleware) {
     routing.proxy = {
       source: proxySourceFor(middleware),

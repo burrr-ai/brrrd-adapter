@@ -191,6 +191,37 @@ test("dispatcher bundling still fails direct app requires for missing packages",
   );
 });
 
+test("dispatcher bundling handles wasm assets referenced by traced runtime chunks", async () => {
+  const root = tempDir("dispatcher-wasm-runtime-asset");
+  const distDir = path.join(root, ".next");
+  const route = path.join(distDir, "server", "app", "worker", "page.js");
+  const wasm = path.join(distDir, "server", "chunks", "static", "media", "add.wasm");
+
+  fs.mkdirSync(path.dirname(route), { recursive: true });
+  fs.mkdirSync(path.dirname(wasm), { recursive: true });
+  fs.writeFileSync(wasm, Buffer.from([0x00, 0x61, 0x73, 0x6d]));
+  fs.writeFileSync(
+    route,
+    "const wasm = require('../../chunks/static/media/add.wasm');\nmodule.exports = { handler(_req, res) { res.end(String(wasm instanceof Uint8Array || wasm.default instanceof Uint8Array)); } };\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "worker", filePath: route, assets: { wasm } }],
+    {
+      projectDir: root,
+      distDir,
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const wasmRes = res();
+  await dispatch("worker", { headers: { host: "example.test" } }, wasmRes);
+  assert.equal(wasmRes.body, "true");
+});
+
 test("dispatcher loads packaged CommonJS runtime chunk files", async () => {
   const root = tempDir("dispatcher-runtime-file-require");
   const distDir = path.join(root, ".next");

@@ -116,6 +116,9 @@ export default async function dispatch(routeId, req, res) {
       platform: "node",
       target: "esnext",
       outfile,
+      loader: {
+        ".wasm": "binary",
+      },
       external: runtimeDependencyExternals(),
       banner: {
         js: runtimeRequireBanner(),

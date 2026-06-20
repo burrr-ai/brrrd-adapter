@@ -249,6 +249,7 @@ export function extractEdgeFunctions(distDir: string): Map<string, BrrrdEdgeFunc
       files,
       runtime: runtimeRel,
       entry: entryRel,
+      entryKey: `middleware_${typeof fnRecord.name === "string" ? fnRecord.name : id}`,
       name: typeof fnRecord.name === "string" ? fnRecord.name : id,
       page: typeof fnRecord.page === "string" ? fnRecord.page : fnKey,
       handlerExport: edgeHandlerExport(fnRecord),

@@ -15,7 +15,7 @@ import {
   isAuxiliaryPrerenderPath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import type { BrrrdArtifact } from "./types.js";
+import type { BrrrdArtifact, BrrrdEdgeFunction } from "./types.js";
 import { sanitizeId } from "./routing.js";
 
 const require = createRequire(import.meta.url);
@@ -481,10 +481,10 @@ function middlewareArtifacts(
 
 function edgeFunctionArtifacts(
   model: NextBuildModel,
-  supplement: ManifestSupplement,
+  edgeFunctions: Map<string, BrrrdEdgeFunction>,
 ): ArtifactPlanItem[] {
   const refs: string[] = [];
-  for (const edgeFn of supplement.edgeFunctions.values()) {
+  for (const edgeFn of edgeFunctions.values()) {
     refs.push(
       ...edgeFn.files,
       ...edgeFn.wasm.map((file) => file.filePath),
@@ -528,6 +528,7 @@ function dedupePlanItems(items: ArtifactPlanItem[]): ArtifactPlanItem[] {
 export function createArtifactPlan(
   model: NextBuildModel,
   supplement: ManifestSupplement,
+  edgeFunctions: Map<string, BrrrdEdgeFunction>,
   outDir: string,
   options: { hasAppBundle: boolean },
 ): ArtifactPlan {
@@ -546,7 +547,7 @@ export function createArtifactPlan(
       ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),
       ...middlewareArtifacts(model, supplement),
-      ...edgeFunctionArtifacts(model, supplement),
+      ...edgeFunctionArtifacts(model, edgeFunctions),
     ]),
   };
 }
