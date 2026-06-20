@@ -1,10 +1,34 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { test } from "node:test";
 
-import { modifyConfig } from "../dist/config.js";
+import { detectBuildBundler, modifyConfig } from "../dist/config.js";
 
-const require = createRequire(import.meta.url);
+function testContext(nextVersion = "16.3.0-canary.59") {
+  return {
+    phase: "phase-production-build",
+    nextVersion,
+    projectDir: fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-config-test-")),
+  };
+}
+
+function supportFile(ctx, variant) {
+  return path.join(
+    ctx.projectDir,
+    "node_modules",
+    ".cache",
+    "@brrrd",
+    "adapter",
+    `${variant}.mjs`,
+  );
+}
+
+function assertMaterialized(filePath) {
+  assert.equal(fs.statSync(filePath).isFile(), true);
+  assert.match(fs.readFileSync(filePath, "utf8"), /BrrrdCacheHandler|Legacy/);
+}
 
 function withEnv(patch, fn) {
   const keys = Object.keys(patch);
@@ -31,6 +55,16 @@ function withEnv(patch, fn) {
   }
 }
 
+function withArgv(argv, fn) {
+  const previous = process.argv;
+  process.argv = argv;
+  try {
+    return fn();
+  } finally {
+    process.argv = previous;
+  }
+}
+
 test("modifyConfig does not downgrade Next image rendering semantics", () => {
   const config = {
     images: {
@@ -42,6 +76,7 @@ test("modifyConfig does not downgrade Next image rendering semantics", () => {
   const out = modifyConfig(config, {
     phase: "phase-production-build",
     nextVersion: "16.3.0-canary.58",
+    projectDir: fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-config-test-")),
   });
 
   assert.equal(out.images.unoptimized, undefined);
@@ -56,22 +91,19 @@ test("modifyConfig registers modern and legacy cache handlers for webpack builds
       TURBOPACK: undefined,
     },
     () => {
-      const out = modifyConfig(
-        {},
-        {
-          phase: "phase-production-build",
-          nextVersion: "16.3.0-canary.59",
-        },
-      );
+      const ctx = testContext();
+      const out = modifyConfig({}, ctx);
 
       assert.equal(
         out.cacheHandlers.default,
-        require.resolve("@brrrd/adapter/cache-handler"),
+        supportFile(ctx, "cache-handler"),
       );
       assert.equal(
         out.cacheHandler,
-        require.resolve("@brrrd/adapter/cache-handler-legacy"),
+        supportFile(ctx, "cache-handler-legacy"),
       );
+      assertMaterialized(out.cacheHandlers.default);
+      assertMaterialized(out.cacheHandler);
     },
   );
 });
@@ -84,24 +116,20 @@ test("modifyConfig skips modern cacheHandlers during Turbopack builds", () => {
       TURBOPACK: undefined,
     },
     () => {
-      const out = modifyConfig(
-        {},
-        {
-          phase: "phase-production-build",
-          nextVersion: "16.3.0-canary.59",
-        },
-      );
+      const ctx = testContext();
+      const out = modifyConfig({}, ctx);
 
       assert.equal(out.cacheHandlers, undefined);
       assert.equal(
         out.cacheHandler,
-        require.resolve("@brrrd/adapter/cache-handler-legacy"),
+        supportFile(ctx, "cache-handler-legacy"),
       );
+      assertMaterialized(out.cacheHandler);
     },
   );
 });
 
-test("modifyConfig treats Next's default TURBOPACK=auto build as Turbopack", () => {
+test("modifyConfig treats TURBOPACK=auto as Turbopack", () => {
   withEnv(
     {
       IS_WEBPACK_TEST: undefined,
@@ -109,19 +137,96 @@ test("modifyConfig treats Next's default TURBOPACK=auto build as Turbopack", () 
       TURBOPACK: "auto",
     },
     () => {
-      const out = modifyConfig(
-        {},
-        {
-          phase: "phase-production-build",
-          nextVersion: "16.3.0-canary.59",
-        },
-      );
+      const ctx = testContext();
+      const out = modifyConfig({}, ctx);
 
       assert.equal(out.cacheHandlers, undefined);
       assert.equal(
         out.cacheHandler,
-        require.resolve("@brrrd/adapter/cache-handler-legacy"),
+        supportFile(ctx, "cache-handler-legacy"),
       );
+      assertMaterialized(out.cacheHandler);
+    },
+  );
+});
+
+test("modifyConfig treats unqualified Next 16 builds as Turbopack by default", () => {
+  withEnv(
+    {
+      IS_WEBPACK_TEST: undefined,
+      IS_TURBOPACK_TEST: undefined,
+      TURBOPACK: undefined,
+    },
+    () =>
+      withArgv(["node", "next", "build"], () => {
+        assert.equal(
+          detectBuildBundler({ nextVersion: "16.3.0-canary.59" }),
+          "turbopack",
+        );
+
+        const ctx = testContext();
+        const out = modifyConfig({}, ctx);
+
+        assert.equal(out.cacheHandlers, undefined);
+        assert.equal(
+          out.cacheHandler,
+          supportFile(ctx, "cache-handler-legacy"),
+        );
+        assertMaterialized(out.cacheHandler);
+      }),
+  );
+});
+
+test("modifyConfig honors explicit webpack CLI builds on Next 16", () => {
+  withEnv(
+    {
+      IS_WEBPACK_TEST: undefined,
+      IS_TURBOPACK_TEST: undefined,
+      TURBOPACK: undefined,
+    },
+    () =>
+      withArgv(["node", "next", "build", "--webpack"], () => {
+        assert.equal(
+          detectBuildBundler({ nextVersion: "16.3.0-canary.59" }),
+          "webpack",
+        );
+
+        const ctx = testContext();
+        const out = modifyConfig({}, ctx);
+
+        assert.equal(
+          out.cacheHandlers.default,
+          supportFile(ctx, "cache-handler"),
+        );
+        assert.equal(
+          out.cacheHandler,
+          supportFile(ctx, "cache-handler-legacy"),
+        );
+        assertMaterialized(out.cacheHandlers.default);
+        assertMaterialized(out.cacheHandler);
+      }),
+  );
+});
+
+test("modifyConfig does not erase user cacheHandlers on Turbopack", () => {
+  withEnv(
+    {
+      IS_WEBPACK_TEST: undefined,
+      IS_TURBOPACK_TEST: "1",
+      TURBOPACK: undefined,
+    },
+    () => {
+      const existing = { custom: "./custom-cache-handler.js" };
+      const ctx = testContext();
+      const out = modifyConfig({ cacheHandlers: existing }, ctx);
+
+      assert.equal(out.cacheHandlers, existing);
+      assert.equal(out.cacheHandlers.default, undefined);
+      assert.equal(
+        out.cacheHandler,
+        supportFile(ctx, "cache-handler-legacy"),
+      );
+      assertMaterialized(out.cacheHandler);
     },
   );
 });

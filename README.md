@@ -81,6 +81,12 @@ export default nextConfig;
 Then `next build` produces `dist/brrrd/`. Deploy it with `brrrd-fleet deploy
 --package dist/brrrd ...`.
 
+During `modifyConfig`, the adapter materializes its cache handler support files
+under `node_modules/.cache/@brrrd/adapter/` inside the app project and points
+Next at those project-local paths. This keeps webpack, Turbopack, and file-linked
+adapter checkouts on the same contract: Next sees cache handlers as app-local
+build artifacts, while the adapter still owns their source.
+
 ### Conventions for apps on the platform
 
 - **Database**: use libSQL (Louhi), not a Cloudflare/Workers binding —
