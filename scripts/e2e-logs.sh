@@ -37,7 +37,7 @@ marker_value() {
   local fallback="$2"
   if [[ -f "$BUILD_LOG" ]]; then
     local line
-    line="$(grep -m1 "^$name:" "$BUILD_LOG" || true)"
+    line="$(grep "^$name:" "$BUILD_LOG" | tail -n1 || true)"
     if [[ -n "$line" ]]; then
       printf '%s\n' "${line#*: }"
       return 0

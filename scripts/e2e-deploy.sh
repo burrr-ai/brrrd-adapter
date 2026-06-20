@@ -264,6 +264,8 @@ pm_install
 NEXT_ADAPTER_PATH="${NEXT_ADAPTER_PATH:-$(resolve_installed_adapter)}"
 export NEXT_ADAPTER_PATH
 export NEXT_TELEMETRY_DISABLED="${NEXT_TELEMETRY_DISABLED:-1}"
+DEPLOYMENT_ID="${BRRRD_DEPLOYMENT_ID:-${NEXT_DEPLOYMENT_ID:-brrrd-local-$(date +%s)-$$}}"
+export NEXT_DEPLOYMENT_ID="$DEPLOYMENT_ID"
 
 pm_build
 
@@ -273,7 +275,6 @@ PACKAGE_DIR="${BRRRD_PACKAGE_DIR:-dist/brrrd}"
 BRRRD_BIN="$(resolve_brrrd_bin)"
 PORT="${BRRRD_HARNESS_PORT:-$(pick_port)}"
 URL="http://127.0.0.1:$PORT"
-DEPLOYMENT_ID="${BRRRD_DEPLOYMENT_ID:-brrrd-local-$PORT-$(date +%s)}"
 BUILD_ID="$(cat .next/BUILD_ID 2>/dev/null || printf 'undefined')"
 IMMUTABLE_ASSET_TOKEN="${BRRRD_IMMUTABLE_ASSET_TOKEN:-undefined}"
 
