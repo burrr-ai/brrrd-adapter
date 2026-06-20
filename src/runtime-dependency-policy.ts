@@ -42,13 +42,8 @@ const EMPTY_STUB_OPTIONAL_PACKAGES = [
   "node:diagnostics_channel",
 ] as const;
 
-const MODULE_NOT_FOUND_OPTIONAL_PACKAGES = [
-  "critters",
-] as const;
-
 const EXTERNAL_IF_MISSING_PACKAGES = new Set<string>([
   ...EMPTY_STUB_OPTIONAL_PACKAGES,
-  ...MODULE_NOT_FOUND_OPTIONAL_PACKAGES,
 ]);
 
 export function runtimeDependencyExternals(): string[] {
@@ -76,12 +71,57 @@ function canResolveFromBuild(specifier: string, ctx: BuildContext, resolveDir: s
   }
 }
 
+function isInsideDir(filePath: string, dir: string): boolean {
+  const rel = path.relative(dir, filePath);
+  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+function isBarePackageSpecifier(specifier: string): boolean {
+  if (specifier.length === 0) return false;
+  if (specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("\0")) {
+    return false;
+  }
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(specifier)) return false;
+  return true;
+}
+
+function owningNodeModulePackage(filePath: string): string | null {
+  const parts = filePath.split(path.sep);
+  for (let i = parts.length - 2; i >= 0; i--) {
+    if (parts[i] !== "node_modules") continue;
+    const first = parts[i + 1];
+    if (!first || first === ".pnpm") continue;
+    if (first.startsWith("@")) {
+      const second = parts[i + 2];
+      return second ? `${first}/${second}` : null;
+    }
+    return first;
+  }
+  return null;
+}
+
+function isNextGeneratedRuntimeImporter(importer: string, ctx: BuildContext): boolean {
+  if (!importer) return false;
+  if (isInsideDir(importer, ctx.distDir)) return true;
+  return owningNodeModulePackage(importer) === "next";
+}
+
 export function createRuntimeDependencyPlugin(ctx: BuildContext): Plugin {
   return {
     name: "brrrd-runtime-dependency-policy",
     setup(build) {
       build.onResolve({ filter: /.*/ }, (args) => {
-        if (!EXTERNAL_IF_MISSING_PACKAGES.has(args.path)) return undefined;
+        // Next can emit conditional runtime-only require() calls, such as the
+        // Pages runtime CSS optimizer path. Preserve Node's late
+        // MODULE_NOT_FOUND behavior for those generated/runtime files instead
+        // of failing the adapter's esbuild pass.
+        const externalIfMissing = EXTERNAL_IF_MISSING_PACKAGES.has(args.path)
+          || (
+            args.kind === "require-call"
+            && isBarePackageSpecifier(args.path)
+            && isNextGeneratedRuntimeImporter(args.importer, ctx)
+          );
+        if (!externalIfMissing) return undefined;
         if (canResolveFromBuild(args.path, ctx, args.resolveDir)) return undefined;
         return {
           path: args.path,

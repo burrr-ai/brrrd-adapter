@@ -107,19 +107,34 @@ test("dispatcher loads only the requested route module", async () => {
   );
 });
 
-test("dispatcher bundling tolerates missing Next optional runtime dependencies", async () => {
+test("dispatcher bundling tolerates missing package requires from Next runtime files", async () => {
   const root = tempDir("dispatcher-optional-runtime-dep");
   const healthyRoute = path.join(root, "healthy-route.mjs");
   const optionalRoute = path.join(root, "optional-route.cjs");
+  const nextRuntime = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "next-server",
+    "pages.runtime.prod.js",
+  );
 
   fs.writeFileSync(
     healthyRoute,
     "export function handler(_req, res) { res.end('healthy'); }\n",
     "utf8",
   );
+  fs.mkdirSync(path.dirname(nextRuntime), { recursive: true });
+  fs.writeFileSync(
+    nextRuntime,
+    "exports.loadOptionalCssOptimizer = function() { return require('critters'); };\n",
+    "utf8",
+  );
   fs.writeFileSync(
     optionalRoute,
-    "const critters = require('critters');\nmodule.exports = { handler(_req, res) { res.end(String(critters)); } };\n",
+    "const runtime = require('next/dist/compiled/next-server/pages.runtime.prod.js');\nmodule.exports = { handler(_req, res) { res.end(String(runtime.loadOptionalCssOptimizer())); } };\n",
     "utf8",
   );
 
@@ -149,6 +164,30 @@ test("dispatcher bundling tolerates missing Next optional runtime dependencies",
       assert.equal(err.code, "MODULE_NOT_FOUND");
       return true;
     },
+  );
+});
+
+test("dispatcher bundling still fails direct app requires for missing packages", async () => {
+  const root = tempDir("dispatcher-direct-missing-runtime-dep");
+  const route = path.join(root, "route.cjs");
+
+  fs.writeFileSync(
+    route,
+    "const missing = require('critters');\nmodule.exports = { handler(_req, res) { res.end(String(missing)); } };\n",
+    "utf8",
+  );
+
+  await assert.rejects(
+    bundleAppHandler(
+      [{ id: "direct-missing", filePath: route }],
+      {
+        projectDir: root,
+        distDir: path.join(root, ".next"),
+        outDir: path.join(root, "out"),
+        buildId: "test-build",
+      },
+    ),
+    /Could not resolve "critters"/,
   );
 });
 

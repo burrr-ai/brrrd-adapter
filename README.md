@@ -108,9 +108,11 @@ policies:
 
 Next server runtime dependency handling lives in `src/runtime-dependency-policy.ts`.
 It owns brrrd-provided Node builtins, always-external platform stubs, and
-optional Next/runtime packages that should be externalized only when absent from
-the app. Missing optional packages receive Node-shaped runtime behavior instead
-of failing esbuild at adapter compile time.
+missing bare `require()` calls emitted by Next's generated build output or
+Next's own runtime package. Resolved packages are bundled or packaged normally;
+unresolved runtime-only requires are left as Node-shaped runtime
+`MODULE_NOT_FOUND` behavior instead of failing esbuild at adapter compile time.
+Direct missing app dependencies still fail the adapter build.
 
 > Version note: the adapter's manifest format is coupled to the brrrd runtime
 > version. Use an adapter release that matches your deployed runtime.
