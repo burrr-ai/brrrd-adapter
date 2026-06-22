@@ -1,17 +1,21 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-22T13:41:59.829Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+  "updatedAt": "2026-06-22T17:53:11.830Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "pass",
-    "resultCount": 1,
-    "failureCount": 0,
-    "buckets": {}
+    "status": "fail",
+    "resultCount": 256,
+    "failureCount": 3,
+    "buckets": {
+      "bundler output shape": 1,
+      "unclassified": 1,
+      "segment-cache/PPR prefetch": 1
+    }
   },
   "counts": {
-    "closed": 32,
-    "open": 1
+    "closed": 30,
+    "open": 23
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -267,10 +271,10 @@
       "id": "webpack|test/e2e/prerender-native-module.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 9,
+      "failureCount": 10,
       "passCount": 0,
       "bundler": "webpack",
-      "group": "fixture",
+      "group": "43/64",
       "kind": "fixture",
       "fixture": "test/e2e/prerender-native-module.test.ts",
       "bucket": "Node/runtime API",
@@ -278,13 +282,13 @@
         "FAIL webpack test/e2e/prerender-native-module.test.ts ",
         "[brrrd-harness] build app failed with exit status 1",
         "Error: native Node addons (.node) are not supported in brrrd isolates:",
-        "- /Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/runs/2026-06-22T10-33-49-293Z-prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6/tmp/next-test-1782124441235-619/node_modules/.pnpm/sqlite3@5.0.2/node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+        "- /Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/runs/2026-06-22T17-04-40-228Z-dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70/tmp/next-test-1782147895223-456/node_modules/.pnpm/sqlite3@5.0.2/node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
         "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
-      "targetName": "prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/target-logs/prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/target-logs/prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70.stderr.log"
       },
       "testTitles": [
         "prerender native module",
@@ -294,10 +298,10 @@
         "should output traces"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-22T10:34:18.521Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification",
-      "lastFailureAt": "2026-06-22T10:34:18.521Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "closedAt": null,
       "closedByRun": null,
       "targetFixture": "test/e2e/prerender-native-module.test.ts"
@@ -1148,26 +1152,32 @@
       "id": "webpack|test/e2e/getserversideprops/test/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 6,
+      "failureCount": 7,
       "passCount": 1,
       "bundler": "webpack",
-      "group": "fixture",
+      "group": "53/64",
       "kind": "fixture",
       "fixture": "test/e2e/getserversideprops/test/index.test.ts",
-      "bucket": "App not-found fallback",
+      "bucket": "bundler output shape",
       "messages": [
         "FAIL webpack test/e2e/getserversideprops/test/index.test.ts ",
-        "[08:19:55.938Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[08:19:56.078Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Expected substring: \"custom pages/500\"",
-        "Received string:    \"Internal Server Error\"",
-        "385 |       expect(html).not.toContain('This page could not be found')"
+        "[17:29:53.046Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[17:29:53.219Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Expected: \"private, no-cache, no-store, max-age=0, must-revalidate\"",
+        "Received: \"public, max-age=0, must-revalidate\"",
+        "Expected: \"public, max-age=3600\"",
+        "Error: oof",
+        "2026-06-22T17:29:53.270629Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=32 route=enoent trace_id= span_id= level=error error_class=\"\" error_stack=Error: oof",
+        "at async rw.handleResponse (/bundle/app.js:39069:55) Error: oof",
+        "Error: such broken..",
+        "2026-06-22T17:29:56.837165Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=60 route=_next-data-build-TfctsWXpff2fKS-blog-_post__json trace_id= span_id= level=error error_class=\"\" error_stack=Error: such broken..",
+        "at async rw.handleResponse (/bundle/app.js:39069:55) Error: such broken.."
       ],
       "targetFixture": "test/e2e/getserversideprops/test/index.test.ts",
-      "targetName": "pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf",
+      "targetName": "dirty-baseline-webpack-49-64-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-24bacb11",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2/target-logs/pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2/target-logs/pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-24bacb11.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-24bacb11.stderr.log"
       },
       "testTitles": [
         "should navigate between pages successfully",
@@ -1179,13 +1189,13 @@
         "should render correctly when notFound is false (dynamic)",
         "should render 404 correctly when notFound is returned (dynamic)"
       ],
-      "status": "closed",
-      "lastSeenAt": "2026-06-22T08:24:42.294Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
-      "lastFailureAt": "2026-06-22T08:20:11.085Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2",
-      "closedAt": "2026-06-22T08:24:42.294Z",
-      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:53:11.830Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "lastFailureAt": "2026-06-22T17:53:11.830Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "closedAt": null,
+      "closedByRun": null,
       "lastVerifiedAt": "2026-06-22T08:24:42.294Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
       "closeReason": "fixture passed in later harvest",
@@ -1427,34 +1437,44 @@
       "id": "webpack|test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 32,
+      "failureCount": 33,
       "passCount": 1,
       "bundler": "webpack",
-      "group": null,
+      "group": "56/64",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
-        "fixture target exited with status 1, but no failed fixture inventory was parsed"
+        "FAIL webpack test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts ",
+        "at collectSegmentPrefetchResponses (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:92:21)",
+        "at collectSegmentPrefetchResponses (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:104:5)",
+        "⨯ prefetchInlining",
+        "at __eventLoopTick (ext:core/01_core.js:461:33) Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-22T17:35:32.085279Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=13 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-22T17:35:32.094205Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=14 route=_teamSlug_-_project__rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-22T17:35:32.922934Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=16 route=_teamSlug_-_project_-settings_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-22T17:35:32.928707Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=17 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-22T17:35:33.431975Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=19 route=_teamSlug_-_project_-settings_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic."
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
-      "targetName": "2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug",
+      "targetName": "dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug/stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug/stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a.stderr.log"
       },
       "testTitles": [
         "segment cache - vary params base dynamic",
         "prefetching is disabled in dev mode",
         "keeps dynamic segment params valid before and after time-based revalidation"
       ],
-      "status": "closed",
-      "lastSeenAt": "2026-06-22T13:41:59.829Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
-      "lastFailureAt": "2026-06-22T13:27:30.693Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug",
-      "closedAt": "2026-06-22T13:41:59.829Z",
-      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:53:11.830Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "lastFailureAt": "2026-06-22T17:53:11.830Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "closedAt": null,
+      "closedByRun": null,
       "lastVerifiedAt": "2026-06-22T13:41:59.829Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
       "closeReason": "fixture passed in later harvest",
@@ -1741,6 +1761,834 @@
           "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath/target-logs/middleware-base-path-next-config-basepath-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-9e23b98d.stderr.log"
         }
       }
+    },
+    "webpack|test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts": {
+      "id": "webpack|test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
+      "firstSeenAt": "2026-06-22T15:53:31.765Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "7/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL webpack test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts ",
+        "Expected: 404",
+        "Received: 200"
+      ],
+      "targetFixture": "test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
+      "targetName": "dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c.stderr.log"
+      },
+      "testTitles": [
+        "Middleware custom matchers basePath"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T15:53:31.765Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "lastFailureAt": "2026-06-22T15:53:31.765Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts": {
+      "id": "webpack|test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
+      "firstSeenAt": "2026-06-22T15:53:31.765Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "9/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts ",
+        "[15:35:24.412Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:24.415Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:34.566Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:34.568Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:44.707Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:44.710Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:54.814Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:35:54.815Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:36:04.940Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:36:04.942Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[15:36:15.138Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')"
+      ],
+      "targetFixture": "test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
+      "targetName": "dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe.stderr.log"
+      },
+      "testTitles": [
+        "Dynamic Optional Routing Root Fallback",
+        "should render optional catch-all top-level route with no segments",
+        "should render optional catch-all top-level route with one segment",
+        "should render optional catch-all top-level route with two segments"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T15:53:31.765Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "lastFailureAt": "2026-06-22T15:53:31.765Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/middleware-rewrites/test/index.test.ts": {
+      "id": "webpack|test/e2e/middleware-rewrites/test/index.test.ts",
+      "firstSeenAt": "2026-06-22T15:53:31.765Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "16/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/middleware-rewrites/test/index.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL webpack test/e2e/middleware-rewrites/test/index.test.ts ",
+        "[15:52:07.643Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:07.704Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:08.148Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:08.191Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "page error PlaywrightError: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "[15:52:11.827Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:11.857Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:11.888Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:11.897Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:12.993Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:52:24.263Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "targetFixture": "test/e2e/middleware-rewrites/test/index.test.ts",
+      "targetName": "dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c.stderr.log"
+      },
+      "testTitles": [
+        "Middleware Rewrite",
+        "should handle catch-all rewrite correctly",
+        "should handle next.config.js rewrite with body correctly",
+        "should handle middleware rewrite with body correctly",
+        "should handle middleware rewrite with body and headers correctly",
+        "should handle static dynamic rewrite from middleware correctly",
+        "should handle static rewrite from next.config.js correctly",
+        "should not have un-necessary data request on rewrite"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T15:53:31.765Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "lastFailureAt": "2026-06-22T15:53:31.765Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts": {
+      "id": "webpack|test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "17/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "FAIL webpack test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts ",
+        "Expected substring: \"custom-500-page\"",
+        "Received string:    \"<!DOCTYPE html><html data-dpl-id=\\\"brrrd-local-1782143873-93431\\\"><head><meta charSet=\\\"utf-8\\\" data-next-head=\\\"\\\"/><meta name=\\\"viewport\\\" content=\\\"width=device-width\\\" data-next-head=\\\"\\\"/><title data-next-head=\\\"\\\">500: Internal Server Error</title><noscript data-n-css=\\\"\\\"></noscript><script defer=\\\"\\\" noModule=\\\"\\\" src=\\\"/_next/static/chunks/polyfills-42372ed130431b0a.js?dpl=brrrd-local-1782143873-93431\\\"></script><script src=\\\"/_next/static/chunks/webpack-ec03f6ffe4c51775.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/chunks/framework-8b63943b545dea93.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/chunks/main-14ca204151b7376d.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/chunks/pages/_app-f0c41e4437b9d1d5.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/chunks/pages/_error-55d3362c731c666f.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/build-TfctsWXpff2fKS/_buildManifest.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script><script src=\\\"/_next/static/build-TfctsWXpff2fKS/_ssgManifest.js?dpl=brrrd-local-1782143873-93431\\\" defer=\\\"\\\"></script></head><body><div id=\\\"__next\\\"><div style=\\\"font-family:system-ui,&quot;Segoe UI&quot;,Roboto,Helvetica,Arial,sans-serif,&quot;Apple Color Emoji&quot;,&quot;Segoe UI Emoji&quot;;height:100vh;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center\\\"><div style=\\\"line-height:48px\\\"><style>body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}</style><h1 class=\\\"next-error-h1\\\" style=\\\"display:inline-block;margin:0 20px 0 0;padding-right:23px;font-size:24px;font-weight:500;vertical-align:top\\\">500</h1><div style=\\\"display:inline-block\\\"><h2 style=\\\"font-size:14px;font-weight:400;line-height:28px\\\">Internal Server Error<!-- -->.</h2></div></div></div></div><script id=\\\"__NEXT_DATA__\\\" type=\\\"application/json\\\">{\\\"props\\\":{\\\"pageProps\\\":{\\\"statusCode\\\":500,\\\"hostname\\\":\\\"127.0.0.1\\\"}},\\\"page\\\":\\\"/_error\\\",\\\"query\\\":{},\\\"buildId\\\":\\\"build-TfctsWXpff2fKS\\\",\\\"isFallback\\\":false,\\\"isExperimentalCompile\\\":false,\\\"err\\\":{\\\"name\\\":\\\"Internal Server Error.\\\",\\\"message\\\":\\\"500 - Internal Server Error.\\\",\\\"statusCode\\\":500},\\\"gip\\\":true,\\\"scriptLoader\\\":[]}</script></body></html>\"",
+        "90 |       expect(html).toContain('Error: gip-oops')",
+        "Error: gip-oops",
+        "2026-06-22T15:58:12.902177Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=7 route=err trace_id= span_id= level=error error_class=\"\" error_stack=Error: gip-oops",
+        "at async dispatch (/bundle/app.js:44263:12) Error: gip-oops",
+        "Error: oops",
+        "2026-06-22T15:58:12.940429Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=8 route=pages-err-render trace_id= span_id= level=error error_class=\"\" error_stack=Error: oops",
+        "at eb (eval at runInThisContext (node:vm:10:19), <anonymous>:28:91499) Error: oops",
+        "2026-06-22T15:58:12.940945Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=8 route=pages-err-render trace_id= span_id= level=error error_class=\"\" error_stack=Error: oops",
+        "2026-06-22T15:58:12.966533Z ERROR brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=9 route=pages-err-suspense trace_id= span_id= level=error error_class=\"\" error_stack=Error: oops"
+      ],
+      "targetFixture": "test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-17-64-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-9479808e",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-17-64-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-9479808e.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-17-64-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-9479808e.stderr.log"
+      },
+      "testTitles": [
+        "streaming-ssr-edge",
+        "should support streaming for fizz response",
+        "should not stream to crawlers or google pagerender bot",
+        "should render 500 error from gIP correctly",
+        "should render 500 error from render function correctly",
+        "should render fallback if error raised from suspense during streaming"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/middleware-trailing-slash/test/index.test.ts": {
+      "id": "webpack|test/e2e/middleware-trailing-slash/test/index.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "21/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/middleware-trailing-slash/test/index.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL webpack test/e2e/middleware-trailing-slash/test/index.test.ts ",
+        "[16:07:29.996Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:30.179Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:30.510Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:30.531Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "page error PlaywrightError: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "[16:07:30.853Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:30.877Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:31.125Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:31.312Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:31.439Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:31.464Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "targetFixture": "test/e2e/middleware-trailing-slash/test/index.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2.stderr.log"
+      },
+      "testTitles": [
+        "Middleware Runtime trailing slash",
+        "with .html extension",
+        "should work when requesting the page directly",
+        "should work using browser",
+        "should work when navigating",
+        "without .html extension",
+        "should work when requesting the page directly",
+        "should work using browser"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts": {
+      "id": "webpack|test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "21/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts",
+      "bucket": "PPR/instant prefetch",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts ",
+        "[16:07:11.359Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.361Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.362Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.460Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.471Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.655Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.658Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.659Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.699Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:11.709Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:07:12.323Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "targetFixture": "test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-80969b7d",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-80969b7d.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-80969b7d.stderr.log"
+      },
+      "testTitles": [
+        "searchparams-reuse-loading",
+        "should re-use the prefetched loading state when navigating to a new searchParam value",
+        "should properly render root page with searchParams when prefetch is aliased",
+        "should reflect the correct searchParams when re-using the same page segment",
+        "should reflect the correct searchParams when the root page is prefetched first",
+        "when aliasing is skipped",
+        "should work for not found pages",
+        "should work for route handlers"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts": {
+      "id": "webpack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "22/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "bucket": "App not-found fallback",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts ",
+        "Expected substring: \"0.9475336768450741\"",
+        "Received string:    \"1:\\\"$Sreact.fragment\\\"",
+        "0:{\\\"buildId\\\":\\\"\\\",\\\"data\\\":[{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"c\\\",{\\\"children\\\":[[[\\\"$\\\",\\\"p\\\",null,{\\\"id\\\":\\\"random-number\\\",\\\"children\\\":0.49965336212026057}],[\\\"$\\\",\\\"p\\\",null,{\\\"id\\\":\\\"another-random-number\\\",\\\"children\\\":\\\"0.19673626294676938\\\"}],[\\\"$\\\",\\\"$2\\\",null,{\\\"children\\\":\\\"$L3\\\"}]],null,[\\\"$\\\",\\\"$L4\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$2\\\",null,{\\\"name\\\":\\\"Next.MetadataOutlet\\\",\\\"children\\\":\\\"$@5\\\"}]}]]}],\\\"isPartial\\\":true,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$W6\\\"},{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"h\\\",{\\\"children\\\":[null,[\\\"$\\\",\\\"$L7\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"meta\\\",\\\"0\\\",{\\\"charSet\\\":\\\"utf-8\\\"}],[\\\"$\\\",\\\"meta\\\",\\\"1\\\",{\\\"name\\\":\\\"viewport\\\",\\\"content\\\":\\\"width=device-width, initial-scale=1\\\"}]]}],[\\\"$\\\",\\\"div\\\",null,{\\\"hidden\\\":true,\\\"children\\\":[\\\"$\\\",\\\"$L8\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$2\\\",null,{\\\"name\\\":\\\"Next.Metadata\\\",\\\"children\\\":[]}]}]}],null]}],\\\"isPartial\\\":false,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$W9\\\"},{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"c\\\",{\\\"children\\\":[null,[\\\"$\\\",\\\"html\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"body\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$La\\\",null,{\\\"parallelRouterKey\\\":\\\"children\\\",\\\"template\\\":[\\\"$\\\",\\\"$Lb\\\",null,{}],\\\"notFound\\\":[[[\\\"$\\\",\\\"title\\\",null,{\\\"children\\\":\\\"404: This page could not be found.\\\"}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"fontFamily\\\":\\\"system-ui,\\\\\\\"Segoe UI\\\\\\\",Roboto,Helvetica,Arial,sans-serif,\\\\\\\"Apple Color Emoji\\\\\\\",\\\\\\\"Segoe UI Emoji\\\\\\\"\\\",\\\"height\\\":\\\"100vh\\\",\\\"textAlign\\\":\\\"center\\\",\\\"display\\\":\\\"flex\\\",\\\"flexDirection\\\":\\\"column\\\",\\\"alignItems\\\":\\\"center\\\",\\\"justifyContent\\\":\\\"center\\\"},\\\"children\\\":[\\\"$\\\",\\\"div\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"style\\\",null,{\\\"dangerouslySetInnerHTML\\\":{\\\"__html\\\":\\\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\\\"}}],[\\\"$\\\",\\\"h1\\\",null,{\\\"className\\\":\\\"next-error-h1\\\",\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\",\\\"margin\\\":\\\"0 20px 0 0\\\",\\\"padding\\\":\\\"0 23px 0 0\\\",\\\"fontSize\\\":24,\\\"fontWeight\\\":500,\\\"verticalAlign\\\":\\\"top\\\",\\\"lineHeight\\\":\\\"49px\\\"},\\\"children\\\":404}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\"},\\\"children\\\":[\\\"$\\\",\\\"h2\\\",null,{\\\"style\\\":{\\\"fontSize\\\":14,\\\"fontWeight\\\":400,\\\"lineHeight\\\":\\\"49px\\\",\\\"margin\\\":0},\\\"children\\\":\\\"This page could not be found.\\\"}]}]]}]}]],[]]}]}]}]]}],\\\"isPartial\\\":false,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$Wc\\\"}]}",
+        "> 50 |         expect(rsc).toContain(first)",
+        "53 |       // Then get the dynamic RSC and validate that it also contains the same",
+        "Expected substring: \"0.6479752771025982\""
+      ],
+      "targetFixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549.stderr.log"
+      },
+      "testTitles": [
+        "resume-data-cache",
+        "is skipped",
+        "should use RDC for server action re-renders",
+        "should see fresh data after updateTag in server action with use cache",
+        "should see fresh data after updateTag in server action with fetch cache"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/app/index.test.ts": {
+      "id": "webpack|test/e2e/app-dir/app/index.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "22/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/app/index.test.ts",
+      "bucket": "PPR/instant prefetch",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/app/index.test.ts ",
+        "[16:08:45.857Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:17.172Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:17.552Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:17.852Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:21.058Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:21.330Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:21.633Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:21.850Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:23.037Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:23.580Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:09:28.448Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "targetFixture": "test/e2e/app-dir/app/index.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-app-index.test.ts-22aa51e8",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-app-index.test.ts-22aa51e8.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-app-index.test.ts-22aa51e8.stderr.log"
+      },
+      "testTitles": [
+        "app dir - basic",
+        "should have correct cache-control for SSR routes",
+        "should provide query for getStaticProps page correctly",
+        "should contain framework.json",
+        "outputs correct build-diagnostics.json",
+        "should have correct preferredRegion values in manifest",
+        "should work for catch-all edge page",
+        "should return normalized dynamic route params for catch-all edge page"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/app-static/app-static.test.ts": {
+      "id": "webpack|test/e2e/app-dir/app-static/app-static.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "19/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/app-static/app-static.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/app-static/app-static.test.ts ",
+        "lastErr: JestAssertionError: expect(received).not.toBe(expected) // Object.is equality",
+        "Expected: not \"revalidate 10: 0.22378961380984497\"",
+        "'Expected: not \"revalidate 10: 0.22378961380984497\"',",
+        "lastErr: JestAssertionError: expect(received).toBe(expected) // Object.is equality",
+        "Expected: \"revalidate 10: 0.5761143752231228\"",
+        "Received: \"revalidate 10: 0.3150812618965161\"",
+        "'Expected: \"revalidate 10: 0.5761143752231228\"\\n' +",
+        "'Received: \"revalidate 10: 0.3150812618965161\"',",
+        "Expected: 200",
+        "Received: 500",
+        "'Expected: 200\\n' +"
+      ],
+      "targetFixture": "test/e2e/app-dir/app-static/app-static.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-19-64-test-e2e-app-dir-app-static-app-static.test.ts-7cee7a8b",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-19-64-test-e2e-app-dir-app-static-app-static.test.ts-7cee7a8b.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-19-64-test-e2e-app-dir-app-static-app-static.test.ts-7cee7a8b.stderr.log"
+      },
+      "testTitles": [
+        "app-dir static/dynamic handling",
+        "should respond correctly for dynamic route with dynamicParams false in layout",
+        "should respond correctly for partially dynamic route with dynamicParams false in layout",
+        "should use auto no cache when no fetch config",
+        "should correctly handle \"default\" cache statuses",
+        "should still cache even though the W3C trace context headers `traceparent` and `tracestate` were different",
+        "should warn for too many cache tags",
+        "new tags have been specified on subsequent fetch"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/basepath/redirect-and-rewrite.test.ts": {
+      "id": "webpack|test/e2e/basepath/redirect-and-rewrite.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "23/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/basepath/redirect-and-rewrite.test.ts",
+      "bucket": "App not-found fallback",
+      "messages": [
+        "FAIL webpack test/e2e/basepath/redirect-and-rewrite.test.ts ",
+        "Expected substring: \"Example Domain\"",
+        "Received string:    \"Not Found\""
+      ],
+      "targetFixture": "test/e2e/basepath/redirect-and-rewrite.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891.stderr.log"
+      },
+      "testTitles": [
+        "basePath",
+        "should rewrite with basePath by default",
+        "should not rewrite without basePath without disabling",
+        "should not rewrite with basePath when set to false",
+        "should rewrite without basePath when set to false",
+        "should redirect with basePath by default",
+        "should not redirect without basePath without disabling",
+        "should not redirect with basePath when set to false"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts": {
+      "id": "webpack|test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "23/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts",
+      "bucket": "Node/runtime API",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts ",
+        "[brrrd-harness] build app failed with exit status 1",
+        "Error: native Node addons (.node) are not supported in brrrd isolates:",
+        "- /Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/runs/2026-06-22T16-12-02-924Z-dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-app-dir-turbopack-reports-turbopack-reports.test.ts-997a400b/tmp/next-test-1782144750785-891/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Release/node_sqlite3.node",
+        "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
+      ],
+      "targetFixture": "test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-app-dir-turbopack-reports-turbopack-reports.test.ts-997a400b",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-app-dir-turbopack-reports-turbopack-reports.test.ts-997a400b.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-app-dir-turbopack-reports-turbopack-reports.test.ts-997a400b.stderr.log"
+      },
+      "testTitles": [
+        "turbopack-reports",
+        "should render page importing sqlite3"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/edge-pages-support/index.test.ts": {
+      "id": "webpack|test/e2e/edge-pages-support/index.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "23/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/edge-pages-support/index.test.ts",
+      "bucket": "flaky infra",
+      "messages": [
+        "FAIL webpack test/e2e/edge-pages-support/index.test.ts "
+      ],
+      "targetFixture": "test/e2e/edge-pages-support/index.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-edge-pages-support-index.test.ts-b8c40f47",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-edge-pages-support-index.test.ts-b8c40f47.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-edge-pages-support-index.test.ts-b8c40f47.stderr.log"
+      },
+      "testTitles": [
+        "edge-render-getserversideprops",
+        "should have correct query for pages/api",
+        "should have correct query for pages/api dynamic",
+        "should have correct query/params on index",
+        "should have correct query/params on /[id]",
+        "should have correct query/params on rewrite",
+        "should have correct query/params on dynamic rewrite",
+        "should respond to _next/data for index correctly"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts": {
+      "id": "webpack|test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
+      "firstSeenAt": "2026-06-22T16:31:27.725Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "27/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts "
+      ],
+      "targetFixture": "test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
+      "targetName": "dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f.stderr.log"
+      },
+      "testTitles": [
+        "rewrite-with-search-params",
+        "should not contain params in search params after rewrite"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T16:31:27.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastFailureAt": "2026-06-22T16:31:27.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts": {
+      "id": "webpack|test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "38/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts "
+      ],
+      "targetFixture": "test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-38-64-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-083aedbf",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-38-64-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-083aedbf.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-38-64-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-083aedbf.stderr.log"
+      },
+      "testTitles": [
+        "interception-dynamic-segment",
+        "should work when interception route is paired with a dynamic segment",
+        "should intercept consistently with back/forward navigation",
+        "should intercept multiple times from root",
+        "should correctly prerender segments with generateStaticParams",
+        "should prerender a dynamic intercepted route",
+        "Default.tsx injection validation (no 404s allowed)",
+        "should not render a 404 for the intercepted route with dynamic segments"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/app-basepath/index.test.ts": {
+      "id": "webpack|test/e2e/app-dir/app-basepath/index.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "41/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/app-basepath/index.test.ts",
+      "bucket": "PPR/instant prefetch",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/app-basepath/index.test.ts ",
+        "page error PlaywrightError: An unexpected response was received from the server.",
+        "✓ should only make a single RSC call to the current page (/base/refresh) (675 ms)",
+        "✓ should only make a single RSC call to the current page (/base/refresh?foo=bar) (683 ms)",
+        "Expected substring: \"/base/another\"",
+        "Received string:    \"http://127.0.0.1:60701/base/client\"",
+        "Expected substring: \"/outsideBasePath\""
+      ],
+      "targetFixture": "test/e2e/app-dir/app-basepath/index.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-41-64-test-e2e-app-dir-app-basepath-index.test.ts-e11614cc",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-41-64-test-e2e-app-dir-app-basepath-index.test.ts-e11614cc.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-41-64-test-e2e-app-dir-app-basepath-index.test.ts-e11614cc.stderr.log"
+      },
+      "testTitles": [
+        "app dir - basepath",
+        "should successfully hard navigate from pages -> app",
+        "should support `basePath`",
+        "should support Link with basePath prefixed",
+        "should prefix segment metadata og image with basePath and pathname",
+        "should prefix manifest with basePath",
+        "should prefix redirect() with basePath",
+        "should render usePathname without the basePath"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts": {
+      "id": "webpack|test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "40/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts "
+      ],
+      "targetFixture": "test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-40-64-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-b231ee68",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-40-64-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-b231ee68.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-40-64-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-b231ee68.stderr.log"
+      },
+      "testTitles": [
+        "parallel-routes-revalidation",
+        "should submit the action and revalidate the page data",
+        "should handle router.refresh() when called in a slot",
+        "should handle a redirect action when called in a slot",
+        "should not trigger full page when calling router.refresh() on an intercepted route",
+        "should not trigger the intercepted route when lazy-fetching missing data",
+        "should refresh the correct page when a server action triggers a redirect",
+        "should correctly refresh data for the intercepted route and previously active page slot"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts": {
+      "id": "webpack|test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "47/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts ",
+        "Expected: \"{\\\"slug\\\":[\\\"one\\\"]}\"",
+        "Received: \"{}\"",
+        "Expected: \"{\\\"slug\\\":[\\\"one\\\",\\\"two\\\",\\\"three\\\"]}\""
+      ],
+      "targetFixture": "test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec.stderr.log"
+      },
+      "testTitles": [
+        "edge-route-catchall",
+        "should correctly normalize edge route catch-all with a single param",
+        "should correctly normalize edge route catch-all with multiple params"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts": {
+      "id": "webpack|test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "47/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
+      "bucket": "segment-cache/PPR prefetch",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts ",
+        "[17:13:52.762Z] Browser Log: Error: Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/runs/2026-06-22T17-12-19-754Z-dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-041a",
+        "[brrrd-local-harness] $ npx -y node@20 /Users/ggm/work/next.js/node_modules/jest/bin/jest.js --ci --runInBand --forceExit --no-cache --verbose test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
+        "FAIL webpack test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts (74.905 s)",
+        "runtime prefetching",
+        "✓ can completely prefetch a page that is fully static (565 ms)",
+        "✓ can completely prefetch a page that uses cookies and no uncached IO (563 ms)",
+        "✓ can completely prefetch a page that uses cookies and no uncached IO (565 ms)",
+        "✓ can completely prefetch a page that uses cookies and no uncached IO (570 ms)",
+        "should not cache runtime prefetch responses in the browser cache or server-side",
+        "✓ different cookies should return different prefetch results - in a page (1006 ms)"
+      ],
+      "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-041ab31e",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-041ab31e.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-041ab31e.stderr.log"
+      },
+      "testTitles": [
+        "runtime prefetching",
+        "is skipped",
+        "includes dynamic params, but not dynamic content",
+        "includes root params, but not dynamic content",
+        "includes search params, but not dynamic content",
+        "includes headers, but not dynamic content",
+        "includes cookies, but not dynamic content",
+        "can completely prefetch a page that uses cookies and no uncached IO"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts": {
+      "id": "webpack|test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
+      "firstSeenAt": "2026-06-22T17:16:38.854Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "48/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts ",
+        "Expected substring: \"Hello from /app/dynamic/[slug]/route.ts. Slug: foo\"",
+        "Received string:    \"Hello from /app/dynamic/[slug]/route.ts. Slug: undefined\""
+      ],
+      "targetFixture": "test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
+      "targetName": "dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb.stderr.log"
+      },
+      "testTitles": [
+        "edge-route-rewrite",
+        "it should support a rewrite to an edge route",
+        "it should support a rewrite to a dynamic edge route"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:16:38.854Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "lastFailureAt": "2026-06-22T17:16:38.854Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/app-dir/expire-time/expire-time.test.ts": {
+      "id": "webpack|test/e2e/app-dir/expire-time/expire-time.test.ts",
+      "firstSeenAt": "2026-06-22T17:53:11.830Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "57/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/expire-time/expire-time.test.ts",
+      "bucket": "unclassified",
+      "messages": [
+        "FAIL webpack test/e2e/app-dir/expire-time/expire-time.test.ts "
+      ],
+      "targetFixture": "test/e2e/app-dir/expire-time/expire-time.test.ts",
+      "targetName": "dirty-baseline-webpack-49-64-webpack-57-64-test-e2e-app-dir-expire-time-expire-time.test.ts-7244ff18",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-57-64-test-e2e-app-dir-expire-time-expire-time.test.ts-7244ff18.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-57-64-test-e2e-app-dir-expire-time-expire-time.test.ts-7244ff18.stderr.log"
+      },
+      "testTitles": [
+        "expire-time"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-22T17:53:11.830Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "lastFailureAt": "2026-06-22T17:53:11.830Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "closedAt": null,
+      "closedByRun": null
     }
   }
 }
