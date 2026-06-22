@@ -1285,6 +1285,91 @@ test("onBuildComplete exposes PPR segment prefetch artifacts through the static 
   )));
 });
 
+test("onBuildComplete maps dynamic PPR tree segment artifacts to concrete segment prefetch paths", async () => {
+  const root = tempDir("dynamic-ppr-tree-segment");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic'); }\n",
+    "utf8",
+  );
+
+  const treeSegmentFile = path.join(
+    distDir,
+    "server",
+    "app",
+    "[teamSlug]",
+    "[project].segments",
+    "_tree.segment.rsc",
+  );
+  fs.mkdirSync(path.dirname(treeSegmentFile), { recursive: true });
+  fs.writeFileSync(treeSegmentFile, "tree", "utf8");
+  fs.writeFileSync(
+    path.join(distDir, "server", "app", "[teamSlug]", "[project].rsc"),
+    "route-rsc",
+    "utf8",
+  );
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/[teamSlug]/[project]": {
+        routeRegex: "^\\/([^/]+?)\\/([^/]+?)(?:\\/)?$",
+        dataRouteRegex: "^/_next/data/test-build/([^/]+?)/([^/]+?)\\.json$",
+        fallback: null,
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/[teamSlug]/[project]/page",
+    pathname: "/[teamSlug]/[project]",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages.push({
+    id: "/[teamSlug]/[project]/page.rsc",
+    pathname: "/[teamSlug]/[project].rsc",
+    filePath: handler,
+    assets: {},
+  });
+  context.routing.dynamicRoutes = [
+    {
+      source: "/[teamSlug]/[project]",
+      sourceRegex: "^/(?<nxtPteamSlug>[^/]+?)/(?<nxtPproject>[^/]+?)(?:/)?$",
+      destination: "/[teamSlug]/[project]",
+    },
+    {
+      source: "/[teamSlug]/[project].rsc",
+      sourceRegex: "^/(?<nxtPteamSlug>[^/]+?)/(?<nxtPproject>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      destination: "/[teamSlug]/[project].rsc",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  const dynamicTreeIndex = manifest.routes.findIndex((route) => (
+    route.id === "app-prerender-data-dynamic-_teamSlug_-_project__segments-_tree_segment_rsc"
+  ));
+  const dynamicRscIndex = manifest.routes.findIndex((route) => (
+    route.type === "page" && route.pattern.includes("rscSuffix")
+  ));
+  assert.ok(dynamicTreeIndex >= 0);
+  assert.ok(dynamicRscIndex >= 0);
+  assert.ok(dynamicTreeIndex < dynamicRscIndex);
+
+  const dynamicTreeRoute = manifest.routes[dynamicTreeIndex];
+  assert.equal(dynamicTreeRoute.type, "static");
+  assert.equal(dynamicTreeRoute.file, "/[teamSlug]/[project].segments/_tree.segment.rsc");
+  assert.deepEqual(dynamicTreeRoute.params, ["teamSlug", "project"]);
+  assert.equal(
+    new RegExp(dynamicTreeRoute.pattern).test("/acme/dashboard.segments/_tree.segment.rsc"),
+    true,
+  );
+});
+
 test("extractPprSegmentPrefetchRoutes preserves dynamic route segment metadata", () => {
   const root = tempDir("prefetch-segment-supplement");
   const distDir = path.join(root, ".next");

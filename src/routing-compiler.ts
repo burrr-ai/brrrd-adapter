@@ -673,6 +673,48 @@ function appPrerenderDataRoute(
   };
 }
 
+function appendRouteRegexSuffix(routeRegex: string, suffixPattern: string): string | null {
+  for (const suffix of ["(?:\\/)?$", "(?:/)?$", "\\/?$", "/?$", "$"]) {
+    if (routeRegex.endsWith(suffix)) {
+      return `${routeRegex.slice(0, -suffix.length)}${suffixPattern}${suffix}`;
+    }
+  }
+  return null;
+}
+
+function dynamicAppPrerenderSegmentDataRoute(
+  route: SupplementAppPrerenderDataRoute,
+  dynamicPrerenders: Map<string, SupplementDynamicPrerenderRoute>,
+): BrrrdRoute | null {
+  const marker = ".segments/";
+  const markerIndex = route.pathname.indexOf(marker);
+  if (markerIndex === -1 || !route.pathname.endsWith(".segment.rsc")) return null;
+
+  const page = route.pathname.slice(0, markerIndex);
+  if (!page.includes("[")) return null;
+
+  const prerender = dynamicPrerenders.get(page);
+  if (!prerender) return null;
+
+  const segmentRel = route.pathname.slice(markerIndex + marker.length);
+  const pattern = appendRouteRegexSuffix(
+    prerender.routeRegex,
+    `\\.segments/${escapeRegex(segmentRel)}`,
+  );
+  if (!pattern) return null;
+
+  return {
+    id: `app-prerender-data-dynamic-${sanitizeId(route.pathname)}`,
+    pattern,
+    type: "static",
+    runtime: "nodejs",
+    bundle: "",
+    file: route.pathname,
+    params: segmentParamNames(page),
+    paramTypes: segmentParamTypes(page),
+  };
+}
+
 function pagesStaticDataRoute(
   model: NextBuildModel,
   output: NormalizedOutput,
@@ -1017,6 +1059,8 @@ export function compileRouteTable(
     routes.push(entry);
     const encodedAlias = encodedPublicPathnameAlias(route.pathname);
     if (encodedAlias) routes.push(publicRouteAlias(model, entry, encodedAlias, "encoded"));
+    const dynamicEntry = dynamicAppPrerenderSegmentDataRoute(route, dynamicPrerenders);
+    if (dynamicEntry) routes.push(dynamicEntry);
   }
 
   for (const [index, route] of (supplement?.pprSegmentPrefetchRoutes ?? []).entries()) {
