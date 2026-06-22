@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { createRequire } from "node:module";
+import { builtinModules, createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
 import { bundleAppHandler } from "../dist/bundler.js";
 import { onBuildComplete } from "../dist/build.js";
@@ -178,6 +179,78 @@ module.exports = function handler(req, res) {
     ),
     /source map imports outside Next server output are not executable|No loader is configured for ".map" files|Unexpected token/,
   );
+});
+
+test("bundleAppHandler aliases Pages RouterContext direct imports to Next vendored singleton", async () => {
+  const root = tempDir("pages-router-context-singleton");
+  const distDir = path.join(root, ".next");
+  const outDir = path.join(root, "dist", "brrrd");
+  const handlerPath = path.join(root, "route.cjs");
+
+  fs.writeFileSync(
+    handlerPath,
+    `
+const { RouterContext } = require("next/dist/shared/lib/router-context.shared-runtime");
+module.exports = function handler(_req, res) {
+  res.end(String(Boolean(RouterContext && RouterContext.Provider)));
+};
+`,
+    "utf8",
+  );
+
+  await bundleAppHandler(
+    [{ id: "/", filePath: handlerPath, assets: {} }],
+    { projectDir: root, distDir, outDir },
+  );
+
+  const appBundle = fs.readFileSync(path.join(outDir, "bundles", "app.js"), "utf8");
+  assert.match(
+    appBundle,
+    /next\/dist\/server\/route-modules\/pages\/vendored\/contexts\/router-context/,
+  );
+  assert.doesNotMatch(
+    appBundle,
+    /node_modules.*next.*router-context\.shared-runtime\.js/,
+  );
+
+  const previousBrrrdModules = globalThis.__brrrd_modules;
+  globalThis.__brrrd_modules = { ...(previousBrrrdModules || {}) };
+  for (const builtin of builtinModules) {
+    if (builtin.startsWith("_")) continue;
+    try {
+      const mod = require(builtin);
+      globalThis.__brrrd_modules[builtin] = mod;
+      if (!builtin.startsWith("node:")) {
+        globalThis.__brrrd_modules[`node:${builtin}`] = mod;
+      }
+    } catch {
+      // Some Node builtins are compile-time aliases only.
+    }
+  }
+
+  try {
+    const { default: dispatch } = await import(
+      `${pathToFileURL(path.join(outDir, "bundles", "app.js")).href}?${Date.now()}`
+    );
+    let body = "";
+    await dispatch(
+      "/",
+      { headers: { host: "localhost" }, __brrrd_request_meta: {} },
+      {
+        end(chunk = "") {
+          body += String(chunk);
+        },
+        writeHead() {},
+      },
+    );
+    assert.equal(body, "true");
+  } finally {
+    if (previousBrrrdModules === undefined) {
+      delete globalThis.__brrrd_modules;
+    } else {
+      globalThis.__brrrd_modules = previousBrrrdModules;
+    }
+  }
 });
 
 test("writeManifest records NEXT_DEPLOYMENT_ID as build metadata", () => {
@@ -1013,6 +1086,39 @@ test("extractAppPrerenderResponseMeta reads status and headers from App .meta fi
   ]);
 });
 
+test("extractAppPrerenderResponseMeta preserves static prerender bypass conditions", () => {
+  const root = tempDir("app-prerender-bypass-supplement");
+  const distDir = path.join(root, ".next");
+  const appDir = path.join(distDir, "server", "app");
+  writeJson(path.join(appDir, "index.meta"), {
+    headers: {
+      "x-nextjs-prerender": "1",
+    },
+  });
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    routes: {
+      "/": {
+        experimentalPPR: true,
+        experimentalBypassFor: [
+          { type: "header", key: "next-action" },
+          { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+        ],
+      },
+    },
+  });
+
+  assert.deepEqual(extractAppPrerenderResponseMeta(distDir), [
+    {
+      pathname: "/",
+      headers: [{ key: "x-nextjs-prerender", value: "1" }],
+      prerenderBypass: [
+        { type: "header", key: "next-action" },
+        { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+      ],
+    },
+  ]);
+});
+
 test("extractAppStaticResponseMeta reads metadata route .body response headers", () => {
   const root = tempDir("app-static-meta-supplement");
   const distDir = path.join(root, ".next");
@@ -1117,6 +1223,102 @@ test("onBuildComplete emits App metadata static response headers from .meta file
       required: true,
       reason: "Next Adapter API staticFiles output",
     },
+  );
+});
+
+test("onBuildComplete publishes static App metadata route prerenders before dynamic handlers", async () => {
+  const root = tempDir("app-metadata-route-prerender");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "app", "products", "sitemap", "[__metadata_id__]", "route.js");
+  const bodyFile = path.join(distDir, "server", "app", "products", "sitemap", "1.xml.body");
+  const metaFile = path.join(distDir, "server", "app", "products", "sitemap", "1.xml.meta");
+
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(bodyFile), { recursive: true });
+  fs.writeFileSync(handler, "export function handler(_req, res) { res.end('runtime'); }\n", "utf8");
+  fs.writeFileSync(bodyFile, "<urlset>buildtime</urlset>", "utf8");
+  writeJson(metaFile, {
+    status: 200,
+    headers: {
+      "content-type": "application/xml",
+      "cache-control": "public, max-age=0, must-revalidate",
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(distDir, "server", "app", "page.js"),
+    assets: {},
+  });
+  fs.mkdirSync(path.dirname(context.outputs.appPages[0].filePath), { recursive: true });
+  fs.writeFileSync(context.outputs.appPages[0].filePath, "export function handler() {}\n", "utf8");
+  context.outputs.appRoutes = [
+    {
+      id: "/products/sitemap/[__metadata_id__]/route",
+      pathname: "/products/sitemap/[__metadata_id__]",
+      filePath: handler,
+      runtime: "nodejs",
+      sourcePage: "/products/sitemap/[__metadata_id__]/route",
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/products/sitemap/1.xml",
+      pathname: "/products/sitemap/1.xml",
+      filePath: bodyFile,
+      sourcePage: "/products/sitemap/[__metadata_id__]",
+    },
+  ];
+  context.routing.dynamicRoutes = [
+    {
+      source: "/products/sitemap/[__metadata_id__]",
+      sourceRegex: "^/products/sitemap/([^/]+?)(?:/)?$",
+      destination: "/products/sitemap/[__metadata_id__]",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  const staticRoute = manifest.routes.find((route) => route.id === "prerender-products-sitemap-1_xml");
+  const handlerRoute = manifest.routes.find((route) => route.id === "products-sitemap-___metadata_id___-route");
+  assert.ok(staticRoute);
+  assert.ok(handlerRoute);
+  assert.equal(manifest.routes.indexOf(staticRoute) < manifest.routes.indexOf(handlerRoute), true);
+  assert.deepEqual(staticRoute, {
+    id: "prerender-products-sitemap-1_xml",
+    pattern: "^/products/sitemap/1\\.xml$",
+    type: "prerender",
+    runtime: "nodejs",
+    bundle: "",
+    file: "/products/sitemap/1.xml",
+    status: 200,
+    headers: [
+      { key: "content-type", value: "application/xml" },
+      { key: "cache-control", value: "public, max-age=0, must-revalidate" },
+    ],
+  });
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender:products-sitemap-1_xml"),
+    {
+      id: "prerender:products-sitemap-1_xml",
+      kind: "prerender",
+      ownerRouteId: "prerender-products-sitemap-1_xml",
+      sourcePath: ".next/server/app/products/sitemap/1.xml.body",
+      packagePath: "static/products/sitemap/1.xml",
+      mountPath: "/products/sitemap/1.xml",
+      contentType: "application/xml",
+      required: true,
+      reason: "static route-handler prerender response served without invoking the handler",
+    },
+  );
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "products", "sitemap", "1.xml"), "utf8"),
+    "<urlset>buildtime</urlset>",
   );
 });
 
@@ -1957,6 +2159,82 @@ test("onBuildComplete resolves Pages Router prerender data JSON from server/page
       required: true,
       reason: "Pages Router prerender data JSON served without invoking the handler",
     },
+  );
+});
+
+test("onBuildComplete skips dynamic prerender template data artifacts", async () => {
+  const root = tempDir("pages-dynamic-prerender-template-data");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "pages", "api-docs", "[...slug].js");
+  const literalDataJson = path.join(distDir, "server", "pages", "api-docs", "[first].json");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic api docs'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(literalDataJson), { recursive: true });
+  fs.writeFileSync(
+    literalDataJson,
+    JSON.stringify({ pageProps: { slug: "[first]" } }),
+    "utf8",
+  );
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    version: 4,
+    routes: {},
+    dynamicRoutes: {
+      "/api-docs/[...slug]": {
+        routeRegex: "^/api-docs/(.+?)(?:/)?$",
+        dataRoute: "/_next/data/test-build/api-docs/[...slug].json",
+        dataRouteRegex: "^/_next/data/test-build/api-docs/(.+?)\\.json$",
+        fallback: false,
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/api-docs/[...slug]",
+    pathname: "/api-docs/[...slug]",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/api-docs/[...slug]",
+      pathname: "/api-docs/[...slug]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/_next/data/test-build/api-docs/[...slug].json",
+      pathname: "/_next/data/test-build/api-docs/[...slug].json",
+    },
+    {
+      id: "/_next/data/test-build/api-docs/[first].json",
+      pathname: "/_next/data/test-build/api-docs/[first].json",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "static", "_next", "data", "test-build", "api-docs", "[first].json"),
+      "utf8",
+    ),
+    JSON.stringify({ pageProps: { slug: "[first]" } }),
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.id === "prerender:_next-data-test-build-api-docs-___slug__json"
+    )),
+    false,
   );
 });
 
@@ -3034,6 +3312,7 @@ test("compileRouting preserves i18n locale-disabled rewrite semantics from route
       fallback: [],
     },
   }), {
+    basePath: "/basepath",
     i18n: {
       locales: ["en", "sv", "nl"],
       defaultLocale: "en",
@@ -3139,6 +3418,7 @@ test("extractDynamicPrerenderRoutes preserves Next fallback modes", () => {
     dynamicRoutes: {
       "/[first]": {
         routeRegex: "^/([^/]+?)(?:/)?$",
+        dataRoute: "/_next/data/build/[first].json",
         dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
         fallback: false,
         experimentalBypassFor: [
@@ -3162,6 +3442,7 @@ test("extractDynamicPrerenderRoutes preserves Next fallback modes", () => {
       {
         page: "/[first]",
         routeRegex: "^/([^/]+?)(?:/)?$",
+        dataRoute: "/_next/data/build/[first].json",
         dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
         fallback: false,
         bypass: [

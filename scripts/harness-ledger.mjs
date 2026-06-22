@@ -108,6 +108,21 @@ function elapsedMsFromResult(result) {
   return Math.max(0, finished - started);
 }
 
+function readTextIfExists(file) {
+  if (!fs.existsSync(file)) return "";
+  return fs.readFileSync(file, "utf8");
+}
+
+function testNamePatternFromLocalHarness(local) {
+  if (typeof local.testNamePattern === "string" && local.testNamePattern.length > 0) {
+    return local.testNamePattern;
+  }
+  const args = Array.isArray(local.args) ? local.args : [];
+  const index = args.indexOf("--testNamePattern");
+  const value = index >= 0 ? args[index + 1] : null;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
@@ -141,11 +156,13 @@ async function main() {
     const resultFile = path.resolve(options.result);
     const local = loadJson(resultFile);
     const harvestDir = path.resolve(options.harvestDir ?? local.artifactsDir ?? path.dirname(resultFile));
+    const testNamePattern = testNamePatternFromLocalHarness(local);
     const result = {
       kind: local.mode,
       bundler: local.bundler,
       group: local.group,
       fixture: local.fixture,
+      ...(testNamePattern ? { partialTestNamePattern: testNamePattern } : {}),
       name: path.basename(harvestDir),
       status: local.status,
       signal: local.signal,
@@ -155,8 +172,8 @@ async function main() {
         stderr: path.join(harvestDir, "stderr.log"),
       },
       failures: [],
-      stdout: "",
-      stderr: "",
+      stdout: readTextIfExists(path.join(harvestDir, "stdout.log")),
+      stderr: readTextIfExists(path.join(harvestDir, "stderr.log")),
     };
     const summary = createSummary({
       startedAt: local.startedAt,

@@ -93,6 +93,7 @@ export interface BrrrdCompatibilityPolicy {
 }
 
 export interface BrrrdRouting {
+  basePath?: string;
   i18n?: BrrrdRoutingI18n;
   headers: BrrrdHeaderRule[];
   redirects: BrrrdRedirect[];
@@ -219,6 +220,11 @@ export interface BrrrdHeaderPair {
   value: string;
 }
 
+export interface BrrrdFallbackRouteParam {
+  paramName: string;
+  paramType: string;
+}
+
 export interface BrrrdRoute {
   id: string;
   pattern: string;
@@ -239,6 +245,12 @@ export interface BrrrdRoute {
     headers: Record<string, string>;
     postponedState: string;
   };
+  /**
+   * Next prerender-manifest dynamic route fallback params. App Shell runtime
+   * prefetches use these to defer unresolved dynamic params without replacing
+   * concrete route params in the public URL.
+   */
+  pprFallbackRouteParams?: BrrrdFallbackRouteParam[];
   /** Route was generated from a Next intercepting route segment such as (.) or (...). */
   intercepted?: boolean;
   /** Next preview/draft requests may activate this fallback:false dynamic SSG handler. */
@@ -249,6 +261,16 @@ export interface BrrrdRoute {
   prerenderBypass?: BrrrdMiddlewareCondition[];
   /** Pages Router fallback:true shell; crawler requests must skip it and block on the handler. */
   pagesFallbackShell?: boolean;
+  /** Adapter API PRERENDER config: only these user query keys may use this filesystem route. */
+  allowQuery?: string[];
+  /** Adapter API PRERENDER ISR metadata used by the runtime to decide static vs handler serving. */
+  isr?: {
+    initialRevalidate: number | false;
+    initialExpire?: number;
+    generatedAtMs: number;
+    bypassToken?: string;
+    allowHeader?: string[];
+  };
   status?: number;
   headers?: BrrrdHeaderPair[];
 }

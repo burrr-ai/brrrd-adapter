@@ -271,6 +271,9 @@ function __brrrd_load_cjs_file(file) {
   fn(module.exports, module, localRequire, file, dirname);
   return module.exports;
 }
+function __brrrd_resolve_cjs_specifier(id, baseDir) {
+  return __brrrd_resolve_cjs_file(String(id), baseDir || "/bundle") || String(id);
+}
 var require = globalThis.__brrrd_require || ((id) => {
   var m = globalThis.__brrrd_modules && globalThis.__brrrd_modules[id];
   if (m) {
@@ -289,7 +292,7 @@ var require = globalThis.__brrrd_require || ((id) => {
     function Module() {}
     Module.createRequire = () => require;
     Module.prototype.require = require;
-    Module._resolveFilename = (r) => r;
+    Module._resolveFilename = (r) => __brrrd_resolve_cjs_specifier(r, "/bundle");
     Module._load = (r) => require(r);
     Module._cache = {};
     Module.builtinModules = Array.from(new Set(Object.keys(globalThis.__brrrd_modules || {}).map(normalizeBuiltinId))).sort();
@@ -312,7 +315,7 @@ var require = globalThis.__brrrd_require || ((id) => {
   __brrrdErr.code = "MODULE_NOT_FOUND";
   throw __brrrdErr;
 });
-require.resolve = (id) => id;
+require.resolve = (id) => __brrrd_resolve_cjs_specifier(id, "/bundle");
 var __filename = "/bundle/handler.js";
 var __dirname = "/bundle";
 globalThis.__brrrd_turbopack_runtime_root ??= "/bundle/.next";

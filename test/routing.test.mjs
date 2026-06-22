@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createNextBuildModel } from "../dist/model.js";
-import { compileRouteTable } from "../dist/routing-compiler.js";
+import { compileRouteTable, compileRouting } from "../dist/routing-compiler.js";
 
 function context({
   appPages = [],
@@ -163,6 +163,40 @@ test("Pages Router RSC fallback static outputs are not published as RSC data rou
     routes.some((route) => route.id === "static-pages-dir_rsc"),
     false,
   );
+});
+
+test("prerender routes preserve Adapter API ISR metadata", () => {
+  const previousNow = Date.now;
+  Date.now = () => 123_456;
+  try {
+    const distDir = "/tmp/brrrd-routing-test/.next";
+    const routes = compileRouteTable(context({
+      prerenders: [{
+        id: "/stale",
+        pathname: "/stale",
+        filePath: `${distDir}/server/pages/stale.html`,
+        fallback: {
+          initialRevalidate: 5,
+          initialExpiration: 31_536_000,
+        },
+        config: {
+          bypassToken: "preview-token",
+          allowHeader: ["x-prerender-revalidate"],
+        },
+      }],
+    }));
+
+    const route = routes.find((item) => item.id === "prerender-stale");
+    assert.deepEqual(route.isr, {
+      initialRevalidate: 5,
+      initialExpire: 31_536_000,
+      generatedAtMs: 123_456,
+      bypassToken: "preview-token",
+      allowHeader: ["x-prerender-revalidate"],
+    });
+  } finally {
+    Date.now = previousNow;
+  }
 });
 
 test("fallback false Pages SSG dynamic routes keep handler candidates for preview requests", () => {
@@ -374,6 +408,141 @@ test("fallback-capable Pages SSG dynamic routes expose _next/data through the pa
   );
 });
 
+test("literal bracket prerender paths are published as exact static routes", () => {
+  const previousNow = Date.now;
+  Date.now = () => 234_567;
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  try {
+    const routes = compileRouteTable(
+      context({
+        pages: [
+          {
+            id: "/dynamic/[slug]",
+            pathname: "/dynamic/[slug]",
+            runtime: "nodejs",
+            filePath: `${distDir}/server/pages/dynamic/[slug].js`,
+          },
+        ],
+        prerenders: [
+          {
+            id: "/dynamic/[first]",
+            pathname: "/dynamic/[first]",
+            urlPath: "/dynamic/[first]",
+            filePath: `${distDir}/server/pages/dynamic/[first].html`,
+            fallback: {
+              initialRevalidate: false,
+              initialHeaders: {
+                "cache-control": "public, max-age=0, must-revalidate",
+              },
+            },
+          },
+          {
+            id: "/_next/data/test-build/dynamic/[first].json",
+            pathname: "/_next/data/test-build/dynamic/[first].json",
+            urlPath: "/_next/data/test-build/dynamic/[first].json",
+            filePath: `${distDir}/server/pages/dynamic/[first].json`,
+            fallback: {
+              initialRevalidate: false,
+              initialHeaders: {
+                "cache-control": "public, max-age=0, must-revalidate",
+              },
+            },
+          },
+          {
+            id: "/dynamic/[slug]",
+            pathname: "/dynamic/[slug]",
+            urlPath: "/dynamic/[slug]",
+          },
+          {
+            id: "/_next/data/test-build/dynamic/[slug].json",
+            pathname: "/_next/data/test-build/dynamic/[slug].json",
+            urlPath: "/_next/data/test-build/dynamic/[slug].json",
+          },
+        ],
+      }),
+      {
+        staticRoutes: [],
+        dynamicPrerenderRoutes: [
+          {
+            page: "/dynamic/[slug]",
+            routeRegex: "^/dynamic/([^/]+?)(?:/)?$",
+            dataRoute: "/_next/data/test-build/dynamic/[slug].json",
+            dataRouteRegex: "^/_next/data/test-build/dynamic/([^/]+?)\\.json$",
+            fallback: false,
+          },
+        ],
+        appPrerenderDataRoutes: [],
+        pprSegmentPrefetchRoutes: [],
+        prerenderResponseMeta: [],
+      },
+    );
+
+    assert.deepEqual(
+      routes.find((route) => route.id === "prerender-dynamic-_first_"),
+      {
+        id: "prerender-dynamic-_first_",
+        pattern: "^/dynamic/\\[first\\]$",
+        type: "prerender",
+        runtime: "nodejs",
+        bundle: "",
+        file: "/dynamic/[first]",
+        headers: [{ key: "cache-control", value: "public, max-age=0, must-revalidate" }],
+        isr: {
+          initialRevalidate: false,
+          generatedAtMs: 234_567,
+        },
+      },
+    );
+    assert.deepEqual(
+      routes.find((route) => route.id === "prerender-_next-data-test-build-dynamic-_first__json"),
+      {
+        id: "prerender-_next-data-test-build-dynamic-_first__json",
+        pattern: "^/_next/data/test-build/dynamic/\\[first\\]\\.json$",
+        type: "prerender",
+        runtime: "nodejs",
+        bundle: "",
+        file: "/_next/data/test-build/dynamic/[first].json",
+        headers: [{ key: "cache-control", value: "public, max-age=0, must-revalidate" }],
+        isr: {
+          initialRevalidate: false,
+          generatedAtMs: 234_567,
+        },
+      },
+    );
+    assert.equal(routes.some((route) => route.id === "prerender-dynamic-_slug_"), false);
+    assert.equal(
+      routes.some((route) => route.id === "prerender-_next-data-test-build-dynamic-_slug__json"),
+      false,
+    );
+  } finally {
+    Date.now = previousNow;
+  }
+});
+
+test("pagesApi outputs outside the /api boundary are normalized as Pages routes", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const model = context({
+    pagesApi: [
+      {
+        id: "/api-docs/[...slug]",
+        pathname: "/api-docs/[...slug]",
+        runtime: "nodejs",
+        filePath: `${distDir}/server/pages/api-docs/[...slug].js`,
+      },
+      {
+        id: "/api/hello",
+        pathname: "/api/hello",
+        runtime: "nodejs",
+        filePath: `${distDir}/server/pages/api/hello.js`,
+      },
+    ],
+  });
+
+  assert.equal(model.outputs.pages.some((page) => page.pathname === "/api-docs/[...slug]"), true);
+  assert.equal(model.outputs.pagesApi.some((api) => api.pathname === "/api-docs/[...slug]"), false);
+  assert.equal(model.outputs.pagesApi.some((api) => api.pathname === "/api/hello"), true);
+});
+
 test("Pages SSG dynamic fallback shells use index storage when public children exist", () => {
   const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(
@@ -569,6 +738,15 @@ test("Next image optimizer route follows configured basePath", () => {
   );
 });
 
+test("routing manifest carries basePath independently from i18n", () => {
+  const routing = compileRouting(context({
+    config: { basePath: "/docs" },
+  }));
+
+  assert.equal(routing.basePath, "/docs");
+  assert.equal(routing.i18n, undefined);
+});
+
 test("executable Pages Router index handlers are exposed at public index paths", () => {
   const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(context({
@@ -760,6 +938,52 @@ test("App prerender response metadata is emitted on filesystem routes", () => {
       file: "/redirect-page",
       status: 307,
       headers: [{ key: "location", value: "/" }],
+    },
+  );
+});
+
+test("static App prerender routes keep server action bypass metadata", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [appPage("/")],
+      prerenders: [
+        {
+          id: "/",
+          pathname: "/",
+          parentOutputId: "/",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [{
+        pathname: "/",
+        headers: [{ key: "x-nextjs-prerender", value: "1" }],
+        prerenderBypass: [
+          { type: "header", key: "next-action" },
+          { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+        ],
+      }],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-index"),
+    {
+      id: "prerender-index",
+      pattern: "^/$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/",
+      headers: [{ key: "x-nextjs-prerender", value: "1" }],
+      prerenderBypass: [
+        { type: "header", key: "next-action" },
+        { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+      ],
     },
   );
 });
@@ -1127,6 +1351,52 @@ test("i18n default-locale dynamic page handlers are exposed at public unprefixed
   });
 });
 
+test("i18n default-locale dynamic Pages API handlers are exposed at public unprefixed paths", () => {
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
+    pagesApi: [
+      appPage("/api/blog/[slug]"),
+    ],
+    dynamicRoutes: [
+      {
+        source: "/api/blog/[slug]",
+        sourceRegex: "^[/]?(?<nextLocale>[^/]{1,})/api/blog/(?<nxtPslug>[^/]+?)(?:/)?$",
+        destination: "/:nextInternalLocale/api/blog/[slug]",
+      },
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "api-blog-_slug_"
+      && route.pattern === "^[/]?(?<nextLocale>[^/]{1,})/api/blog/(?<nxtPslug>[^/]+?)(?:/)?$"
+    )),
+    {
+      id: "api-blog-_slug_",
+      pattern: "^[/]?(?<nextLocale>[^/]{1,})/api/blog/(?<nxtPslug>[^/]+?)(?:/)?$",
+      type: "route",
+      runtime: "nodejs",
+      params: ["slug"],
+      paramTypes: { slug: "single" },
+    },
+  );
+
+  const defaultAlias = routes.find((route) => (
+    route.id === "api-blog-_slug_"
+    && new RegExp(route.pattern).test("/api/blog/first")
+  ));
+  assert.ok(defaultAlias);
+  assert.deepEqual(defaultAlias, {
+    id: "api-blog-_slug_",
+    pattern: defaultAlias.pattern,
+    type: "route",
+    runtime: "nodejs",
+    params: ["slug"],
+    paramTypes: { slug: "single" },
+    localeHandling: "unprefixed",
+  });
+});
+
 test("internal intercepting route outputs are bundled but not exposed without a public sourceRegex", () => {
   const routes = compileRouteTable(context({
     appPages: [
@@ -1289,6 +1559,22 @@ test("PPR segment prefetch routes are filesystem static routes before dynamic RS
         appPage("/[slug]"),
         appPage("/[slug].rsc"),
       ],
+      prerenders: [
+        {
+          id: "/[slug].segments/$d$slug/__PAGE__.segment.rsc",
+          pathname: "/[slug].segments/$d$slug/__PAGE__.segment.rsc",
+          fallback: {
+            initialHeaders: {
+              vary: "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+              "content-type": "text/x-component",
+              "x-nextjs-postponed": "2",
+            },
+          },
+          config: {
+            allowQuery: [],
+          },
+        },
+      ],
       dynamicRoutes: [
         {
           source: "/[slug]",
@@ -1322,6 +1608,15 @@ test("PPR segment prefetch routes are filesystem static routes before dynamic RS
     bundle: "",
     file: "/[slug].segments/$d$slug$segment",
     params: ["path"],
+    headers: [
+      {
+        key: "vary",
+        value: "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      },
+      { key: "content-type", value: "text/x-component" },
+      { key: "x-nextjs-postponed", value: "2" },
+    ],
+    allowQuery: [],
   });
 
   const dynamicRscIndex = routes.findIndex((route) => route.id === "_slug__rsc");
@@ -1375,11 +1670,94 @@ test("PPR RSC prerenders attach resume metadata to the handler route", () => {
   );
 });
 
+test("dynamic PPR app routes preserve fallback route params for runtime app-shell prefetch", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/[teamSlug]/[project].rsc"),
+      ],
+      dynamicRoutes: [
+        {
+          source: "/[teamSlug]/[project].rsc",
+          sourceRegex: "^/(?<nxtPteamSlug>[^/]+?)/(?<nxtPproject>[^/]+?)\\.rsc(?:/)?$",
+          destination: "/[teamSlug]/[project].rsc",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/[teamSlug]/[project]",
+          routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/([^/]+?)/([^/]+?)\\.rsc$",
+          fallback: "/[teamSlug]/[project]",
+          bypass: [],
+          fallbackRouteParams: [
+            { paramName: "teamSlug", paramType: "dynamic" },
+            { paramName: "project", paramType: "dynamic" },
+          ],
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "_teamSlug_-_project__rsc"),
+    {
+      id: "_teamSlug_-_project__rsc",
+      pattern: "^/(?<nxtPteamSlug>[^/]+?)/(?<nxtPproject>[^/]+?)\\.rsc(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["teamSlug", "project"],
+      paramTypes: {
+        teamSlug: "single",
+        project: "single",
+      },
+      pprFallbackRouteParams: [
+        { paramName: "teamSlug", paramType: "dynamic" },
+        { paramName: "project", paramType: "dynamic" },
+      ],
+    },
+  );
+});
+
 test("App prerender RSC data artifacts are exact static routes before dynamic RSC handlers", () => {
   const routes = compileRouteTable(
     context({
       appPages: [
         appPage("/[slug].rsc"),
+      ],
+      prerenders: [
+        {
+          id: "/alpha.rsc",
+          pathname: "/alpha.rsc",
+          fallback: {
+            initialStatus: 203,
+            initialHeaders: {
+              "content-type": "text/x-component",
+              "x-nextjs-postponed": "2",
+            },
+          },
+          config: {
+            allowQuery: [],
+          },
+        },
+        {
+          id: "/alpha.segments/_tree.segment.rsc",
+          pathname: "/alpha.segments/_tree.segment.rsc",
+          fallback: {
+            initialHeaders: {
+              "content-type": "text/x-component",
+              "x-nextjs-postponed": "2",
+            },
+          },
+          config: {
+            allowQuery: [],
+          },
+        },
       ],
       dynamicRoutes: [
         {
@@ -1411,6 +1789,12 @@ test("App prerender RSC data artifacts are exact static routes before dynamic RS
       runtime: "nodejs",
       bundle: "",
       file: "/alpha.rsc",
+      status: 203,
+      headers: [
+        { key: "content-type", value: "text/x-component" },
+        { key: "x-nextjs-postponed", value: "2" },
+      ],
+      allowQuery: [],
     },
   );
   assert.deepEqual(
@@ -1422,6 +1806,11 @@ test("App prerender RSC data artifacts are exact static routes before dynamic RS
       runtime: "nodejs",
       bundle: "",
       file: "/alpha.segments/_tree.segment.rsc",
+      headers: [
+        { key: "content-type", value: "text/x-component" },
+        { key: "x-nextjs-postponed", value: "2" },
+      ],
+      allowQuery: [],
     },
   );
 
@@ -1432,4 +1821,138 @@ test("App prerender RSC data artifacts are exact static routes before dynamic RS
   ));
   assert.ok(routeRscIndex < dynamicRscIndex);
   assert.ok(treeIndex < dynamicRscIndex);
+});
+
+test("concrete App prerender segment data wins over dynamic segment templates", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/test-dynamic/[slug].rsc"),
+      ],
+      prerenders: [
+        {
+          id: "/test-dynamic/[slug].segments/_tree.segment.rsc",
+          pathname: "/test-dynamic/[slug].segments/_tree.segment.rsc",
+          fallback: {
+            initialHeaders: {
+              vary: "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+              "content-type": "text/x-component",
+              "x-nextjs-postponed": "2",
+            },
+          },
+          config: {
+            allowQuery: ["slug"],
+          },
+        },
+      ],
+      dynamicRoutes: [
+        {
+          source: "/test-dynamic/[slug].rsc",
+          sourceRegex: "^/test-dynamic/(?<nxtPslug>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+          destination: "/test-dynamic/[slug].rsc",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/test-dynamic/[slug]",
+          routeRegex: "^/test-dynamic/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/test-dynamic/([^/]+?)\\.rsc$",
+          fallback: "/test-dynamic/[slug].html",
+        },
+      ],
+      appPrerenderDataRoutes: [
+        {
+          pathname: "/test-dynamic/[slug].segments/_tree.segment.rsc",
+          sourceRel: "test-dynamic/[slug].segments/_tree.segment.rsc",
+        },
+        {
+          pathname: "/test-dynamic/hello.segments/_tree.segment.rsc",
+          sourceRel: "test-dynamic/hello.segments/_tree.segment.rsc",
+        },
+      ],
+      pprSegmentPrefetchRoutes: [],
+    },
+  );
+
+  const concreteIndex = routes.findIndex((route) => (
+    route.id === "app-prerender-data-test-dynamic-hello_segments-_tree_segment_rsc"
+  ));
+  const dynamicTemplateIndex = routes.findIndex((route) => (
+    route.id === "app-prerender-data-dynamic-test-dynamic-_slug__segments-_tree_segment_rsc"
+  ));
+  const dynamicRscIndex = routes.findIndex((route) => route.id === "test-dynamic-_slug__rsc");
+  assert.ok(concreteIndex >= 0);
+  assert.ok(dynamicTemplateIndex >= 0);
+  assert.ok(dynamicRscIndex >= 0);
+  assert.ok(concreteIndex < dynamicTemplateIndex);
+  assert.ok(dynamicTemplateIndex < dynamicRscIndex);
+  assert.deepEqual(routes[dynamicTemplateIndex].headers, [
+    {
+      key: "vary",
+      value: "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    },
+    { key: "content-type", value: "text/x-component" },
+    { key: "x-nextjs-postponed", value: "2" },
+  ]);
+  assert.deepEqual(routes[dynamicTemplateIndex].allowQuery, ["slug"]);
+
+  const firstConcreteSegmentMatch = routes.find((route) => (
+    new RegExp(route.pattern).test("/test-dynamic/hello.segments/_tree.segment.rsc")
+  ));
+  assert.equal(
+    firstConcreteSegmentMatch.id,
+    "app-prerender-data-test-dynamic-hello_segments-_tree_segment_rsc",
+  );
+});
+
+test("more specific dynamic App prerender segment data wins over generic templates", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/instant-loading/[category]/[itemId].rsc"),
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/instant-loading/[category]/[itemId]",
+          routeRegex: "^/instant-loading/([^/]+?)/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/instant-loading/([^/]+?)/([^/]+?)\\.rsc$",
+          fallback: "/instant-loading/[category]/[itemId].html",
+        },
+        {
+          page: "/instant-loading/electronics/[itemId]",
+          routeRegex: "^/instant-loading/electronics/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/instant-loading/electronics/([^/]+?)\\.rsc$",
+          fallback: "/instant-loading/electronics/[itemId].html",
+        },
+      ],
+      appPrerenderDataRoutes: [
+        {
+          pathname: "/instant-loading/[category]/[itemId].segments/!root/instant-loading/$d$category.segment.rsc",
+          sourceRel: "instant-loading/[category]/[itemId].segments/!root/instant-loading/$d$category.segment.rsc",
+        },
+        {
+          pathname: "/instant-loading/electronics/[itemId].segments/!root/instant-loading/$d$category.segment.rsc",
+          sourceRel: "instant-loading/electronics/[itemId].segments/!root/instant-loading/$d$category.segment.rsc",
+        },
+      ],
+      pprSegmentPrefetchRoutes: [],
+    },
+  );
+
+  const firstCategorySegmentMatch = routes.find((route) => (
+    new RegExp(route.pattern).test(
+      "/instant-loading/electronics/phone.segments/!root/instant-loading/$d$category.segment.rsc",
+    )
+  ));
+
+  assert.equal(
+    firstCategorySegmentMatch.id,
+    "app-prerender-data-dynamic-instant-loading-electronics-_itemId__segments-!root-instant-loading-$d$category_segment_rsc",
+  );
 });

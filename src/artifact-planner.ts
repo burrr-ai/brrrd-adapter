@@ -3,8 +3,11 @@ import { createRequire } from "node:module";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 
-import type { ManifestSupplement } from "./manifest-supplement.js";
-import type { SupplementStaticResponseMeta } from "./manifest-supplement.js";
+import type {
+  ManifestSupplement,
+  SupplementDynamicPrerenderRoute,
+  SupplementStaticResponseMeta,
+} from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import { requestOutputs } from "./model.js";
 import {
@@ -14,6 +17,7 @@ import {
 import {
   findPrerenderOwner,
   isAuxiliaryPrerenderPath,
+  isDynamicPrerenderTemplatePath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
 import type { BrrrdArtifact, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
@@ -258,24 +262,66 @@ function prerenderDataArtifact(
   };
 }
 
+function routeHandlerPrerenderArtifact(
+  model: NextBuildModel,
+  prerender: NormalizedOutput,
+  allPublicPathnames: readonly string[],
+  responseMeta?: SupplementStaticResponseMeta,
+): PrerenderPublicArtifact | null {
+  const sourceAbsPath = prerender.filePath
+    ?? (responseMeta?.sourceRel
+      ? path.join(
+        model.distDir,
+        "server",
+        "app",
+        responseMeta.sourceRel.endsWith(".meta")
+          ? responseMeta.sourceRel.slice(0, -".meta".length) + ".body"
+          : responseMeta.sourceRel,
+      )
+      : null);
+  if (!sourceAbsPath) return null;
+  return {
+    sourceAbsPath,
+    packagePath: packageJoin("static", publicStoragePackagePath(prerender.pathname, allPublicPathnames)),
+    mountPath: prerender.pathname,
+    ...(responseMeta ? { contentType: headerValue(responseMeta.headers, "content-type") } : {}),
+    reason: "static route-handler prerender response served without invoking the handler",
+  };
+}
+
 function prerenderPublicArtifact(
   model: NextBuildModel,
   prerender: NormalizedOutput,
   allPublicPathnames: readonly string[],
+  dynamicPrerenderRoutes: readonly SupplementDynamicPrerenderRoute[],
+  responseMeta?: SupplementStaticResponseMeta,
 ): PrerenderPublicArtifact | null {
   if (isAuxiliaryPrerenderPath(prerender.pathname)) return null;
+  if (isDynamicPrerenderTemplatePath(prerender.pathname, dynamicPrerenderRoutes)) return null;
 
   const dataRel = nextDataRoutePathname(model, prerender.pathname);
   if (dataRel) return prerenderDataArtifact(model, prerender, dataRel);
-  if (isRouteHandlerPrerender(model, prerender)) return null;
+  if (isRouteHandlerPrerender(model, prerender)) {
+    return routeHandlerPrerenderArtifact(model, prerender, allPublicPathnames, responseMeta);
+  }
   return prerenderHtmlArtifact(model, prerender, allPublicPathnames);
 }
 
-function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+function prerenderArtifacts(
+  model: NextBuildModel,
+  dynamicPrerenderRoutes: readonly SupplementDynamicPrerenderRoute[],
+  staticMeta: ReadonlyMap<string, SupplementStaticResponseMeta>,
+): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   const allPublicPathnames = publicArtifactPathnames(model);
   for (const prerender of model.outputs.prerenders) {
-    const artifact = prerenderPublicArtifact(model, prerender, allPublicPathnames);
+    const artifact = prerenderPublicArtifact(
+      model,
+      prerender,
+      allPublicPathnames,
+      dynamicPrerenderRoutes,
+      staticMeta.get(prerender.urlPath) ?? staticMeta.get(prerender.pathname),
+    );
     if (!artifact) continue;
     items.push(artifactItem(model, {
       id: `prerender:${sanitizeId(prerender.pathname)}`,
@@ -1027,7 +1073,7 @@ export function createArtifactPlan(
         )),
       ...pagesStaticDataArtifacts(model),
       ...pagesDynamicFallbackArtifacts(model, supplement),
-      ...prerenderArtifacts(model),
+      ...prerenderArtifacts(model, supplement.dynamicPrerenderRoutes, staticMeta),
       ...appPrerenderDataArtifacts(model, supplement),
       ...pprSegmentPrefetchArtifacts(model, supplement),
       ...runtimeManifestArtifacts(model),

@@ -23,6 +23,8 @@ type RawAdapterOutput = {
     filePath?: string;
     initialStatus?: number;
     initialHeaders?: Record<string, string | string[]>;
+    initialRevalidate?: number | false;
+    initialExpiration?: number;
     postponedState?: string;
   };
   parentOutputId?: string;
@@ -254,6 +256,21 @@ function normalizeOutput(
   };
 }
 
+function isPagesApiRoutePath(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+function isPagesApiFile(raw: RawAdapterOutput, distDir: string): boolean {
+  if (!raw.filePath) return false;
+  const pagesDir = path.join(distDir, "server", "pages");
+  const relative = path.relative(pagesDir, raw.filePath).split(path.sep).join("/");
+  return relative === "api.js" || relative.startsWith("api/");
+}
+
+function isPagesApiOutput(raw: RawAdapterOutput, distDir: string): boolean {
+  return isPagesApiRoutePath(raw.pathname) || isPagesApiFile(raw, distDir);
+}
+
 function normalizeRouteArray(value: unknown): AdapterRouteEntry[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is AdapterRouteEntry => (
@@ -321,6 +338,13 @@ function mergePublicStaticFiles(ctx: AdapterBuildContext): NormalizedOutput[] {
 }
 
 export function createNextBuildModel(ctx: AdapterBuildContext): NextBuildModel {
+  const pageOutputs = [
+    ...ctx.outputs.pages,
+    ...ctx.outputs.pagesApi.filter((output) => !isPagesApiOutput(output, ctx.distDir)),
+  ];
+  const pagesApiOutputs = ctx.outputs.pagesApi
+    .filter((output) => isPagesApiOutput(output, ctx.distDir));
+
   return {
     projectDir: ctx.projectDir,
     repoRoot: ctx.repoRoot,
@@ -330,13 +354,13 @@ export function createNextBuildModel(ctx: AdapterBuildContext): NextBuildModel {
     buildId: ctx.buildId,
     routing: normalizeRouting(ctx.routing),
     outputs: {
-      pages: ctx.outputs.pages.map((output) => normalizeOutput(output, "page", {
+      pages: pageOutputs.map((output) => normalizeOutput(output, "page", {
         distDir: ctx.distDir,
         config: ctx.config,
       })),
       appPages: ctx.outputs.appPages.map((output) => normalizeOutput(output, "app-page")),
       appRoutes: ctx.outputs.appRoutes.map((output) => normalizeOutput(output, "app-route")),
-      pagesApi: ctx.outputs.pagesApi.map((output) => normalizeOutput(output, "pages-api")),
+      pagesApi: pagesApiOutputs.map((output) => normalizeOutput(output, "pages-api")),
       middleware: ctx.outputs.middleware
         ? normalizeOutput(ctx.outputs.middleware, "middleware")
         : undefined,

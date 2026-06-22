@@ -8,6 +8,7 @@ import {
   buildHarvestTargets,
   buildTargets,
   createSummary,
+  diagnosticFailureTextForLocalHarnessArtifacts,
   extractFailureHints,
   extractFailedFixtures,
   extractLocalHarnessArtifactDirs,
@@ -15,6 +16,7 @@ import {
   parseArgs,
   parsePrintedTests,
   resultCollisionKey,
+  shouldExitForDeferredTargets,
   suggestBucket,
   takeNextRunnableTarget,
   updateFailureLedger,
@@ -75,6 +77,24 @@ test("harvest parseArgs accepts a slow target threshold", () => {
   assert.equal(options.slowMs, "42");
 });
 
+test("harvest parseArgs accepts direct fixture targets without groups", () => {
+  const options = parseArgs([
+    "--fixtures",
+    "test/e2e/a/a.test.ts,test/e2e/b/b.test.ts",
+    "--bundlers",
+    "webpack",
+    "--name",
+    "direct",
+  ], {});
+
+  assert.deepEqual(options.groups, []);
+  assert.deepEqual(options.fixtures, [
+    "test/e2e/a/a.test.ts",
+    "test/e2e/b/b.test.ts",
+  ]);
+  assert.equal(options.name, "direct");
+});
+
 test("harvest parseArgs configures persistent failure ledger", () => {
   const options = parseArgs([
     "--groups",
@@ -98,7 +118,7 @@ test("harvest parseArgs configures persistent failure ledger", () => {
 test("harvest rejects unsupported bundlers and missing groups", () => {
   assert.throws(
     () => parseArgs(["--bundlers", "webpack"], {}),
-    /--groups is required/,
+    /--groups or --fixtures is required/,
   );
   assert.throws(
     () => parseArgs(["--groups", "1/64", "--bundlers", "magic"], {}),
@@ -131,6 +151,48 @@ test("harvest buildTargets creates a matrix in bundler-major order", () => {
     { kind: "group", bundler: "next-default", group: "7/64" },
   ]);
   assert.match(targets[0].name, /^candidate-webpack-6-64-[a-f0-9]{8}$/);
+});
+
+test("harvest buildTargets creates direct fixture targets", () => {
+  const targets = buildTargets(parseArgs([
+    "--fixtures",
+    "test/e2e/a/a.test.ts,test/e2e/b/b.test.ts",
+    "--bundlers",
+    "webpack,next-default",
+    "--name",
+    "direct",
+  ], {}));
+
+  assert.deepEqual(
+    targets.map(({ kind, bundler, group, fixture }) => ({ kind, bundler, group, fixture })),
+    [
+      {
+        kind: "fixture",
+        bundler: "webpack",
+        group: "fixture",
+        fixture: "test/e2e/a/a.test.ts",
+      },
+      {
+        kind: "fixture",
+        bundler: "webpack",
+        group: "fixture",
+        fixture: "test/e2e/b/b.test.ts",
+      },
+      {
+        kind: "fixture",
+        bundler: "next-default",
+        group: "fixture",
+        fixture: "test/e2e/a/a.test.ts",
+      },
+      {
+        kind: "fixture",
+        bundler: "next-default",
+        group: "fixture",
+        fixture: "test/e2e/b/b.test.ts",
+      },
+    ],
+  );
+  assert.match(targets[0].name, /^direct-webpack-fixture-test-e2e-a-a.test.ts-[a-f0-9]{8}$/);
 });
 
 test("harvest parses Next --print-tests output into fixture paths", () => {
@@ -212,6 +274,32 @@ test("harvest expands fixture lists with bounded parallelism", async () => {
 	assert.deepEqual(targets.map(({ group }) => group), ["6/64", "7/64", "8/64"]);
 });
 
+test("harvest direct fixture targets skip shard fixture listing", async () => {
+  const options = parseArgs([
+    "--fixtures",
+    "test/e2e/a/a.test.ts",
+    "--bundlers",
+    "webpack",
+    "--expand-fixtures",
+  ], {});
+
+  const targets = await buildHarvestTargets(options, "/tmp/harvest", {
+    listGroupFixtures: async () => {
+      throw new Error("direct fixture targets should not list shard groups");
+    },
+  });
+
+  assert.deepEqual(
+    targets.map(({ kind, bundler, group, fixture }) => ({ kind, bundler, group, fixture })),
+    [{
+      kind: "fixture",
+      bundler: "webpack",
+      group: "fixture",
+      fixture: "test/e2e/a/a.test.ts",
+    }],
+  );
+});
+
 test("harvest scheduler avoids concurrent targets that share Next result files", () => {
   const pending = [
     { kind: "group", bundler: "turbopack", group: "6/64", name: "turbopack-6" },
@@ -280,6 +368,43 @@ test("harvest scheduler only blocks matching fixtures after expansion", () => {
   );
 });
 
+test("harvest scheduler can finish when only bounded deferred targets remain", () => {
+  assert.equal(shouldExitForDeferredTargets({
+    pendingCount: 0,
+    maxDeferredRunning: 5,
+    runningTargets: [
+      { name: "slow-a", deferred: true },
+      { name: "slow-b", deferred: true },
+    ],
+  }), true);
+
+  assert.equal(shouldExitForDeferredTargets({
+    pendingCount: 1,
+    maxDeferredRunning: 5,
+    runningTargets: [
+      { name: "slow-a", deferred: true },
+    ],
+  }), false);
+
+  assert.equal(shouldExitForDeferredTargets({
+    pendingCount: 0,
+    maxDeferredRunning: 1,
+    runningTargets: [
+      { name: "slow-a", deferred: true },
+      { name: "slow-b", deferred: true },
+    ],
+  }), false);
+
+  assert.equal(shouldExitForDeferredTargets({
+    pendingCount: 0,
+    maxDeferredRunning: 5,
+    runningTargets: [
+      { name: "slow-a", deferred: true },
+      { name: "active-b", deferred: false },
+    ],
+  }), false);
+});
+
 test("harvest extracts failed fixture inventory from run-tests output", () => {
   const failures = extractFailedFixtures(`
 FAIL webpack test/e2e/app-dir/prefetch-true-instant/prefetch-true-instant.test.ts (40.105 s)
@@ -312,6 +437,15 @@ Received string:    "Not Found"
     "Expected substring: \"This page could not be found.\"",
     "Received string:    \"Not Found\"",
   ]);
+
+  assert.deepEqual(extractFailureHints(`
+noise
+Error: native Node addons (.node) are not supported in brrrd isolates:
+  - node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node
+`), [
+    "Error: native Node addons (.node) are not supported in brrrd isolates:",
+    "- node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+  ]);
 });
 
 test("harvest does not synthesize fixture failures from hints after a passing run", () => {
@@ -340,6 +474,40 @@ noise
 [brrrd-local-harness] artifacts: /tmp/run-b
 [brrrd-local-harness] artifacts: /tmp/run-a
 `), ["/tmp/run-a", "/tmp/run-b"]);
+});
+
+test("harvest reads deploy diagnostics for failures without Jest fixture inventory", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-harvest-diagnostics-"));
+  const log = path.join(
+    dir,
+    "harness-diagnostics",
+    "deploy-failed",
+    "digest",
+    "adapter-build.log",
+  );
+  fs.mkdirSync(path.dirname(log), { recursive: true });
+  fs.writeFileSync(log, [
+    "Failed to run onBuildComplete from @brrrd/adapter",
+    "Error: native Node addons (.node) are not supported in brrrd isolates:",
+    "  - node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+    "",
+  ].join("\n"));
+
+  const diagnosticText = diagnosticFailureTextForLocalHarnessArtifacts(`
+[brrrd-local-harness] artifacts: ${dir}
+`);
+  assert.match(diagnosticText, /native Node addons/);
+  const failures = failureDigestForTarget(
+    {
+      kind: "fixture",
+      fixture: "test/e2e/prerender-native-module.test.ts",
+    },
+    [],
+    diagnosticText,
+    1,
+  );
+  assert.equal(failures[0].fixture, "test/e2e/prerender-native-module.test.ts");
+  assert.equal(suggestBucket(failures[0]), "Node/runtime API");
 });
 
 test("harvest suggests root-cause buckets from failure inventory", () => {
@@ -409,6 +577,17 @@ test("harvest suggests root-cause buckets from failure inventory", () => {
       ],
     }),
     "bundler output shape",
+  );
+  assert.equal(
+    suggestBucket({
+      fixture: "test/e2e/prerender-native-module.test.ts",
+      messages: [
+        "Failed to run onBuildComplete from @brrrd/adapter",
+        "native Node addons (.node) are not supported in brrrd isolates:",
+        "node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+      ],
+    }),
+    "Node/runtime API",
   );
   assert.equal(
     suggestBucket({
@@ -542,6 +721,36 @@ test("harvest summary groups failures by bucket and exposes slow targets", () =>
   ]);
 });
 
+test("harvest summary buckets fixture setup failures from stderr hints", () => {
+  const summary = createSummary({
+    startedAt: "2026-06-20T00:00:00.000Z",
+    finishedAt: "2026-06-20T00:01:00.000Z",
+    slowMs: 1000,
+    results: [
+      {
+        kind: "fixture",
+        bundler: "webpack",
+        group: null,
+        fixture: "test/e2e/prerender-native-module.test.ts",
+        name: "native-fixture",
+        status: 1,
+        signal: null,
+        elapsedMs: 500,
+        failures: [],
+        stdout: "",
+        stderr: [
+          "Error: native Node addons (.node) are not supported in brrrd isolates:",
+          "  - node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+        ].join("\n"),
+      },
+    ],
+  });
+
+  assert.equal(summary.failureCount, 1);
+  assert.deepEqual(summary.buckets, { "Node/runtime API": 1 });
+  assert.equal(summary.failures[0].bucket, "Node/runtime API");
+});
+
 test("harvest summary marks interrupted runs as aborted", () => {
   const summary = createSummary({
     startedAt: "2026-06-20T00:00:00.000Z",
@@ -587,6 +796,41 @@ test("harvest summary fails nonzero group targets even without parsed fixture fa
 	assert.equal(summary.failureCount, 1);
 	assert.equal(summary.failures[0].fixture, "group:webpack:13/64");
 	assert.match(summary.failures[0].messages[0], /no failed fixture inventory was parsed/);
+});
+
+test("harvest summary records stopped deferred targets as slow fixtures", () => {
+  const fixture = "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts";
+  const summary = createSummary({
+    startedAt: "2026-06-20T00:00:00.000Z",
+    finishedAt: "2026-06-20T00:10:00.000Z",
+    slowMs: 1000,
+    deferredExit: true,
+    results: [
+      {
+        kind: "fixture",
+        bundler: "webpack",
+        group: "fixture",
+        fixture,
+        name: "slow-fixture",
+        status: null,
+        signal: "DEFERRED_HARVEST_EXIT",
+        deferred: true,
+        deferredAt: "2026-06-20T00:05:00.000Z",
+        deferAfterMs: 300000,
+        elapsedMs: 305000,
+        failures: [],
+        stdout: "",
+        stderr: "",
+      },
+    ],
+  });
+
+  assert.equal(summary.status, "fail");
+  assert.equal(summary.deferredExit, true);
+  assert.equal(summary.failureCount, 1);
+  assert.equal(summary.failures[0].bucket, "slow fixture");
+  assert.equal(summary.failures[0].fixture, fixture);
+  assert.match(summary.failures[0].messages[0], /target deferred after 300000ms/);
 });
 
 test("harvest failure ledger accumulates failures and closes later passes", () => {
@@ -683,4 +927,90 @@ describe('<Link prefetch="auto">', () => {
   assert.equal(closed.state.entries[id].closeReason, "fixture passed in later harvest");
   const events = fs.readFileSync(ledgerFile, "utf8").trim().split("\n").map((line) => JSON.parse(line));
   assert.deepEqual(events.map((event) => event.event), ["opened", "closed"]);
+});
+
+test("harvest failure ledger does not close fixtures from partial test-name passes", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-ledger-partial-"));
+  const nextDir = path.join(dir, "next");
+  const fixture = "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts";
+  fs.mkdirSync(path.dirname(path.join(nextDir, fixture)), { recursive: true });
+  fs.writeFileSync(
+    path.join(nextDir, fixture),
+    "it('browser-triggered revalidation uses server-action-tag-layout-max', () => {})\n",
+  );
+  const ledgerFile = path.join(dir, "ledger.jsonl");
+  const id = `webpack|${fixture}`;
+
+  updateFailureLedger({
+    summary: createSummary({
+      startedAt: "2026-06-20T00:00:00.000Z",
+      finishedAt: "2026-06-20T00:01:00.000Z",
+      slowMs: 1000,
+      results: [
+        {
+          kind: "fixture",
+          bundler: "webpack",
+          group: "fixture",
+          fixture,
+          name: "vary-full-red",
+          status: 1,
+          signal: null,
+          elapsedMs: 1500,
+          logs: {
+            stdout: path.join(dir, "stdout.log"),
+            stderr: path.join(dir, "stderr.log"),
+          },
+          failures: [
+            {
+              fixture,
+              bucket: "slow fixture",
+              messages: ["browserContext.newPage: Target page, context or browser has been closed"],
+            },
+          ],
+          stdout: "",
+          stderr: "",
+        },
+      ],
+    }),
+    ledgerFile,
+    harvestDir: path.join(dir, "red-run"),
+    nextDir,
+    now: "2026-06-20T00:02:00.000Z",
+  });
+
+  const partialPass = updateFailureLedger({
+    summary: createSummary({
+      startedAt: "2026-06-20T00:03:00.000Z",
+      finishedAt: "2026-06-20T00:04:00.000Z",
+      slowMs: 1000,
+      results: [
+        {
+          kind: "fixture",
+          bundler: "webpack",
+          group: "fixture",
+          fixture,
+          partialTestNamePattern: "browser-triggered revalidation uses server-action-tag-layout-max",
+          name: "vary-single-green",
+          status: 0,
+          signal: null,
+          elapsedMs: 900,
+          logs: {
+            stdout: path.join(dir, "stdout-green.log"),
+            stderr: path.join(dir, "stderr-green.log"),
+          },
+          failures: [],
+          stdout: "",
+          stderr: "",
+        },
+      ],
+    }),
+    ledgerFile,
+    harvestDir: path.join(dir, "green-partial-run"),
+    nextDir,
+    now: "2026-06-20T00:05:00.000Z",
+  });
+
+  assert.equal(partialPass.state.entries[id].status, "open");
+  const events = fs.readFileSync(ledgerFile, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(events.map((event) => event.event), ["opened", "partial-pass"]);
 });

@@ -32,6 +32,7 @@ import type {
 } from "./types.js";
 import {
   isAuxiliaryPrerenderPath,
+  isDynamicPrerenderTemplatePath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
 import { sanitizeId } from "./routing.js";
@@ -333,7 +334,9 @@ export function compileRouting(
   );
 
   const i18n = routingI18n(model.config);
+  const configuredBasePath = basePath(model.config);
   return {
+    ...(configuredBasePath ? { basePath: configuredBasePath } : {}),
     ...(i18n ? { i18n } : {}),
     headers,
     redirects,
@@ -567,10 +570,17 @@ function publicRoute(
   type: "static" | "prerender",
   file: string,
   immutable?: boolean,
-  responseMeta?: { status?: number; headers?: BrrrdHeaderPair[] },
+  responseMeta?: {
+    status?: number;
+    headers?: BrrrdHeaderPair[];
+    prerenderBypass?: BrrrdRoute["prerenderBypass"];
+  },
   ppr?: boolean,
 ): BrrrdRoute {
-  const dynamicPublicTemplate = output.kind !== "public" && output.pathname.includes("[");
+  const dynamicPublicTemplate = type === "static"
+    && output.kind !== "public"
+    && output.pathname.includes("[");
+  const isr = type === "prerender" ? routeIsrMetadata(output) : undefined;
   return {
     id: `${type}-${sanitizeId(output.urlPath)}`,
     pattern: dynamicPublicTemplate
@@ -586,6 +596,12 @@ function publicRoute(
     ...(responseMeta?.headers && responseMeta.headers.length > 0
       ? { headers: responseMeta.headers }
       : {}),
+    ...(type === "prerender"
+        && responseMeta?.prerenderBypass
+        && responseMeta.prerenderBypass.length > 0
+      ? { prerenderBypass: responseMeta.prerenderBypass }
+      : {}),
+    ...(isr ? { isr } : {}),
     ...(dynamicPublicTemplate ? { params: segmentParamNames(output.pathname) } : {}),
     ...(dynamicPublicTemplate ? { paramTypes: segmentParamTypes(output.pathname) } : {}),
   };
@@ -647,6 +663,7 @@ function pprSegmentStoragePattern(sourceRegex: string): string {
 function pprSegmentPrefetchRoute(
   route: SupplementPrefetchSegmentDataRoute,
   index: number,
+  responseMeta?: AppPrerenderDataRouteMeta,
 ): BrrrdRoute {
   return {
     id: `ppr-segment-${sanitizeId(route.page)}-${index}`,
@@ -656,12 +673,101 @@ function pprSegmentPrefetchRoute(
     bundle: "",
     file: route.destination,
     params: ["path"],
+    ...(responseMeta?.status !== undefined ? { status: responseMeta.status } : {}),
+    ...(responseMeta?.headers && responseMeta.headers.length > 0
+      ? { headers: responseMeta.headers }
+      : {}),
+    ...(responseMeta?.allowQuery !== undefined ? { allowQuery: responseMeta.allowQuery } : {}),
   };
+}
+
+function pprSegmentPrefetchRouteMeta(
+  route: SupplementPrefetchSegmentDataRoute,
+  metas: Map<string, AppPrerenderDataRouteMeta>,
+): AppPrerenderDataRouteMeta | undefined {
+  const destination = route.destination;
+  const candidates = destination.includes("$segment")
+    ? [
+        destination.replace("$segment", "/__PAGE__.segment.rsc"),
+        destination.replace("$segment", ".segment.rsc"),
+      ]
+    : [destination];
+  for (const candidate of candidates) {
+    const meta = metas.get(candidate);
+    if (meta) return meta;
+  }
+  return undefined;
+}
+
+function responseHeadersFromRecord(value: Record<string, string | string[]> | undefined): BrrrdHeaderPair[] {
+  if (!value) return [];
+  const out: BrrrdHeaderPair[] = [];
+  for (const [key, rawValue] of Object.entries(value)) {
+    if (key.length === 0) continue;
+    if (typeof rawValue === "string") {
+      out.push({ key, value: rawValue });
+      continue;
+    }
+    for (const item of rawValue) out.push({ key, value: item });
+  }
+  return out;
+}
+
+function routeIsrMetadata(output: NormalizedOutput): BrrrdRoute["isr"] | undefined {
+  const initialRevalidate = output.fallback?.initialRevalidate;
+  if (typeof initialRevalidate !== "number" && initialRevalidate !== false) return undefined;
+  const initialExpire = typeof output.fallback?.initialExpiration === "number"
+    ? output.fallback.initialExpiration
+    : undefined;
+  const bypassToken = typeof output.config.bypassToken === "string"
+    ? output.config.bypassToken
+    : undefined;
+  const allowHeader = stringArray(output.config.allowHeader);
+  return {
+    initialRevalidate,
+    generatedAtMs: Date.now(),
+    ...(initialExpire !== undefined ? { initialExpire } : {}),
+    ...(bypassToken ? { bypassToken } : {}),
+    ...(allowHeader !== undefined ? { allowHeader } : {}),
+  };
+}
+
+type AppPrerenderDataRouteMeta = {
+  status?: number;
+  headers?: BrrrdHeaderPair[];
+  allowQuery?: string[];
+};
+
+function stringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items = value.filter((item): item is string => typeof item === "string");
+  return items.length === value.length ? items : undefined;
+}
+
+function appPrerenderDataResponseMetaByPathname(
+  outputs: readonly NormalizedOutput[],
+): Map<string, AppPrerenderDataRouteMeta> {
+  const out = new Map<string, AppPrerenderDataRouteMeta>();
+  for (const output of outputs) {
+    if (!output.pathname.endsWith(".rsc")) continue;
+    const fallback = output.fallback;
+    const status = typeof fallback?.initialStatus === "number" ? fallback.initialStatus : undefined;
+    const headers = responseHeadersFromRecord(fallback?.initialHeaders);
+    const allowQuery = stringArray(output.config.allowQuery);
+    if (status === undefined && headers.length === 0 && allowQuery === undefined) continue;
+    out.set(output.pathname, {
+      ...(status !== undefined ? { status } : {}),
+      ...(headers.length > 0 ? { headers } : {}),
+      ...(allowQuery !== undefined ? { allowQuery } : {}),
+    });
+  }
+  return out;
 }
 
 function appPrerenderDataRoute(
   model: NextBuildModel,
   route: SupplementAppPrerenderDataRoute,
+  responseMeta?: AppPrerenderDataRouteMeta,
 ): BrrrdRoute {
   return {
     id: `app-prerender-data-${sanitizeId(route.pathname)}`,
@@ -670,6 +776,11 @@ function appPrerenderDataRoute(
     runtime: "nodejs",
     bundle: "",
     file: route.pathname,
+    ...(responseMeta?.status !== undefined ? { status: responseMeta.status } : {}),
+    ...(responseMeta?.headers && responseMeta.headers.length > 0
+      ? { headers: responseMeta.headers }
+      : {}),
+    ...(responseMeta?.allowQuery !== undefined ? { allowQuery: responseMeta.allowQuery } : {}),
   };
 }
 
@@ -685,6 +796,7 @@ function appendRouteRegexSuffix(routeRegex: string, suffixPattern: string): stri
 function dynamicAppPrerenderSegmentDataRoute(
   route: SupplementAppPrerenderDataRoute,
   dynamicPrerenders: Map<string, SupplementDynamicPrerenderRoute>,
+  responseMeta?: AppPrerenderDataRouteMeta,
 ): BrrrdRoute | null {
   const marker = ".segments/";
   const markerIndex = route.pathname.indexOf(marker);
@@ -712,6 +824,11 @@ function dynamicAppPrerenderSegmentDataRoute(
     file: route.pathname,
     params: segmentParamNames(page),
     paramTypes: segmentParamTypes(page),
+    ...(responseMeta?.status !== undefined ? { status: responseMeta.status } : {}),
+    ...(responseMeta?.headers && responseMeta.headers.length > 0
+      ? { headers: responseMeta.headers }
+      : {}),
+    ...(responseMeta?.allowQuery !== undefined ? { allowQuery: responseMeta.allowQuery } : {}),
   };
 }
 
@@ -779,6 +896,20 @@ function defaultLocaleAliasPathname(
   return null;
 }
 
+function handlerDefaultLocaleAliasPathname(
+  model: NextBuildModel,
+  output: NormalizedOutput,
+  route: BrrrdRoute,
+): string | null {
+  const explicitAlias = defaultLocaleAliasPathname(model, output.urlPath);
+  if (explicitAlias) return explicitAlias;
+  if (!defaultLocale(model.config)) return null;
+  if (output.kind !== "pages-api") return null;
+  if (!output.pathname.includes("[")) return null;
+  if (!route.pattern.includes("nextLocale")) return null;
+  return output.urlPath;
+}
+
 function prerenderResponseMetaByPathname(
   metas: readonly SupplementPrerenderResponseMeta[] | undefined,
 ): Map<string, SupplementPrerenderResponseMeta> {
@@ -793,6 +924,16 @@ function staticResponseMetaByPathname(
   const out = new Map<string, SupplementStaticResponseMeta>();
   for (const meta of metas ?? []) out.set(meta.pathname, meta);
   return out;
+}
+
+function isStaticRouteHandlerPrerender(
+  model: NextBuildModel,
+  output: NormalizedOutput,
+  staticMeta: ReadonlyMap<string, SupplementStaticResponseMeta>,
+): boolean {
+  if (!isRouteHandlerPrerender(model, output)) return false;
+  if (output.filePath?.endsWith(".body")) return true;
+  return staticMeta.has(output.urlPath) || staticMeta.has(output.pathname);
 }
 
 function inferredNextStaticResponseMeta(
@@ -810,6 +951,27 @@ function inferredNextStaticResponseMeta(
   return { headers: [{ key: "content-type", value: "text/html; charset=utf-8" }] };
 }
 
+function outputFallbackResponseMeta(
+  output: NormalizedOutput,
+): { status?: number; headers?: BrrrdHeaderPair[] } | undefined {
+  const status = typeof output.fallback?.initialStatus === "number"
+    ? output.fallback.initialStatus
+    : undefined;
+  const headers = responseHeadersFromRecord(output.fallback?.initialHeaders);
+  if (status === undefined && headers.length === 0) return undefined;
+  return {
+    ...(status !== undefined ? { status } : {}),
+    ...(headers.length > 0 ? { headers } : {}),
+  };
+}
+
+function prerenderResponseMetaForOutput(
+  output: NormalizedOutput,
+  supplementMeta?: { status?: number; headers?: BrrrdHeaderPair[] },
+): { status?: number; headers?: BrrrdHeaderPair[] } | undefined {
+  return supplementMeta ?? outputFallbackResponseMeta(output);
+}
+
 function dynamicRoute(
   model: NextBuildModel,
   output: NormalizedOutput,
@@ -821,6 +983,7 @@ function dynamicRoute(
     staticPathsOnly?: boolean;
     prerenderBypass?: BrrrdRoute["prerenderBypass"];
     pprResume?: BrrrdRoute["pprResume"];
+    pprFallbackRouteParams?: BrrrdRoute["pprFallbackRouteParams"];
   } = {},
 ): BrrrdRoute {
   const sourcePathname = sourcePagePathname(model, output);
@@ -845,6 +1008,9 @@ function dynamicRoute(
       ? { prerenderBypass: options.prerenderBypass }
       : {}),
     ...(options.pprResume ? { pprResume: options.pprResume } : {}),
+    ...(options.pprFallbackRouteParams && options.pprFallbackRouteParams.length > 0
+      ? { pprFallbackRouteParams: options.pprFallbackRouteParams }
+      : {}),
     ...(hasInterceptMarker(output.pathname) ? { intercepted: true } : {}),
   };
 }
@@ -904,6 +1070,7 @@ function dynamicPrerenderDataRoute(
   return dynamicRoute(model, output, "page", route.dataRouteRegex, {
     previewOnly: route.fallback === false,
     pprResume: pprResumeForOutput(output, pprResumes),
+    pprFallbackRouteParams: route.fallbackRouteParams,
   });
 }
 
@@ -963,6 +1130,7 @@ function handlerRoute(
       staticPathsOnly: appStaticPathsOnly,
       prerenderBypass: appStaticPathsOnly ? dynamicPrerender?.bypass : undefined,
       pprResume,
+      pprFallbackRouteParams: dynamicPrerender?.fallbackRouteParams,
     });
   }
   return dynamicRoute(model, output, type, sourceRegex, {
@@ -971,6 +1139,7 @@ function handlerRoute(
     staticPathsOnly: appStaticPathsOnly,
     prerenderBypass: appStaticPathsOnly ? dynamicPrerender?.bypass : undefined,
     pprResume,
+    pprFallbackRouteParams: dynamicPrerender?.fallbackRouteParams,
   });
 }
 
@@ -994,6 +1163,7 @@ export function compileRouteTable(
   const pprResumes = pprResumeByHandlerPath(model);
   const prerenderMeta = prerenderResponseMetaByPathname(supplement?.prerenderResponseMeta);
   const staticMeta = staticResponseMetaByPathname(supplement?.staticResponseMeta);
+  const appPrerenderDataMeta = appPrerenderDataResponseMetaByPathname(model.outputs.prerenders);
   const pprPages = new Set(supplement?.pprPages ?? []);
   const allPublicPathnames = [
     ...publicArtifactPathnames(model),
@@ -1037,14 +1207,17 @@ export function compileRouteTable(
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
-    if (isRouteHandlerPrerender(model, pr)) continue;
+    if (isDynamicPrerenderTemplatePath(pr.pathname, supplement?.dynamicPrerenderRoutes)) continue;
+    if (isRouteHandlerPrerender(model, pr) && !isStaticRouteHandlerPrerender(model, pr, staticMeta)) {
+      continue;
+    }
     const route = publicRoute(
       model,
       pr,
       "prerender",
       publicStorageFilePath(pr.pathname, allPublicPathnames),
       undefined,
-      prerenderMeta.get(pr.pathname),
+      prerenderResponseMetaForOutput(pr, prerenderMeta.get(pr.pathname)),
       pprPages.has(pr.pathname) || pprPages.has(pr.urlPath),
     );
     routes.push(route);
@@ -1054,17 +1227,37 @@ export function compileRouteTable(
     if (encodedAlias) routes.push(publicRouteAlias(model, route, encodedAlias, "encoded"));
   }
 
+  const dynamicAppPrerenderDataRoutes: BrrrdRoute[] = [];
   for (const route of supplement?.appPrerenderDataRoutes ?? []) {
-    const entry = appPrerenderDataRoute(model, route);
+    const responseMeta = appPrerenderDataMeta.get(route.pathname);
+    const entry = appPrerenderDataRoute(model, route, responseMeta);
     routes.push(entry);
     const encodedAlias = encodedPublicPathnameAlias(route.pathname);
     if (encodedAlias) routes.push(publicRouteAlias(model, entry, encodedAlias, "encoded"));
-    const dynamicEntry = dynamicAppPrerenderSegmentDataRoute(route, dynamicPrerenders);
-    if (dynamicEntry) routes.push(dynamicEntry);
+    const dynamicEntry = dynamicAppPrerenderSegmentDataRoute(
+      route,
+      dynamicPrerenders,
+      responseMeta,
+    );
+    if (dynamicEntry) dynamicAppPrerenderDataRoutes.push(dynamicEntry);
   }
+  routes.push(
+    ...dynamicAppPrerenderDataRoutes.sort((a, b) =>
+      compareRouteSpecificity(
+        { pathname: a.file ?? a.pattern },
+        { pathname: b.file ?? b.pattern },
+      )
+    ),
+  );
 
   for (const [index, route] of (supplement?.pprSegmentPrefetchRoutes ?? []).entries()) {
-    routes.push(pprSegmentPrefetchRoute(route, index));
+    routes.push(
+      pprSegmentPrefetchRoute(
+        route,
+        index,
+        pprSegmentPrefetchRouteMeta(route, appPrerenderDataMeta),
+      ),
+    );
   }
 
   for (const dynamicPrerender of supplement?.dynamicPrerenderRoutes ?? []) {
@@ -1084,7 +1277,7 @@ export function compileRouteTable(
     const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
     if (route) {
       routes.push(route);
-      const alias = defaultLocaleAliasPathname(model, page.urlPath);
+      const alias = handlerDefaultLocaleAliasPathname(model, page, route);
       if (alias) routes.push(executableRouteAlias(model, route, alias));
     }
   }
@@ -1092,7 +1285,7 @@ export function compileRouteTable(
     const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
     if (route) {
       routes.push(route);
-      const alias = defaultLocaleAliasPathname(model, page.urlPath);
+      const alias = handlerDefaultLocaleAliasPathname(model, page, route);
       if (alias) routes.push(executableDynamicRouteAlias(route, alias));
     }
   }
@@ -1104,7 +1297,15 @@ export function compileRouteTable(
 
   for (const api of sortBySpecificity(model.outputs.pagesApi)) {
     const route = handlerRoute(model, api, "route", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
-    if (route) routes.push(route);
+    if (route) {
+      routes.push(route);
+      const alias = handlerDefaultLocaleAliasPathname(model, api, route);
+      if (alias) {
+        routes.push(api.pathname.includes("[")
+          ? executableDynamicRouteAlias(route, alias)
+          : executableRouteAlias(model, route, alias));
+      }
+    }
   }
 
   return routes;

@@ -5,6 +5,10 @@ import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 
+import {
+  normalizePnpmBuildPolicy,
+  projectHasOnlyBuiltDependencies,
+} from "../scripts/pnpm-build-policy.mjs";
 import { forwardedBrrrdEnvAssignments } from "../scripts/runtime-env.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -27,6 +31,23 @@ test("runtime env helper forwards app env through brrrd service env names", () =
       "BRRRD_ENV_MIDDLEWARE_TEST=asdf",
       "BRRRD_ENV_NEXT_DEPLOYMENT_ID=deploy-1",
       "BRRRD_ENV_STRING_ENV_VAR=asdf3",
+    ],
+  );
+});
+
+test("runtime env helper preserves explicit brrrd service env overrides", () => {
+  assert.deepEqual(
+    forwardedBrrrdEnvAssignments({
+      BRRRD_ENV_NEXT_PRIVATE_DEBUG_CACHE: "1",
+      BRRRD_ENV_STRING_ENV_VAR: "override",
+      BRRRD_ENV_: "ignored-empty",
+      BRRRD_ENV_1INVALID: "ignored-invalid",
+      NEXT_PRIVATE_DEBUG_CACHE: "not-forwarded-implicitly",
+      STRING_ENV_VAR: "regular",
+    }).sort(),
+    [
+      "BRRRD_ENV_NEXT_PRIVATE_DEBUG_CACHE=1",
+      "BRRRD_ENV_STRING_ENV_VAR=override",
     ],
   );
 });
@@ -144,4 +165,71 @@ test("e2e-cleanup persists final runtime logs into diagnostics", () => {
     fs.readFileSync(path.join(runDir, "adapter-server.log"), "utf8"),
     /final runtime request log/,
   );
+});
+
+test("pnpm post-build shim runs deploy marker script for npm packageManager apps", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-pnpm-post-build-"));
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify(
+      {
+        packageManager: "npm@10.9.2",
+        scripts: {
+          "post-build": "node -e \"require('fs').writeFileSync('marker.txt', 'ok')\"",
+        },
+      },
+      null,
+      2,
+    ),
+  );
+
+  execFileSync("node", [
+    path.join(repoRoot, "scripts", "pnpm-post-build-shim.mjs"),
+    "post-build",
+  ], {
+    cwd: dir,
+    encoding: "utf8",
+  });
+
+  assert.equal(fs.readFileSync(path.join(dir, "marker.txt"), "utf8"), "ok");
+});
+
+test("pnpm build policy keeps native allow-list and removes never-build conflicts", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-pnpm-policy-"));
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    JSON.stringify(
+      {
+        dependencies: { sqlite3: "5.0.2" },
+        pnpm: {
+          neverBuiltDependencies: ["sqlite3"],
+          onlyBuiltDependencies: ["sqlite3"],
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  fs.writeFileSync(
+    path.join(dir, "pnpm-workspace.yaml"),
+    [
+      "packages:",
+      "  - .",
+      "neverBuiltDependencies:",
+      "  - sqlite3",
+      "onlyBuiltDependencies:",
+      "  - sqlite3",
+      "",
+    ].join("\n"),
+  );
+
+  normalizePnpmBuildPolicy(dir);
+
+  assert.equal(projectHasOnlyBuiltDependencies(dir), true);
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+  assert.deepEqual(pkg.pnpm.onlyBuiltDependencies, ["sqlite3"]);
+  assert.equal(Object.hasOwn(pkg.pnpm, "neverBuiltDependencies"), false);
+  const workspace = fs.readFileSync(path.join(dir, "pnpm-workspace.yaml"), "utf8");
+  assert.doesNotMatch(workspace, /^neverBuiltDependencies:/m);
+  assert.match(workspace, /^onlyBuiltDependencies:/m);
 });

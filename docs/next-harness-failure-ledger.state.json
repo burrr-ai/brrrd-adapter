@@ -1,43 +1,37 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-22T01:40:58.708Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
+  "updatedAt": "2026-06-22T13:41:59.829Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "fail",
-    "resultCount": 256,
-    "failureCount": 15,
-    "buckets": {
-      "App not-found fallback": 3,
-      "unclassified": 7,
-      "segment-cache/PPR prefetch": 3,
-      "i18n/basePath": 1,
-      "middleware/proxy": 1
-    }
+    "status": "pass",
+    "resultCount": 1,
+    "failureCount": 0,
+    "buckets": {}
   },
   "counts": {
-    "open": 27,
-    "closed": 6
+    "closed": 32,
+    "open": 1
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
       "id": "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts",
       "firstSeenAt": "2026-06-22T00:02:57.630Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T23-55-44-003Z-webpack-38-39-ledger-smoke",
-      "failureCount": 3,
-      "passCount": 0,
+      "failureCount": 7,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "39/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts",
       "bucket": "unclassified",
       "messages": [
         "FAIL webpack test/e2e/app-dir/next-after-app-deploy/index.test.ts "
       ],
-      "targetName": "webpack-38-39-ledger-smoke-webpack-39-64-test-e2e-app-dir-next-after-app-deploy-index.test.ts-6779b881",
+      "targetName": "cache-revalidate-isr-bucket-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-ee3ac3d1",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T23-55-44-003Z-webpack-38-39-ledger-smoke/target-logs/webpack-38-39-ledger-smoke-webpack-39-64-test-e2e-app-dir-next-after-app-deploy-index.test.ts-6779b881.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T23-55-44-003Z-webpack-38-39-ledger-smoke/target-logs/webpack-38-39-ledger-smoke-webpack-39-64-test-e2e-app-dir-next-after-app-deploy-index.test.ts-6779b881.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-46-45-600Z-cache-revalidate-isr-bucket/target-logs/cache-revalidate-isr-bucket-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-ee3ac3d1.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-46-45-600Z-cache-revalidate-isr-bucket/target-logs/cache-revalidate-isr-bucket-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-ee3ac3d1.stderr.log"
       },
       "testTitles": [
         "triggers revalidate from a page",
@@ -45,21 +39,36 @@
         "triggers revalidate from a route handler",
         "triggers revalidate from middleware"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:39.881Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T23-55-44-003Z-webpack-38-39-ledger-smoke",
-      "lastFailureAt": "2026-06-22T00:04:39.881Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T23-55-44-003Z-webpack-38-39-ledger-smoke",
-      "closedAt": null,
-      "closedByRun": null,
-      "targetFixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts"
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T05:57:28.168Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup",
+      "lastFailureAt": "2026-06-22T05:48:03.105Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-46-45-600Z-cache-revalidate-isr-bucket",
+      "closedAt": "2026-06-22T05:57:28.168Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup",
+      "targetFixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts",
+      "lastVerifiedAt": "2026-06-22T05:57:28.168Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts",
+        "name": "next-after-encoded-slash-lookup-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-559138fb",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup/target-logs/next-after-encoded-slash-lookup-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-559138fb.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup/target-logs/next-after-encoded-slash-lookup-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-559138fb.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/metadata/segment-cache-metadata.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/metadata/segment-cache-metadata.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "34/64",
       "kind": "group",
@@ -82,13 +91,28 @@
         "pages with runtime-prefetchable content and dynamic metadata, using a runtime prefetch",
         "regression: prefetch the head if it's missing even if all other data is cached"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T02:47:14.824Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
       "lastFailureAt": "2026-06-22T00:04:32.481Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T02:47:14.824Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "lastVerifiedAt": "2026-06-22T02:47:14.824Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/metadata/segment-cache-metadata.test.ts",
+        "name": "ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-metadata-segment-cache-metadata.test.ts-a8a70ba2",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-metadata-segment-cache-metadata.test.ts-a8a70ba2.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-metadata-segment-cache-metadata.test.ts-a8a70ba2.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-parallel-slot-catchall-regression/optimistic-routing-parallel-slot-catchall-regression.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-parallel-slot-catchall-regression/optimistic-routing-parallel-slot-catchall-regression.test.ts",
@@ -144,7 +168,7 @@
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "42/64",
       "kind": "group",
@@ -165,20 +189,35 @@
         "disabled in development / deployment",
         "<Link prefetch=\"auto\"> works the same as if prefetch were undefined or null"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T02:47:14.824Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
       "lastFailureAt": "2026-06-22T00:04:32.481Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T02:47:14.824Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "lastVerifiedAt": "2026-06-22T02:47:14.824Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-auto/prefetch-auto.test.ts",
+        "name": "ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-auto-prefetch-auto.test.ts-58e2f1bc",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-auto-prefetch-auto.test.ts-58e2f1bc.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-auto-prefetch-auto.test.ts-58e2f1bc.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "43/64",
       "kind": "group",
@@ -201,34 +240,51 @@
         "dynamic page is fully prefetched with prefetch={true}",
         "dynamic edge page is fully prefetched with prefetch={true}"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T02:47:14.824Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
       "lastFailureAt": "2026-06-22T00:04:32.481Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T02:47:14.824Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "lastVerifiedAt": "2026-06-22T02:47:14.824Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+        "name": "ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-0857409a",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-0857409a.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-0857409a.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/prerender-native-module.test.ts": {
       "id": "webpack|test/e2e/prerender-native-module.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
+      "failureCount": 9,
       "passCount": 0,
       "bundler": "webpack",
-      "group": "43/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/prerender-native-module.test.ts",
-      "bucket": "bundler output shape",
+      "bucket": "Node/runtime API",
       "messages": [
-        "test/e2e/prerender-native-module.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/prerender-native-module.test.ts failed to pass within 2 retries",
-        "FAIL webpack test/e2e/prerender-native-module.test.ts\n"
+        "FAIL webpack test/e2e/prerender-native-module.test.ts ",
+        "[brrrd-harness] build app failed with exit status 1",
+        "Error: native Node addons (.node) are not supported in brrrd isolates:",
+        "- /Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/runs/2026-06-22T10-33-49-293Z-prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6/tmp/next-test-1782124441235-619/node_modules/.pnpm/sqlite3@5.0.2/node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+        "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-43-64-10f3dc67",
+      "targetName": "prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-43-64-10f3dc67.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-43-64-10f3dc67.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/target-logs/prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification/target-logs/prerender-native-runtime-native-classification-webpack-fixture-test-e2e-prerender-native-module.test.ts-6feb29a6.stderr.log"
       },
       "testTitles": [
         "prerender native module",
@@ -238,12 +294,13 @@
         "should output traces"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
+      "lastSeenAt": "2026-06-22T10:34:18.521Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification",
+      "lastFailureAt": "2026-06-22T10:34:18.521Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-33-49-259Z-prerender-native-runtime-native-classification",
       "closedAt": null,
-      "closedByRun": null
+      "closedByRun": null,
+      "targetFixture": "test/e2e/prerender-native-module.test.ts"
     },
     "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-rewrite-detection-regression/optimistic-routing-rewrite-detection-regression.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-rewrite-detection-regression/optimistic-routing-rewrite-detection-regression.test.ts",
@@ -300,22 +357,31 @@
       "id": "webpack|test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 9,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "44/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
-        "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts failed to pass within 2 retries",
-        "FAIL webpack test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts "
+        "FAIL webpack test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts ",
+        "at Object.<anonymous> (e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts:263:5)",
+        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/runs/2026-06-22T04-11-07-012Z-ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b",
+        "[brrrd-local-harness] $ npx -y node@20 /Users/ggm/work/next.js/node_modules/jest/bin/jest.js --ci --runInBand --forceExit --no-cache --verbose test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
+        "FAIL webpack test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts (71.022 s)",
+        "prefetch inlining",
+        "✕ preserves prefetch hints after on-demand revalidation (15145 ms)",
+        "✓ instant false at root: does not prefetch segment data (584 ms)",
+        "✓ runtime prefetch: layout cannot inline into a runtime leaf (577 ms)",
+        "✓ independent head: metadata is prefetched even when no runtime segment request is needed (887 ms)",
+        "● prefetch inlining › preserves prefetch hints after on-demand revalidation",
+        "Expected: not \"0.7781621762721311\""
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9",
+      "targetName": "ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b1a2a53d",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/target-logs/ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b1a2a53d.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/target-logs/ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b1a2a53d.stderr.log"
       },
       "testTitles": [
         "prefetch inlining",
@@ -327,34 +393,48 @@
         "home: root inlines directly into page",
         "restart: large segment in the middle creates two inlining groups"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T04:22:40.751Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration",
+      "lastFailureAt": "2026-06-22T04:12:30.840Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume",
+      "closedAt": "2026-06-22T04:22:40.751Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration",
+      "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
+      "lastVerifiedAt": "2026-06-22T04:22:40.751Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
+        "name": "ppr-revalidate-tag-expiration-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-ae7ea285",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration/target-logs/ppr-revalidate-tag-expiration-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-ae7ea285.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration/target-logs/ppr-revalidate-tag-expiration-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-ae7ea285.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts": {
       "id": "webpack|test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "44/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
       "bucket": "metadata/static asset",
       "messages": [
-        "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts failed to pass within 2 retries",
         "FAIL webpack test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts "
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9",
+      "targetName": "open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-e562e305",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-44-64-f6cc8be9.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher/target-logs/open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-e562e305.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher/target-logs/open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-e562e305.stderr.log"
       },
       "testTitles": [
         "use-cache-metadata-route-handler",
@@ -366,13 +446,29 @@
         "should generate manifest.json with a metadata route handler that uses \"use cache\"",
         "should include the client reference manifest in the route.js.nft.json files of dynamic metadata routes"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T09:09:11.925Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static",
+      "lastFailureAt": "2026-06-22T08:33:02.868Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher",
+      "closedAt": "2026-06-22T09:09:11.925Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static",
+      "targetFixture": "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
+      "lastVerifiedAt": "2026-06-22T09:09:11.925Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
+        "name": "metadata-route-prerender-body-static-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-2e3afc2e",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static/target-logs/metadata-route-prerender-body-static-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-2e3afc2e.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static/target-logs/metadata-route-prerender-body-static-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-2e3afc2e.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/interception-route-prefetch-cache/interception-route-prefetch-cache.test.ts": {
       "id": "webpack|test/e2e/app-dir/interception-route-prefetch-cache/interception-route-prefetch-cache.test.ts",
@@ -583,7 +679,7 @@
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "46/64",
       "kind": "group",
@@ -603,66 +699,93 @@
         "prefetch-partial-rsc",
         "resolves after a client-side navigation"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T02:47:14.824Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
       "lastFailureAt": "2026-06-22T00:04:32.481Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T02:47:14.824Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "lastVerifiedAt": "2026-06-22T02:47:14.824Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-partial-rsc/prefetch-partial-rsc.test.ts",
+        "name": "ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-partial-rsc-prefetch-partial-rsc.test.ts-3684f5ba",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-partial-rsc-prefetch-partial-rsc.test.ts-3684f5ba.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-40-37-879Z-ppr-open-fixtures-after-deferred-exit-ledger/target-logs/ppr-open-fixtures-after-deferred-exit-ledger-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-partial-rsc-prefetch-partial-rsc.test.ts-3684f5ba.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/twoslash/index.test.ts": {
       "id": "webpack|test/e2e/twoslash/index.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 4,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "46/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/twoslash/index.test.ts",
       "bucket": "unclassified",
       "messages": [
-        "test/e2e/twoslash/index.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/twoslash/index.test.ts failed to pass within 2 retries",
         "FAIL webpack test/e2e/twoslash/index.test.ts "
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-46-64-894f6f42",
+      "targetName": "twoslash-runtime-asset-classification-webpack-fixture-test-e2e-twoslash-index.test.ts-6a6e5ae1",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-46-64-894f6f42.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-46-64-894f6f42.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-54-37-003Z-twoslash-runtime-asset-classification/target-logs/twoslash-runtime-asset-classification-webpack-fixture-test-e2e-twoslash-index.test.ts-6a6e5ae1.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-54-37-003Z-twoslash-runtime-asset-classification/target-logs/twoslash-runtime-asset-classification-webpack-fixture-test-e2e-twoslash-index.test.ts-6a6e5ae1.stderr.log"
       },
       "testTitles": [
         "twoslash"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T09:03:33.340Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main",
+      "lastFailureAt": "2026-06-22T08:55:10.374Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-54-37-003Z-twoslash-runtime-asset-classification",
+      "closedAt": "2026-06-22T09:03:33.340Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main",
+      "targetFixture": "test/e2e/twoslash/index.test.ts",
+      "lastVerifiedAt": "2026-06-22T09:03:33.340Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/twoslash/index.test.ts",
+        "name": "twoslash-require-resolve-package-main-webpack-fixture-test-e2e-twoslash-index.test.ts-db1491c3",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main/target-logs/twoslash-require-resolve-package-main-webpack-fixture-test-e2e-twoslash-index.test.ts-db1491c3.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main/target-logs/twoslash-require-resolve-package-main-webpack-fixture-test-e2e-twoslash-index.test.ts-db1491c3.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/prerender.test.ts": {
       "id": "webpack|test/e2e/prerender.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 4,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "45/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/prerender.test.ts",
-      "bucket": "unclassified",
+      "bucket": "slow fixture",
       "messages": [
-        "test/e2e/prerender.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/prerender.test.ts failed to pass within 2 retries",
-        "FAIL webpack test/e2e/prerender.test.ts "
+        "target deferred after 300000ms and was stopped so harvest can continue"
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-45-64-f1404d52",
+      "targetName": "pages-prerender-static-serving-webpack-fixture-test-e2e-prerender.test.ts-0cc8d00c",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-45-64-f1404d52.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-45-64-f1404d52.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-21-02-018Z-pages-prerender-static-serving/target-logs/pages-prerender-static-serving-webpack-fixture-test-e2e-prerender.test.ts-0cc8d00c.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-21-02-018Z-pages-prerender-static-serving/target-logs/pages-prerender-static-serving-webpack-fixture-test-e2e-prerender.test.ts-0cc8d00c.stderr.log"
       },
       "testTitles": [
         "Prerender",
@@ -674,34 +797,58 @@
         "should SSR blocking path correctly (pre-rendered)",
         "should have gsp in __NEXT_DATA__"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T10:21:05.246Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
+      "lastFailureAt": "2026-06-22T09:26:07.676Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-21-02-018Z-pages-prerender-static-serving",
+      "closedAt": "2026-06-22T10:21:05.246Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
+      "targetFixture": "test/e2e/prerender.test.ts",
+      "lastVerifiedAt": "2026-06-22T10:21:05.246Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": null,
+        "fixture": "test/e2e/prerender.test.ts",
+        "name": "2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy/stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy/stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts": {
       "id": "webpack|test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 5,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "47/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
-        "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts failed to pass within 2 retries",
-        "FAIL webpack test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts "
+        "FAIL webpack test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts ",
+        "at Object.<anonymous> (e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts:53:5)",
+        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post/runs/2026-06-22T03-09-20-200Z-ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-pref",
+        "[brrrd-local-harness] $ npx -y node@20 /Users/ggm/work/next.js/node_modules/jest/bin/jest.js --ci --runInBand --forceExit --no-cache --verbose test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
+        "FAIL webpack test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts (101.942 s)",
+        "partial prefetching config",
+        "✓ does not prefetch dynamic data, even when <Link prefetch={true}> (1557 ms)",
+        "● partial prefetching config › re-fetches dynamic content on navigation after an initial HTML load",
+        "at elementById (e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts:54:28)",
+        "at text (e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts:54:59)",
+        "Ran all test suites matching /test\\/e2e\\/app-dir\\/partial-prefetching-config\\/partial-prefetching-config.test.ts/i."
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac",
+      "targetName": "ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-3f7187c7",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post/target-logs/ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-3f7187c7.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post/target-logs/ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-3f7187c7.stderr.log"
       },
       "testTitles": [
         "partial prefetching config",
@@ -709,34 +856,49 @@
         "does not prefetch dynamic data, even when <Link prefetch={true}>",
         "re-fetches dynamic content on navigation after an initial HTML load"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T03:21:01.046Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine",
+      "lastFailureAt": "2026-06-22T03:11:14.242Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post",
+      "closedAt": "2026-06-22T03:21:01.046Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine",
+      "targetFixture": "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
+      "lastVerifiedAt": "2026-06-22T03:21:01.046Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
+        "name": "ppr-partial-prefetch-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-5a15a53b",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine/target-logs/ppr-partial-prefetch-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-5a15a53b.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine/target-logs/ppr-partial-prefetch-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-5a15a53b.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts": {
       "id": "webpack|test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
       "firstSeenAt": "2026-06-22T00:04:32.481Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 8,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "47/64",
-      "kind": "group",
+      "group": "fixture",
+      "kind": "fixture",
       "fixture": "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
       "bucket": "unclassified",
       "messages": [
-        "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts failed due to Error: failed with code: 1",
-        "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts failed to pass within 2 retries",
-        "FAIL webpack test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts "
+        "FAIL webpack test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts ",
+        "FetchError: invalid json response body at http://127.0.0.1:58322/node reason: Unexpected token 'I', \"Internal S\"... is not valid JSON"
       ],
-      "targetName": "webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac",
+      "targetName": "cache-entry-metadata-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-9a61504d",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel/target-logs/webpack-33-48-after-ppr-otel-webpack-47-64-aee046ac.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-20-05-480Z-cache-entry-metadata-use-cache/target-logs/cache-entry-metadata-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-9a61504d.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-20-05-480Z-cache-entry-metadata-use-cache/target-logs/cache-entry-metadata-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-9a61504d.stderr.log"
       },
       "testTitles": [
         "use-cache-route-handler-only",
@@ -744,22 +906,38 @@
         "should dedupe concurrent cache invocations in route handlers",
         "should be able to revalidate prerendered route handlers"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T00:04:32.481Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "lastFailureAt": "2026-06-22T00:04:32.481Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-21T14-38-53-502Z-webpack-33-48-after-ppr-otel",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T05:26:20.119Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache",
+      "lastFailureAt": "2026-06-22T05:20:40.977Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-20-05-480Z-cache-entry-metadata-use-cache",
+      "closedAt": "2026-06-22T05:26:20.119Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache",
+      "targetFixture": "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
+      "lastVerifiedAt": "2026-06-22T05:26:20.119Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
+        "name": "cache-date-free-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-66b719bb",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache/target-logs/cache-date-free-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-66b719bb.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache/target-logs/cache-date-free-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-66b719bb.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/invalid-static-asset-404-app/invalid-static-asset-404-app-base-path.test.ts": {
       "id": "webpack|test/e2e/invalid-static-asset-404-app/invalid-static-asset-404-app-base-path.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "49/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/invalid-static-asset-404-app/invalid-static-asset-404-app-base-path.test.ts",
       "bucket": "App not-found fallback",
@@ -770,10 +948,10 @@
         "> 24 |     expect(text).toContain('Custom Not Found')"
       ],
       "targetFixture": "test/e2e/invalid-static-asset-404-app/invalid-static-asset-404-app-base-path.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-49-64-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-472056a2",
+      "targetName": "app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-1a4bee16",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-49-64-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-472056a2.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-49-64-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-472056a2.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh/target-logs/app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-1a4bee16.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh/target-logs/app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-1a4bee16.stderr.log"
       },
       "testTitles": [
         "invalid-static-asset-404-app-base-path",
@@ -781,22 +959,37 @@
         "should return custom 404 page when fetching invalid non-asset path",
         "should return 404 with plain text when fetching invalid asset path"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T07:40:32.767Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "lastFailureAt": "2026-06-22T07:33:58.054Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh",
+      "closedAt": "2026-06-22T07:40:32.767Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "lastVerifiedAt": "2026-06-22T07:40:32.767Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/invalid-static-asset-404-app/invalid-static-asset-404-app-base-path.test.ts",
+        "name": "basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-6528eac4",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix/target-logs/basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-6528eac4.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix/target-logs/basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-app-invalid-static-asset-404-app-base-path.tes-6528eac4.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/getinitialprops/getinitialprops.test.ts": {
       "id": "webpack|test/e2e/getinitialprops/getinitialprops.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "51/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/getinitialprops/getinitialprops.test.ts",
       "bucket": "unclassified",
@@ -806,10 +999,10 @@
         "Received: \"/blog/1\""
       ],
       "targetFixture": "test/e2e/getinitialprops/getinitialprops.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-51-64-test-e2e-getinitialprops-getinitialprops.test.ts-433a09cd",
+      "targetName": "open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-e6f74525",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-51-64-test-e2e-getinitialprops-getinitialprops.test.ts-433a09cd.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-51-64-test-e2e-getinitialprops-getinitialprops.test.ts-433a09cd.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-e6f74525.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-e6f74525.stderr.log"
       },
       "testTitles": [
         "should have gip in __NEXT_DATA__",
@@ -817,22 +1010,37 @@
         "should have correct router.asPath for direct visit dynamic page",
         "should have correct router.asPath for direct visit dynamic page rewrite direct"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:00:41.817Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "lastFailureAt": "2026-06-22T07:48:22.614Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "closedAt": "2026-06-22T08:00:41.817Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "lastVerifiedAt": "2026-06-22T08:00:41.817Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/getinitialprops/getinitialprops.test.ts",
+        "name": "pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-0e2385bc",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix/target-logs/pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-0e2385bc.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix/target-logs/pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-getinitialprops-getinitialprops.test.ts-0e2385bc.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/invalid-static-asset-404-pages/invalid-static-asset-404-pages-base-path.test.ts": {
       "id": "webpack|test/e2e/invalid-static-asset-404-pages/invalid-static-asset-404-pages-base-path.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "52/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/invalid-static-asset-404-pages/invalid-static-asset-404-pages-base-path.test.ts",
       "bucket": "App not-found fallback",
@@ -843,10 +1051,10 @@
         "> 24 |     expect(text).toContain('Custom Not Found')"
       ],
       "targetFixture": "test/e2e/invalid-static-asset-404-pages/invalid-static-asset-404-pages-base-path.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-52-64-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-4c0ab0ee",
+      "targetName": "app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-a951d05f",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-52-64-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-4c0ab0ee.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-52-64-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-4c0ab0ee.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh/target-logs/app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-a951d05f.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh/target-logs/app-not-found-fallback-fresh-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-a951d05f.stderr.log"
       },
       "testTitles": [
         "invalid-static-asset-404-pages-base-path",
@@ -854,40 +1062,55 @@
         "should return custom 404 page when fetching invalid non-asset path",
         "should return 404 with plain text when fetching invalid asset path"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T07:40:32.767Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "lastFailureAt": "2026-06-22T07:33:58.054Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-31-16-422Z-app-not-found-fallback-fresh",
+      "closedAt": "2026-06-22T07:40:32.767Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "lastVerifiedAt": "2026-06-22T07:40:32.767Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/invalid-static-asset-404-pages/invalid-static-asset-404-pages-base-path.test.ts",
+        "name": "basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-643bea05",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix/target-logs/basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-643bea05.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-39-57-534Z-basepath-custom-404-fix/target-logs/basepath-custom-404-fix-webpack-fixture-test-e2e-invalid-static-asset-404-pages-invalid-static-asset-404-pages-base-path-643bea05.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "52/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
         "FAIL webpack test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts ",
         "page error PlaywrightError: Minified React error #412; visit https://react.dev/errors/412 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "✕ when fetching without PPR (e.g. prefetch=\"unstable_forceStale\"), includes the search params in the cache key (11018 ms)",
-        "✕ stores prefetched data by its rewritten search params, not the original ones (10702 ms)",
+        "✕ when fetching without PPR (e.g. prefetch=\"unstable_forceStale\"), includes the search params in the cache key (10697 ms)",
+        "✕ stores prefetched data by its rewritten search params, not the original ones (10670 ms)",
         "● segment cache (search params) › when fetching without PPR (e.g. prefetch=\"unstable_forceStale\"), includes the search params in the cache key",
         "● segment cache (search params) › stores prefetched data by its rewritten search params, not the original ones",
         "Expected: true",
         "Received: false"
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-52-64-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-bf66b98f",
+      "targetName": "ppr-open-fixtures-after-route-order-fix-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-fce2a4fd",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-52-64-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-bf66b98f.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-52-64-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-bf66b98f.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-54-53-126Z-ppr-open-fixtures-after-route-order-fix/target-logs/ppr-open-fixtures-after-route-order-fix-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-fce2a4fd.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-54-53-126Z-ppr-open-fixtures-after-route-order-fix/target-logs/ppr-open-fixtures-after-route-order-fix-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-fce2a4fd.stderr.log"
       },
       "testTitles": [
         "segment cache (search params)",
@@ -898,44 +1121,53 @@
         "handles rewrites to the same page but with different search params",
         "handles rewrites to the same page but with no search params"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T03:31:18.942Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-26-17-127Z-ppr-open-fixtures-after-shell-tail-combine",
+      "lastFailureAt": "2026-06-22T02:57:18.851Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T02-54-53-126Z-ppr-open-fixtures-after-route-order-fix",
+      "closedAt": "2026-06-22T03:31:18.942Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-26-17-127Z-ppr-open-fixtures-after-shell-tail-combine",
+      "lastVerifiedAt": "2026-06-22T03:31:18.942Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-26-17-127Z-ppr-open-fixtures-after-shell-tail-combine",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/search-params/segment-cache-search-params.test.ts",
+        "name": "ppr-open-fixtures-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-992dce9e",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-26-17-127Z-ppr-open-fixtures-after-shell-tail-combine/target-logs/ppr-open-fixtures-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-992dce9e.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-26-17-127Z-ppr-open-fixtures-after-shell-tail-combine/target-logs/ppr-open-fixtures-after-shell-tail-combine-webpack-fixture-test-e2e-app-dir-segment-cache-search-params-segment-cache-search-params.test.ts-992dce9e.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/getserversideprops/test/index.test.ts": {
       "id": "webpack|test/e2e/getserversideprops/test/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 6,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "53/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/getserversideprops/test/index.test.ts",
       "bucket": "App not-found fallback",
       "messages": [
         "FAIL webpack test/e2e/getserversideprops/test/index.test.ts ",
-        "eval error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'router')",
-        "Expected: 200",
-        "Received: 500",
-        "Received string:  \"Internal Server Error\"",
+        "[08:19:55.938Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:19:56.078Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
         "Expected substring: \"custom pages/500\"",
         "Received string:    \"Internal Server Error\"",
-        "385 |       expect(html).not.toContain('This page could not be found')",
-        "SyntaxError: Unexpected end of JSON input",
-        "Expected substring: \"/blog-post-1\"",
-        "Received string:    \"/blog/post-1\"",
-        "Expected substring: \"/blog-post-2\""
+        "385 |       expect(html).not.toContain('This page could not be found')"
       ],
       "targetFixture": "test/e2e/getserversideprops/test/index.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-cba07d2c",
+      "targetName": "pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-cba07d2c.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-53-64-test-e2e-getserversideprops-test-index.test.ts-cba07d2c.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2/target-logs/pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2/target-logs/pages-gssp-router-context-singleton-2-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a24adbcf.stderr.log"
       },
       "testTitles": [
         "should navigate between pages successfully",
@@ -947,22 +1179,37 @@
         "should render correctly when notFound is false (dynamic)",
         "should render 404 correctly when notFound is returned (dynamic)"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:24:42.294Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
+      "lastFailureAt": "2026-06-22T08:20:11.085Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-19-23-746Z-pages-gssp-router-context-singleton-2",
+      "closedAt": "2026-06-22T08:24:42.294Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
+      "lastVerifiedAt": "2026-06-22T08:24:42.294Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/getserversideprops/test/index.test.ts",
+        "name": "pages-gssp-custom-500-recovery-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a2c584e7",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery/target-logs/pages-gssp-custom-500-recovery-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a2c584e7.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-23-55-939Z-pages-gssp-custom-500-recovery/target-logs/pages-gssp-custom-500-recovery-webpack-fixture-test-e2e-getserversideprops-test-index.test.ts-a2c584e7.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/revalidate-reason/revalidate-reason.test.ts": {
       "id": "webpack|test/e2e/revalidate-reason/revalidate-reason.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 4,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "55/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/revalidate-reason/revalidate-reason.test.ts",
       "bucket": "unclassified",
@@ -973,10 +1220,10 @@
         "Expected: \"revalidate reason: stale\""
       ],
       "targetFixture": "test/e2e/revalidate-reason/revalidate-reason.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-55-64-test-e2e-revalidate-reason-revalidate-reason.test.ts-e6655a25",
+      "targetName": "cache-revalidate-date-free-bucket-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-d1099db4",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-55-64-test-e2e-revalidate-reason-revalidate-reason.test.ts-e6655a25.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-55-64-test-e2e-revalidate-reason-revalidate-reason.test.ts-e6655a25.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-26-37-885Z-cache-revalidate-date-free-bucket/target-logs/cache-revalidate-date-free-bucket-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-d1099db4.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-26-37-885Z-cache-revalidate-date-free-bucket/target-logs/cache-revalidate-date-free-bucket-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-d1099db4.stderr.log"
       },
       "testTitles": [
         "revalidate-reason",
@@ -986,44 +1233,59 @@
         "should support revalidateReason: \"on-demand\"",
         "should support revalidateReason: \"stale\""
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T05:46:36.721Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-45-57-861Z-revalidate-reason-isr",
+      "lastFailureAt": "2026-06-22T05:27:56.892Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-26-37-885Z-cache-revalidate-date-free-bucket",
+      "closedAt": "2026-06-22T05:46:36.721Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-45-57-861Z-revalidate-reason-isr",
+      "lastVerifiedAt": "2026-06-22T05:46:36.721Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-45-57-861Z-revalidate-reason-isr",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/revalidate-reason/revalidate-reason.test.ts",
+        "name": "revalidate-reason-isr-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-51a663f0",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-45-57-861Z-revalidate-reason-isr/target-logs/revalidate-reason-isr-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-51a663f0.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-45-57-861Z-revalidate-reason-isr/target-logs/revalidate-reason-isr-webpack-fixture-test-e2e-revalidate-reason-revalidate-reason.test.ts-51a663f0.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 7,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "58/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
         "FAIL webpack test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts ",
-        "[01:27:38.637Z] Loading browser with http://127.0.0.1:57833/runtime-prefetch",
-        "[01:27:38.734Z] Loaded browser with http://127.0.0.1:57833/runtime-prefetch",
-        "[01:27:38.734Z] Waiting hydration for http://127.0.0.1:57833/runtime-prefetch",
-        "[01:27:38.737Z] Hydration complete for http://127.0.0.1:57833/runtime-prefetch",
-        "[01:27:46.927Z] Loading browser with http://127.0.0.1:57833/runtime-prefetch-no-vary",
-        "[01:27:47.016Z] Loaded browser with http://127.0.0.1:57833/runtime-prefetch-no-vary",
-        "[01:27:47.016Z] Waiting hydration for http://127.0.0.1:57833/runtime-prefetch-no-vary",
-        "[01:27:47.020Z] Hydration complete for http://127.0.0.1:57833/runtime-prefetch-no-vary",
-        "[01:27:47.535Z] Loading browser with http://127.0.0.1:57833/runtime-prefetch-all-vary",
-        "[01:27:47.630Z] Loaded browser with http://127.0.0.1:57833/runtime-prefetch-all-vary",
-        "[01:27:47.630Z] Waiting hydration for http://127.0.0.1:57833/runtime-prefetch-all-vary"
+        "[03:59:49.091Z] Loading browser with http://127.0.0.1:65377/runtime-prefetch",
+        "[03:59:49.173Z] Loaded browser with http://127.0.0.1:65377/runtime-prefetch",
+        "[03:59:49.173Z] Waiting hydration for http://127.0.0.1:65377/runtime-prefetch",
+        "[03:59:49.176Z] Hydration complete for http://127.0.0.1:65377/runtime-prefetch",
+        "[03:59:56.070Z] Loading browser with http://127.0.0.1:65377/runtime-prefetch-no-vary",
+        "[03:59:56.154Z] Loaded browser with http://127.0.0.1:65377/runtime-prefetch-no-vary",
+        "[03:59:56.154Z] Waiting hydration for http://127.0.0.1:65377/runtime-prefetch-no-vary",
+        "[03:59:56.157Z] Hydration complete for http://127.0.0.1:65377/runtime-prefetch-no-vary",
+        "[03:59:56.672Z] Loading browser with http://127.0.0.1:65377/runtime-prefetch-all-vary",
+        "[03:59:56.769Z] Loaded browser with http://127.0.0.1:65377/runtime-prefetch-all-vary",
+        "[03:59:56.769Z] Waiting hydration for http://127.0.0.1:65377/runtime-prefetch-all-vary"
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-58-64-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-f6ddfbb2",
+      "targetName": "ppr-segment-allow-query-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-2516bbc0",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-58-64-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-f6ddfbb2.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-58-64-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-f6ddfbb2.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-59-05-030Z-ppr-segment-allow-query/target-logs/ppr-segment-allow-query-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-2516bbc0.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-59-05-030Z-ppr-segment-allow-query/target-logs/ppr-segment-allow-query-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-2516bbc0.stderr.log"
       },
       "testTitles": [
         "segment cache - vary params",
@@ -1035,22 +1297,37 @@
         "does not reuse prefetched empty-query segment for prefetches with searchParams",
         "reuses prefetched segment when page does not access searchParams"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T04:12:30.840Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume",
+      "lastFailureAt": "2026-06-22T04:00:28.843Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-59-05-030Z-ppr-segment-allow-query",
+      "closedAt": "2026-06-22T04:12:30.840Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume",
+      "lastVerifiedAt": "2026-06-22T04:12:30.840Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/vary-params/vary-params.test.ts",
+        "name": "ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-6829a6d3",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/target-logs/ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-6829a6d3.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/target-logs/ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-vary-params.test.ts-6829a6d3.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/handle-non-hoisted-swc-helpers/index.test.ts": {
       "id": "webpack|test/e2e/handle-non-hoisted-swc-helpers/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "58/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/handle-non-hoisted-swc-helpers/index.test.ts",
       "bucket": "unclassified",
@@ -1060,29 +1337,44 @@
         "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
       "targetFixture": "test/e2e/handle-non-hoisted-swc-helpers/index.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-58-64-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-fadff47d",
+      "targetName": "open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-84febe24",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-58-64-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-fadff47d.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-58-64-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-fadff47d.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher/target-logs/open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-84febe24.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher/target-logs/open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-84febe24.stderr.log"
       },
       "testTitles": [
         "handle-non-hoisted-swc-helpers",
         "should work"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:38:28.813Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-38-00-923Z-swc-helper-post-build-shim",
+      "lastFailureAt": "2026-06-22T08:33:02.868Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher",
+      "closedAt": "2026-06-22T08:38:28.813Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-38-00-923Z-swc-helper-post-build-shim",
+      "lastVerifiedAt": "2026-06-22T08:38:28.813Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-38-00-923Z-swc-helper-post-build-shim",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/handle-non-hoisted-swc-helpers/index.test.ts",
+        "name": "swc-helper-post-build-shim-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-73bf47aa",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-38-00-923Z-swc-helper-post-build-shim/target-logs/swc-helper-post-build-shim-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-73bf47aa.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-38-00-923Z-swc-helper-post-build-shim/target-logs/swc-helper-post-build-shim-webpack-fixture-test-e2e-handle-non-hoisted-swc-helpers-index.test.ts-73bf47aa.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/use-router-bfcache-id/use-router-bfcache-id.test.ts": {
       "id": "webpack|test/e2e/app-dir/use-router-bfcache-id/use-router-bfcache-id.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "57/64",
       "kind": "fixture",
@@ -1108,59 +1400,83 @@
         "preserves form state across router.refresh()",
         "preserves form state when returning to a search-param URL via browser back"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T07:48:22.614Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
       "lastFailureAt": "2026-06-22T01:40:58.708Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T07:48:22.614Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "lastVerifiedAt": "2026-06-22T07:48:22.614Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/use-router-bfcache-id/use-router-bfcache-id.test.ts",
+        "name": "open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-use-router-bfcache-id-use-router-bfcache-id.test.ts-2c1f54dd",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-use-router-bfcache-id-use-router-bfcache-id.test.ts-2c1f54dd.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-use-router-bfcache-id-use-router-bfcache-id.test.ts-2c1f54dd.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 32,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "56/64",
+      "group": null,
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
-        "FAIL webpack test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts ",
-        "page error PlaywrightError: Minified React error #412; visit https://react.dev/errors/412 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "\u001b[2m  - → GET http://127.0.0.1:56868/acme/dashboard?_rsc=5CB68i4pnAekjehf\u001b[22m",
-        "\u001b[2m    - next-test-fetch-priority: low\u001b[22m",
-        "\u001b[2m    - next-router-prefetch: 1\u001b[22m",
-        "\u001b[2m    - next-router-segment-prefetch: /_tree\u001b[22m",
-        "\u001b[2m    - rsc: 1\u001b[22m"
+        "fixture target exited with status 1, but no failed fixture inventory was parsed"
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-65e60df0",
+      "targetName": "2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-65e60df0.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-65e60df0.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug/stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug/stderr.log"
       },
       "testTitles": [
         "segment cache - vary params base dynamic",
         "prefetching is disabled in dev mode",
         "keeps dynamic segment params valid before and after time-based revalidation"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T13:41:59.829Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+      "lastFailureAt": "2026-06-22T13:27:30.693Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-26-29-778Z-ppr-vary-single-server-action-legacy-cache-debug",
+      "closedAt": "2026-06-22T13:41:59.829Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+      "lastVerifiedAt": "2026-06-22T13:41:59.829Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": null,
+        "fixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
+        "name": "2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee/stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T13-32-22-322Z-ppr-vary-full-after-cache-tee/stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/fallback-shells/fallback-shells.test.ts": {
       "id": "webpack|test/e2e/app-dir/fallback-shells/fallback-shells.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "61/64",
       "kind": "fixture",
@@ -1186,22 +1502,37 @@
         "and the params accessed in the cached page",
         "resumes a postponed fallback shell"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T07:48:22.614Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
       "lastFailureAt": "2026-06-22T01:40:58.708Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-22T07:48:22.614Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "lastVerifiedAt": "2026-06-22T07:48:22.614Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/fallback-shells/fallback-shells.test.ts",
+        "name": "open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-fallback-shells-fallback-shells.test.ts-8dfa590d",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-fallback-shells-fallback-shells.test.ts-8dfa590d.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-app-dir-fallback-shells-fallback-shells.test.ts-8dfa590d.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/i18n-api-support/index.test.ts": {
       "id": "webpack|test/e2e/i18n-api-support/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 4,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "62/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/i18n-api-support/index.test.ts",
       "bucket": "i18n/basePath",
@@ -1211,10 +1542,10 @@
         "Received: 404"
       ],
       "targetFixture": "test/e2e/i18n-api-support/index.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-62-64-test-e2e-i18n-api-support-index.test.ts-c7933f7a",
+      "targetName": "i18n-api-after-basepath-middleware-fix-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-4594bdbb",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-62-64-test-e2e-i18n-api-support-index.test.ts-c7933f7a.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-62-64-test-e2e-i18n-api-support-index.test.ts-c7933f7a.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-46-35-399Z-i18n-api-after-basepath-middleware-fix/target-logs/i18n-api-after-basepath-middleware-fix-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-4594bdbb.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-46-35-399Z-i18n-api-after-basepath-middleware-fix/target-logs/i18n-api-after-basepath-middleware-fix-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-4594bdbb.stderr.log"
       },
       "testTitles": [
         "i18n API support",
@@ -1222,22 +1553,37 @@
         "should respond to normal dynamic API request",
         "should fallback rewrite non-matching API request"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:52:15.519Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-51-46-864Z-i18n-api-dynamic-default-locale-alias",
+      "lastFailureAt": "2026-06-22T08:47:02.118Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-46-35-399Z-i18n-api-after-basepath-middleware-fix",
+      "closedAt": "2026-06-22T08:52:15.519Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-51-46-864Z-i18n-api-dynamic-default-locale-alias",
+      "lastVerifiedAt": "2026-06-22T08:52:15.519Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-51-46-864Z-i18n-api-dynamic-default-locale-alias",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/i18n-api-support/index.test.ts",
+        "name": "i18n-api-dynamic-default-locale-alias-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-8be81b6e",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-51-46-864Z-i18n-api-dynamic-default-locale-alias/target-logs/i18n-api-dynamic-default-locale-alias-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-8be81b6e.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-51-46-864Z-i18n-api-dynamic-default-locale-alias/target-logs/i18n-api-dynamic-default-locale-alias-webpack-fixture-test-e2e-i18n-api-support-index.test.ts-8be81b6e.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/link-with-api-rewrite/index.test.ts": {
       "id": "webpack|test/e2e/link-with-api-rewrite/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "62/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/link-with-api-rewrite/index.test.ts",
       "bucket": "unclassified",
@@ -1247,47 +1593,62 @@
         "Received: \"{\\\"from\\\":\\\"/api/json\\\"}\""
       ],
       "targetFixture": "test/e2e/link-with-api-rewrite/index.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-62-64-test-e2e-link-with-api-rewrite-index.test.ts-d44bcfbf",
+      "targetName": "open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-3f71e8f3",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-62-64-test-e2e-link-with-api-rewrite-index.test.ts-d44bcfbf.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-62-64-test-e2e-link-with-api-rewrite-index.test.ts-d44bcfbf.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-3f71e8f3.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404/target-logs/open-ledger-refresh-after-basepath-404-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-3f71e8f3.stderr.log"
       },
       "testTitles": [
         "link-with-api-rewrite",
         "should perform hard navigation for rewritten urls",
         "should perform hard navigation for direct urls"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:00:41.817Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "lastFailureAt": "2026-06-22T07:48:22.614Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-41-51-618Z-open-ledger-refresh-after-basepath-404",
+      "closedAt": "2026-06-22T08:00:41.817Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "lastVerifiedAt": "2026-06-22T08:00:41.817Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/link-with-api-rewrite/index.test.ts",
+        "name": "pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-63c4b0ca",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix/target-logs/pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-63c4b0ca.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-00-06-147Z-pages-rewrite-visible-url-fix/target-logs/pages-rewrite-visible-url-fix-webpack-fixture-test-e2e-link-with-api-rewrite-index.test.ts-63c4b0ca.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts": {
       "id": "webpack|test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 9,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "64/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
       "bucket": "unclassified",
       "messages": [
         "FAIL webpack test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts ",
         "page error PlaywrightError: Minified React error #412; visit https://react.dev/errors/412 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "Expected: not \"2026-06-22T01:39:33.214Z\"",
-        "Expected: not \"0.5791919867601751\"",
-        "Expected: not \"2026-06-22T01:39:33.210Z\""
+        "Expected: not \"2026-06-22T06:21:26.177Z\"",
+        "Expected: not \"0.8558253688148111\"",
+        "Expected: not \"2026-06-22T06:21:26.174Z\""
       ],
       "targetFixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-50ce0967",
+      "targetName": "non-ascii-cache-tags-ppr-meta-revalidate-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-ea24bafb",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-50ce0967.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-50ce0967.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T06-21-02-233Z-non-ascii-cache-tags-ppr-meta-revalidate/target-logs/non-ascii-cache-tags-ppr-meta-revalidate-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-ea24bafb.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T06-21-02-233Z-non-ascii-cache-tags-ppr-meta-revalidate/target-logs/non-ascii-cache-tags-ppr-meta-revalidate-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-ea24bafb.stderr.log"
       },
       "testTitles": [
         "non-ASCII cache tags",
@@ -1298,42 +1659,59 @@
         "invalidates an `unstable_cache` entry tagged with a non-ASCII tag via revalidateTag",
         "invalidates a cached entry via updateTag with a non-ASCII tag (Server Action)"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T07:30:05.566Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-29-28-137Z-non-ascii-cache-tags-resolved-pathname-ledger",
+      "lastFailureAt": "2026-06-22T06:22:13.615Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T06-21-02-233Z-non-ascii-cache-tags-ppr-meta-revalidate",
+      "closedAt": "2026-06-22T07:30:05.566Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-29-28-137Z-non-ascii-cache-tags-resolved-pathname-ledger",
+      "lastVerifiedAt": "2026-06-22T07:30:05.566Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-29-28-137Z-non-ascii-cache-tags-resolved-pathname-ledger",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
+        "name": "non-ascii-cache-tags-resolved-pathname-ledger-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-54499d1c",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-29-28-137Z-non-ascii-cache-tags-resolved-pathname-ledger/target-logs/non-ascii-cache-tags-resolved-pathname-ledger-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-54499d1c.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T07-29-28-137Z-non-ascii-cache-tags-resolved-pathname-ledger/target-logs/non-ascii-cache-tags-resolved-pathname-ledger-webpack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-54499d1c.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/middleware-base-path/test/index.test.ts": {
       "id": "webpack|test/e2e/middleware-base-path/test/index.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 4,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "64/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/middleware-base-path/test/index.test.ts",
       "bucket": "middleware/proxy",
       "messages": [
         "FAIL webpack test/e2e/middleware-base-path/test/index.test.ts ",
-        "[01:40:46.600Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:46.852Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:46.929Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:46.965Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:47.193Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:47.194Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[01:40:47.251Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "Expected: \"About Page\"",
-        "Received: \"\""
+        "[08:41:14.503Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:14.557Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:14.753Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:14.754Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:14.817Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:14.844Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:15.109Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:15.110Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:15.158Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[08:41:15.200Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Expected: \"About Page\""
       ],
       "targetFixture": "test/e2e/middleware-base-path/test/index.test.ts",
-      "targetName": "webpack-49-64-harvest-webpack-64-64-test-e2e-middleware-base-path-test-index.test.ts-ef7f3ef4",
+      "targetName": "middleware-base-path-edge-safe-cache-handler-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-ada46a2d",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-64-64-test-e2e-middleware-base-path-test-index.test.ts-ef7f3ef4.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest/target-logs/webpack-49-64-harvest-webpack-64-64-test-e2e-middleware-base-path-test-index.test.ts-ef7f3ef4.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-40-49-342Z-middleware-base-path-edge-safe-cache-handler/target-logs/middleware-base-path-edge-safe-cache-handler-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-ada46a2d.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-40-49-342Z-middleware-base-path-edge-safe-cache-handler/target-logs/middleware-base-path-edge-safe-cache-handler-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-ada46a2d.stderr.log"
       },
       "testTitles": [
         "Middleware base tests",
@@ -1341,13 +1719,28 @@
         "router.query must exist when Link clicked page routing",
         "should allow client-side navigation to the root"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T01:40:58.708Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "lastFailureAt": "2026-06-22T01:40:58.708Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T08:46:19.622Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath",
+      "lastFailureAt": "2026-06-22T08:41:16.705Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-40-49-342Z-middleware-base-path-edge-safe-cache-handler",
+      "closedAt": "2026-06-22T08:46:19.622Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath",
+      "lastVerifiedAt": "2026-06-22T08:46:19.622Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/middleware-base-path/test/index.test.ts",
+        "name": "middleware-base-path-next-config-basepath-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-9e23b98d",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath/target-logs/middleware-base-path-next-config-basepath-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-9e23b98d.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-45-45-018Z-middleware-base-path-next-config-basepath/target-logs/middleware-base-path-next-config-basepath-webpack-fixture-test-e2e-middleware-base-path-test-index.test.ts-9e23b98d.stderr.log"
+        }
+      }
     }
   }
 }

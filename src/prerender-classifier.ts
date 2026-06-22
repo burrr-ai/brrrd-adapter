@@ -1,4 +1,5 @@
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
+import type { SupplementDynamicPrerenderRoute } from "./manifest-supplement.js";
 
 export type PrerenderOwnerKind =
   | "app-page"
@@ -84,6 +85,16 @@ export function isRouteHandlerPrerender(
 
 export function isAuxiliaryPrerenderPath(pathname: string): boolean {
   return pathname.includes(".rsc")
-    || pathname.includes(".segment")
-    || pathname.includes("[");
+    || pathname.includes(".segment");
+}
+
+export function isDynamicPrerenderTemplatePath(
+  pathname: string,
+  routes: readonly SupplementDynamicPrerenderRoute[] | undefined,
+): boolean {
+  if (!pathname.includes("[")) return false;
+  for (const route of routes ?? []) {
+    if (pathname === route.page || pathname === route.dataRoute) return true;
+  }
+  return false;
 }

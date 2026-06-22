@@ -46,10 +46,37 @@ export function shouldForwardRuntimeEnv(key) {
   return !blockedPrefixes.some((prefix) => key.startsWith(prefix));
 }
 
+export function explicitBrrrdRuntimeEnvAssignment(key, value) {
+  if (!key.startsWith("BRRRD_ENV_") || value == null) return null;
+  const runtimeKey = key.slice("BRRRD_ENV_".length);
+  if (!validName.test(runtimeKey) || runtimeKey.length === 0) return null;
+  return `${key}=${value}`;
+}
+
 export function forwardedBrrrdEnvAssignments(env = process.env) {
-  return Object.entries(env)
-    .filter(([key, value]) => shouldForwardRuntimeEnv(key) && value != null)
-    .map(([key, value]) => `BRRRD_ENV_${key}=${value}`);
+  const assignments = [];
+  const explicitRuntimeKeys = new Set();
+  for (const [key, value] of Object.entries(env)) {
+    if (explicitBrrrdRuntimeEnvAssignment(key, value) != null) {
+      explicitRuntimeKeys.add(key.slice("BRRRD_ENV_".length));
+    }
+  }
+
+  for (const [key, value] of Object.entries(env)) {
+    const explicit = explicitBrrrdRuntimeEnvAssignment(key, value);
+    if (explicit != null) {
+      assignments.push(explicit);
+      continue;
+    }
+    if (
+      shouldForwardRuntimeEnv(key) &&
+      value != null &&
+      !explicitRuntimeKeys.has(key)
+    ) {
+      assignments.push(`BRRRD_ENV_${key}=${value}`);
+    }
+  }
+  return assignments;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

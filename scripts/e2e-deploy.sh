@@ -96,6 +96,7 @@ detect_package_manager() {
 }
 
 pm_install() {
+  ensure_python_command
   if [[ "$PM" == "pnpm" ]]; then
     ensure_pnpm_build_policy
   fi
@@ -107,7 +108,30 @@ pm_install() {
   esac
 }
 
+ensure_python_command() {
+  if command -v python >/dev/null 2>&1; then
+    return 0
+  fi
+  local python3_bin
+  python3_bin="$(command -v python3 2>/dev/null || true)"
+  if [[ -z "$python3_bin" ]]; then
+    return 0
+  fi
+
+  mkdir -p "$HARNESS_DIR/bin"
+  cat >"$HARNESS_DIR/bin/python" <<EOF
+#!/usr/bin/env bash
+exec "$python3_bin" "\$@"
+EOF
+  chmod +x "$HARNESS_DIR/bin/python"
+  export PATH="$HARNESS_DIR/bin:$PATH"
+}
+
 ensure_pnpm_build_policy() {
+  node "$ADAPTER_DIR/scripts/pnpm-build-policy.mjs"
+  if node "$ADAPTER_DIR/scripts/pnpm-build-policy.mjs" --has-only-built-dependencies; then
+    return 0
+  fi
   if [[ "${BRRRD_HARNESS_PNPM_ALLOW_ALL_BUILDS:-1}" != "1" ]]; then
     return 0
   fi
@@ -122,12 +146,31 @@ ensure_pnpm_build_policy() {
 }
 
 pm_build() {
+  install_pnpm_post_build_shim
   case "$PM" in
     pnpm) run_logged "build app" pnpm build ;;
     npm) run_logged "build app" npm run build ;;
     yarn) run_logged "build app" yarn build ;;
     *) die "unsupported package manager: $PM" ;;
   esac
+}
+
+install_pnpm_post_build_shim() {
+  local real_pnpm
+  real_pnpm="$(command -v pnpm 2>/dev/null || true)"
+  if [[ -z "$real_pnpm" ]]; then
+    return 0
+  fi
+
+  mkdir -p "$HARNESS_DIR/bin"
+  cat >"$HARNESS_DIR/bin/pnpm" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+export BRRRD_REAL_PNPM="$real_pnpm"
+exec node "$ADAPTER_DIR/scripts/pnpm-post-build-shim.mjs" "\$@"
+EOF
+  chmod +x "$HARNESS_DIR/bin/pnpm"
+  export PATH="$HARNESS_DIR/bin:$PATH"
 }
 
 resolve_brrrd_bin() {
@@ -161,16 +204,22 @@ resolve_brrrd_bin() {
 start_brrrd() {
   local rust_log="${BRRRD_RUST_LOG:-${RUST_LOG:-info}}"
   local env_args=("RUST_LOG=$rust_log")
+  local command=("$BRRRD_BIN" "$PACKAGE_DIR" --listen "127.0.0.1:$PORT")
+  if [[ -n "${BRRRD_ARGS:-}" ]]; then
+    # shellcheck disable=SC2206
+    local brrrd_args=(${BRRRD_ARGS})
+    command+=("${brrrd_args[@]}")
+  fi
   while IFS= read -r -d '' assignment; do
     env_args+=("$assignment")
   done < <(node "$ADAPTER_DIR/scripts/runtime-env.mjs")
   if command -v setsid >/dev/null 2>&1; then
     env "${env_args[@]}" \
-      setsid "$BRRRD_BIN" "$PACKAGE_DIR" --listen "127.0.0.1:$PORT" \
+      setsid "${command[@]}" \
       </dev/null >>"$SERVER_LOG" 2>&1 &
   else
     env "${env_args[@]}" \
-      nohup "$BRRRD_BIN" "$PACKAGE_DIR" --listen "127.0.0.1:$PORT" \
+      nohup "${command[@]}" \
       </dev/null >>"$SERVER_LOG" 2>&1 &
   fi
   PID="$!"

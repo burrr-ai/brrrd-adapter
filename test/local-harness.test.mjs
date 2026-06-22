@@ -125,6 +125,29 @@ test("buildInvocation runs a single fixture through Jest", () => {
   assert.equal(invocation.args.at(-1), "test/e2e/sample/sample.test.ts");
 });
 
+test("buildInvocation can narrow a fixture by Jest test name pattern", () => {
+  const nextDir = fakeNextCheckout();
+  const options = parseArgs([
+    "fixture",
+    "--fixture",
+    "test/e2e/sample/sample.test.ts",
+    "--test-name-pattern",
+    "server action",
+  ], {});
+
+  const invocation = buildInvocation(options, nextDir);
+
+  assert.deepEqual(invocation.args.slice(-3), [
+    "test/e2e/sample/sample.test.ts",
+    "--testNamePattern",
+    "server action",
+  ]);
+  assert.throws(
+    () => parseArgs(["group", "--group", "9/64", "--test-name-pattern", "server action"], {}),
+    /only supported in fixture mode/,
+  );
+});
+
 test("buildInvocation runs shard groups through Next run-tests.js", () => {
   const nextDir = fakeNextCheckout();
   const options = parseArgs(["group", "--group", "9/64", "--concurrency", "2"], {});

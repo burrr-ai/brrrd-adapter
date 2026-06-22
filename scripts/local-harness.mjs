@@ -39,6 +39,8 @@ Options:
   --artifacts-dir <path> Artifact root. Default: ../.brrrd-local-harness.
   --name <label>         Stable artifact label. Default: derived from mode/target.
   --timeout-ms <ms>      Hard timeout for the harness child process. Default: BRRRD_LOCAL_HARNESS_TIMEOUT_MS or 3600000.
+  --test-name-pattern <pattern>
+                         Jest testNamePattern for fixture mode only. Useful for shrinking a slow fixture to one case.
   --clean-results        Remove existing Next *.results.json files before running. Off by default so parallel harvests do not race.
   --capture-context      Persist Adapter API raw/normalized context diagnostics for each deploy.
   --dry-run              Print the command and environment without executing it.
@@ -73,6 +75,7 @@ export function parseArgs(argv, env = process.env) {
     artifactsDir: env.BRRRD_HARNESS_ARTIFACTS_DIR || env.BRRD_HARNESS_ARTIFACTS_DIR || null,
     name: null,
     timeoutMs: env.BRRRD_LOCAL_HARNESS_TIMEOUT_MS || env.BRRRD_HARNESS_TIMEOUT_MS || "3600000",
+    testNamePattern: null,
     cleanResults: env.BRRRD_LOCAL_HARNESS_CLEAN_RESULTS === "1",
     captureContext: env.BRRRD_HARNESS_CAPTURE_CONTEXT === "1",
     dryRun: false,
@@ -126,6 +129,11 @@ export function parseArgs(argv, env = process.env) {
         options.timeoutMs = popValue(args, i, arg);
         i += 1;
         break;
+      case "--test-name-pattern":
+      case "-t":
+        options.testNamePattern = popValue(args, i, arg);
+        i += 1;
+        break;
       case "--clean-results":
         options.cleanResults = true;
         break;
@@ -156,6 +164,9 @@ export function parseArgs(argv, env = process.env) {
   }
   if (options.mode === "fixture" && !options.fixture) {
     throw new Error("fixture mode requires --fixture");
+  }
+  if (options.mode !== "fixture" && options.testNamePattern) {
+    throw new Error("--test-name-pattern is only supported in fixture mode");
   }
   if (options.mode === "group" && !options.group) {
     options.group = "1/64";
@@ -359,6 +370,9 @@ export function buildInvocation(options, nextDir, nodeRunner = {
     const jestBin = path.join(nextDir, "node_modules", ".bin", "jest");
     const jestJs = path.join(nextDir, "node_modules", "jest", "bin", "jest.js");
     const jestArgs = ["--ci", "--runInBand", "--forceExit", "--no-cache", "--verbose", fixture];
+    if (options.testNamePattern) {
+      jestArgs.push("--testNamePattern", options.testNamePattern);
+    }
     if (fs.existsSync(jestJs)) {
       const invocation = withNodeRunner(nodeRunner, jestJs, jestArgs);
       return { ...invocation, cwd: nextDir };
@@ -532,6 +546,7 @@ export async function runHarness(options) {
     nodeVersion: nodeRunner.selectedVersion,
     nodeSource: nodeRunner.source,
     fixture: options.fixture,
+    ...(options.testNamePattern ? { testNamePattern: options.testNamePattern } : {}),
     group: options.group,
     concurrency: options.concurrency,
     nextDir,

@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 import type {
   BrrrdEdgeFunction,
+  BrrrdFallbackRouteParam,
   BrrrdHeaderPair,
   BrrrdMiddlewareCondition,
   BrrrdMiddlewareFile,
@@ -72,9 +73,11 @@ export type SupplementStaticRoute = {
 export type SupplementDynamicPrerenderRoute = {
   page: string;
   routeRegex: string;
+  dataRoute?: string;
   dataRouteRegex?: string;
   fallback: false | null | string;
   bypass: BrrrdMiddlewareCondition[];
+  fallbackRouteParams?: BrrrdFallbackRouteParam[];
 };
 
 export type SupplementPrefetchSegmentDataRoute = {
@@ -92,6 +95,7 @@ export type SupplementPrerenderResponseMeta = {
   pathname: string;
   status?: number;
   headers: BrrrdHeaderPair[];
+  prerenderBypass?: BrrrdMiddlewareCondition[];
 };
 
 export type SupplementStaticResponseMeta = {
@@ -159,6 +163,28 @@ function normalizeMiddlewareFiles(value: unknown): BrrrdMiddlewareFile[] {
     out.push({
       filePath,
       ...(typeof item.name === "string" ? { name: item.name } : {}),
+    });
+  }
+  return out;
+}
+
+function normalizeFallbackRouteParams(value: unknown): BrrrdFallbackRouteParam[] {
+  if (!Array.isArray(value)) return [];
+  const out: BrrrdFallbackRouteParam[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    if (
+      typeof item.paramName !== "string"
+      || item.paramName.length === 0
+      || typeof item.paramType !== "string"
+      || item.paramType.length === 0
+    ) {
+      continue;
+    }
+    out.push({
+      paramName: item.paramName,
+      paramType: item.paramType,
     });
   }
   return out;
@@ -408,14 +434,19 @@ export function extractDynamicPrerenderRoutes(distDir: string): SupplementDynami
       && fallback !== null
       && typeof fallback !== "string"
     ) continue;
+    const fallbackRouteParams = normalizeFallbackRouteParams(item.fallbackRouteParams);
     out.push({
       page,
       routeRegex,
+      ...(typeof item.dataRoute === "string" && item.dataRoute.length > 0
+        ? { dataRoute: item.dataRoute }
+        : {}),
       ...(typeof item.dataRouteRegex === "string" && item.dataRouteRegex.length > 0
         ? { dataRouteRegex: item.dataRouteRegex }
         : {}),
       fallback,
       bypass: normalizeConditions(item.experimentalBypassFor) ?? [],
+      ...(fallbackRouteParams.length > 0 ? { fallbackRouteParams } : {}),
     });
   }
   return out.sort((a, b) => a.page.localeCompare(b.page));
@@ -498,17 +529,37 @@ function mergeStaticResponseMeta(
 
 export function extractAppPrerenderResponseMeta(distDir: string): SupplementPrerenderResponseMeta[] {
   const appDir = path.join(distDir, "server", "app");
-  const out: SupplementPrerenderResponseMeta[] = [];
+  const byPathname = new Map<string, SupplementPrerenderResponseMeta>();
   for (const filePath of walkFiles(appDir).filter((file) => file.endsWith(".meta"))) {
     const meta = responseMetaFromJson(readJsonIfExists(filePath));
     if (!meta) continue;
     const sourceRel = path.relative(appDir, filePath).split(path.sep).join("/");
-    out.push({
+    byPathname.set(appPrerenderMetaPathname(sourceRel), {
       pathname: appPrerenderMetaPathname(sourceRel),
       ...meta,
     });
   }
-  return out.sort((a, b) => a.pathname.localeCompare(b.pathname));
+
+  const prerenderManifest = readJsonIfExists(path.join(distDir, "prerender-manifest.json"));
+  const prerenderRoutes = prerenderManifest?.routes;
+  if (prerenderRoutes && typeof prerenderRoutes === "object") {
+    for (const [pathname, raw] of Object.entries(prerenderRoutes)) {
+      if (!pathname.startsWith("/") || !raw || typeof raw !== "object") continue;
+      const bypass = normalizeConditions(
+        (raw as Record<string, unknown>).experimentalBypassFor,
+      );
+      if (!bypass || bypass.length === 0) continue;
+      const existing = byPathname.get(pathname);
+      byPathname.set(pathname, {
+        pathname,
+        ...(existing?.status !== undefined ? { status: existing.status } : {}),
+        headers: existing?.headers ?? [],
+        prerenderBypass: bypass,
+      });
+    }
+  }
+
+  return Array.from(byPathname.values()).sort((a, b) => a.pathname.localeCompare(b.pathname));
 }
 
 export function extractAppStaticResponseMeta(distDir: string): SupplementStaticResponseMeta[] {

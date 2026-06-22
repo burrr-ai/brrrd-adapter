@@ -25,6 +25,8 @@ function usage() {
 
 Options:
   --groups <list>        Comma-separated run-tests groups, e.g. 6/64,7/64. Required.
+  --fixtures <list>      Comma-separated fixture files to run directly instead of shard groups.
+  --fixture-list <path>  Newline-delimited fixture files to run directly. Lines starting with # are ignored.
   --bundlers <list>      Comma-separated bundlers: webpack,turbopack,next-default. Default: webpack.
   --parallel <n>         Number of local harness processes to run concurrently. Default: 2.
   --concurrency <n>      run-tests fixture concurrency inside each group. Default: 1.
@@ -76,6 +78,7 @@ function positiveInteger(value, name) {
 export function parseArgs(argv, env = process.env) {
   const options = {
     groups: [],
+    fixtures: [],
     bundlers: splitList(env.BRRRD_HARVEST_BUNDLERS || "webpack"),
     parallel: env.BRRRD_HARVEST_PARALLEL || "2",
     concurrency: env.BRRRD_HARVEST_GROUP_CONCURRENCY || "1",
@@ -106,6 +109,20 @@ export function parseArgs(argv, env = process.env) {
         options.groups = splitList(popValue(argv, i, arg));
         i += 1;
         break;
+      case "--fixtures":
+        options.fixtures.push(...splitList(popValue(argv, i, arg)));
+        i += 1;
+        break;
+      case "--fixture-list": {
+        const filePath = popValue(argv, i, arg);
+        const list = fs.readFileSync(filePath, "utf8")
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0 && !line.startsWith("#"));
+        options.fixtures.push(...list);
+        i += 1;
+        break;
+      }
       case "--bundlers":
         options.bundlers = splitList(popValue(argv, i, arg));
         i += 1;
@@ -197,7 +214,10 @@ export function parseArgs(argv, env = process.env) {
   }
 
   if (options.help) return options;
-  if (options.groups.length === 0) throw new Error("--groups is required");
+  options.fixtures = [...new Set(options.fixtures)];
+  if (options.groups.length === 0 && options.fixtures.length === 0) {
+    throw new Error("--groups or --fixtures is required");
+  }
   if (options.bundlers.length === 0) throw new Error("--bundlers must include at least one bundler");
   for (const bundler of options.bundlers) {
     if (!["webpack", "turbopack", "next-default"].includes(bundler)) {
@@ -293,6 +313,17 @@ function targetName(parts) {
 }
 
 export function buildTargets(options) {
+  if (options.fixtures.length > 0) {
+    return options.bundlers.flatMap((bundler) =>
+      options.fixtures.map((fixture) => ({
+        kind: "fixture",
+        bundler,
+        group: "fixture",
+        fixture,
+        name: targetName([options.name, bundler, "fixture", fixture]),
+      }))
+    );
+  }
   return options.bundlers.flatMap((bundler) =>
     options.groups.map((group) => ({
       kind: "group",
@@ -364,6 +395,7 @@ export function extractFailureHints(output, limit = 24) {
     /priority/i,
     /_rsc|RSC|prefetch/i,
     /Proxy Phase Failed/i,
+    /native Node addons|\b\.node\b|node_sqlite3/i,
   ];
   for (const rawLine of String(output || "").split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -394,6 +426,46 @@ export function extractLocalHarnessArtifactDirs(output) {
     dirs.push(match[1].trim());
   }
   return [...new Set(dirs)];
+}
+
+const DIAGNOSTIC_HINT_FILES = new Set([
+  "adapter-build.log",
+  "adapter-server.log",
+]);
+
+function walkDiagnosticFiles(root, out = []) {
+  if (!fs.existsSync(root)) return out;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const file = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      walkDiagnosticFiles(file, out);
+      continue;
+    }
+    if (entry.isFile() && DIAGNOSTIC_HINT_FILES.has(entry.name)) out.push(file);
+  }
+  return out;
+}
+
+function readTail(file, maxBytes = 200_000) {
+  const data = fs.readFileSync(file);
+  const start = Math.max(0, data.length - maxBytes);
+  return data.subarray(start).toString("utf8");
+}
+
+export function diagnosticFailureTextForLocalHarnessArtifacts(output) {
+  const parts = [];
+  for (const artifactDir of extractLocalHarnessArtifactDirs(output)) {
+    const diagnosticsDir = path.join(artifactDir, "harness-diagnostics");
+    for (const file of walkDiagnosticFiles(diagnosticsDir)) {
+      const text = readTail(file).trim();
+      if (!text) continue;
+      parts.push([
+        `[brrrd-harvest] diagnostic ${path.relative(artifactDir, file).split(path.sep).join("/")}`,
+        text,
+      ].join("\n"));
+    }
+  }
+  return parts.join("\n");
 }
 
 function cleanupTargetArtifacts(result, policy) {
@@ -444,6 +516,9 @@ export function suggestBucket(failure) {
   if (/next-test-fetch-priority|priority/i.test(text)) {
     return "RSC prefetch request metadata";
   }
+  if (/native Node addons|\b\.node\b|node_sqlite3|sqlite3.*native/i.test(text)) {
+    return "Node/runtime API";
+  }
   if (/No loader is configured|Build failed with \d+ error|esbuild|\.map|turbopack|chunk|module|bundle/i.test(text)) {
     return "bundler output shape";
   }
@@ -466,8 +541,28 @@ export function suggestBucket(failure) {
 }
 
 function decorateFailures(result) {
-  const failures = result.failures.length > 0 || result.status === 0
-    ? result.failures
+  if (result.deferred && result.signal === "DEFERRED_HARVEST_EXIT") {
+    return [{
+      bundler: result.bundler,
+      group: result.group,
+      kind: result.kind,
+      ...(result.fixture ? { targetFixture: result.fixture } : {}),
+      fixture: result.fixture ?? `${result.kind}:${result.bundler}:${result.group}`,
+      bucket: "slow fixture",
+      messages: [
+        `target deferred after ${result.deferAfterMs ?? "unknown"}ms and was stopped so harvest can continue`,
+      ],
+    }];
+  }
+
+  const extractedFailures = failureDigestForTarget(
+    { kind: result.kind, fixture: result.fixture },
+    result.failures,
+    `${result.stdout ?? ""}\n${result.stderr ?? ""}`,
+    result.status,
+  );
+  const failures = extractedFailures.length > 0 || result.status === 0
+    ? extractedFailures
     : [{
       fixture: result.fixture ?? `${result.kind}:${result.bundler}:${result.group}`,
       messages: [`${result.kind} target exited with status ${result.status ?? "signal"}${result.signal ? ` signal ${result.signal}` : ""}, but no failed fixture inventory was parsed`],
@@ -521,6 +616,7 @@ export function createSummary({
   finishedAt,
   slowMs,
   abortedSignal = null,
+  deferredExit = false,
   now = new Date().toISOString(),
 }) {
   const failures = results.flatMap(decorateFailures);
@@ -535,6 +631,7 @@ export function createSummary({
     startedAt,
     ...(finishedAt ? { finishedAt } : {}),
     ...(abortedSignal ? { abortedSignal } : {}),
+    ...(deferredExit ? { deferredExit: true } : {}),
     status: abortedSignal
       ? "aborted"
       : finishedAt
@@ -563,7 +660,7 @@ export function createSummary({
     pending,
     results: results.map(({ stdout: _stdout, stderr: _stderr, ...result }) => ({
       ...result,
-      failures: result.failures.map((failure) => ({
+      failures: decorateFailures({ ...result, stdout: _stdout, stderr: _stderr }).map((failure) => ({
         ...failure,
         bucket: suggestBucket(failure),
       })),
@@ -651,10 +748,29 @@ export function updateFailureLedger({
         group: result.group,
         kind: result.kind,
         fixture: result.fixture,
+        partialTestNamePattern: result.partialTestNamePattern,
         name: result.name,
         status: result.status,
         logs: result.logs,
       });
+      if (result.partialTestNamePattern) {
+        events.push(eventBase("partial-pass", {
+          bundler: result.bundler,
+          group: result.group,
+          kind: result.kind,
+          fixture: result.fixture,
+          testNamePattern: result.partialTestNamePattern,
+          target: {
+            kind: result.kind,
+            bundler: result.bundler,
+            group: result.group,
+            fixture: result.fixture,
+            name: result.name,
+            status: result.status,
+            logs: result.logs,
+          },
+        }));
+      }
     }
   }
 
@@ -693,6 +809,7 @@ export function updateFailureLedger({
 
   for (const target of completedTargets) {
     if (target.status !== 0 && !target.fixture) continue;
+    if (target.partialTestNamePattern) continue;
     for (const [id, entry] of Object.entries(entries)) {
       if (entry.status !== "open") continue;
       if (failedKeys.has(id)) continue;
@@ -838,6 +955,7 @@ export async function listGroupFixtures({ options, bundler, group, harvestDir })
 }
 
 export async function buildHarvestTargets(options, harvestDir, deps = {}) {
+  if (options.fixtures.length > 0) return buildTargets(options);
   if (!options.expandFixtures) return buildTargets(options);
   const getFixtures = deps.listGroupFixtures ?? listGroupFixtures;
   const groups = options.bundlers.flatMap((bundler) =>
@@ -893,7 +1011,8 @@ function terminateProcessGroup(child, signal) {
 }
 
 function runTarget(target, options, harvestDir) {
-  return new Promise((resolve) => {
+  let abortChild = () => {};
+  const promise = new Promise((resolve) => {
     const startedAt = new Date();
     const targetLogDir = path.join(harvestDir, "target-logs");
     fs.mkdirSync(targetLogDir, { recursive: true });
@@ -939,7 +1058,7 @@ function runTarget(target, options, harvestDir) {
     let abortedSignal = null;
     let settled = false;
 
-    function abortChild(signal) {
+    abortChild = function abortChildForSignal(signal) {
       if (settled) return;
       abortedSignal = signal;
       const text = `\n[brrrd-harvest] received ${signal}; terminating ${target.name}\n`;
@@ -949,7 +1068,7 @@ function runTarget(target, options, harvestDir) {
       setTimeout(() => {
         if (!settled) terminateProcessGroup(child, "SIGKILL");
       }, 5000).unref();
-    }
+    };
 
     const onSigint = () => abortChild("SIGINT");
     const onSigterm = () => abortChild("SIGTERM");
@@ -977,10 +1096,17 @@ function runTarget(target, options, harvestDir) {
       process.removeListener("SIGTERM", onSigterm);
       const finishedAt = new Date();
       const combined = `${stdout}\n${stderr}`;
+      const diagnosticText = diagnosticFailureTextForLocalHarnessArtifacts(combined);
+      if (diagnosticText) {
+        const text = `\n${diagnosticText}\n`;
+        stderr += text;
+        fs.appendFileSync(stderrLog, text);
+      }
+      const failureOutput = diagnosticText ? `${combined}\n${diagnosticText}` : combined;
       const result = {
         ...target,
         status,
-        signal: signal ?? abortedSignal,
+        signal: abortedSignal ?? signal,
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         elapsedMs: finishedAt.getTime() - startedAt.getTime(),
@@ -988,7 +1114,12 @@ function runTarget(target, options, harvestDir) {
           stdout: stdoutLog,
           stderr: stderrLog,
         },
-        failures: failureDigestForTarget(target, extractFailedFixtures(combined), combined, status),
+        failures: failureDigestForTarget(
+          target,
+          extractFailedFixtures(failureOutput),
+          failureOutput,
+          status,
+        ),
         stdout,
         stderr,
       };
@@ -996,6 +1127,8 @@ function runTarget(target, options, harvestDir) {
       resolve(result);
     });
   });
+  promise.abort = abortChild;
+  return promise;
 }
 
 export function resultCollisionKey(target) {
@@ -1010,6 +1143,19 @@ export function takeNextRunnableTarget(pending, runningTargets) {
   return pending.splice(index, 1)[0];
 }
 
+export function shouldExitForDeferredTargets({
+  pendingCount,
+  runningTargets,
+  maxDeferredRunning,
+}) {
+  if (pendingCount !== 0) return false;
+  if (runningTargets.length === 0) return false;
+  const deferredCount = runningTargets.filter((target) => target.deferred).length;
+  return deferredCount > 0
+    && deferredCount === runningTargets.length
+    && deferredCount <= maxDeferredRunning;
+}
+
 async function runQueue(targets, options, harvestDir) {
   const pending = [...targets];
   const running = new Map();
@@ -1021,6 +1167,7 @@ async function runQueue(targets, options, harvestDir) {
   const limit = Number(options.parallel);
   const deferAfterMs = Number(options.deferAfterMs);
   const maxDeferredRunning = Number(options.maxDeferredRunning);
+  let deferredExit = false;
 
   function writePartial() {
     writeJson(path.join(harvestDir, "harvest-partial.json"), createSummary({
@@ -1105,7 +1252,8 @@ async function runQueue(targets, options, harvestDir) {
       deferred: false,
     });
     writePartial();
-    const task = runTarget(target, options, harvestDir)
+    const targetTask = runTarget(target, options, harvestDir);
+    const task = targetTask
       .then((result) => {
         const deferredInfo = deferred.get(target.name);
         if (deferredInfo) Object.assign(result, deferredInfo);
@@ -1124,6 +1272,7 @@ async function runQueue(targets, options, harvestDir) {
         tasks.delete(target.name);
         writePartial();
       });
+    task.abort = targetTask.abort;
     tasks.set(target.name, task);
     return true;
   }
@@ -1136,6 +1285,24 @@ async function runQueue(targets, options, harvestDir) {
         const didStart = await startNext();
         if (!didStart) break;
         started = true;
+      }
+      if (!abortedSignal && shouldExitForDeferredTargets({
+        pendingCount: pending.length,
+        runningTargets: [...running.values()],
+        maxDeferredRunning,
+      })) {
+        deferredExit = true;
+        console.error(
+          `[brrrd-harvest] only ${deferredRunningCount()} deferred target(s) remain; stopping them so harvest can continue`,
+        );
+        for (const [name, task] of tasks) {
+          const target = running.get(name);
+          if (target?.deferred && typeof task.abort === "function") {
+            task.abort("DEFERRED_HARVEST_EXIT");
+          }
+        }
+        await Promise.allSettled([...tasks.values()]);
+        break;
       }
       if (tasks.size > 0) {
         await Promise.race([
@@ -1152,7 +1319,7 @@ async function runQueue(targets, options, harvestDir) {
     process.removeListener("SIGINT", onSigint);
     process.removeListener("SIGTERM", onSigterm);
   }
-  return { results, startedAt, abortedSignal, pending };
+  return { results, startedAt, abortedSignal, pending, deferredExit };
 }
 
 function signalExitCode(signal) {
@@ -1182,7 +1349,7 @@ export async function runHarvest(options) {
   console.error(`[brrrd-harvest] artifacts: ${harvestDir}`);
   console.error(`[brrrd-harvest] targets: ${targets.length}, parallel=${options.parallel}`);
 
-  const { results, startedAt, abortedSignal, pending } = await runQueue(targets, options, harvestDir);
+  const { results, startedAt, abortedSignal, pending, deferredExit } = await runQueue(targets, options, harvestDir);
   const summary = createSummary({
     results,
     pending,
@@ -1190,6 +1357,7 @@ export async function runHarvest(options) {
     finishedAt: new Date().toISOString(),
     slowMs: Number(options.slowMs),
     abortedSignal,
+    deferredExit,
   });
   writeJson(path.join(harvestDir, "harvest-summary.json"), summary);
   if (options.updateLedger) {

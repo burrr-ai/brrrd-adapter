@@ -144,8 +144,106 @@ test("dispatcher provides Next virtual project and dist request metadata", async
     relativeProjectDir: ".",
     distDir: "/bundle/.next",
     hostname: "example.test",
-    minimalMode: true,
+    minimalMode: false,
   });
+});
+
+test("dispatcher preserves brrrd PPR resume metadata for Next route modules", async () => {
+  const root = tempDir("dispatcher-ppr-resume-meta");
+  const route = path.join(root, "route.mjs");
+
+  fs.writeFileSync(
+    route,
+    "export function handler(_req, res, ctx) { res.end(JSON.stringify(ctx.requestMeta)); }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "meta", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const metaRes = res();
+  await dispatch(
+    "meta",
+    {
+      headers: { host: "example.test" },
+      __brrrd_request_meta: {
+        minimalMode: true,
+        postponed: "postponed-state",
+      },
+    },
+    metaRes,
+  );
+
+  assert.deepEqual(JSON.parse(metaRes.body), {
+    minimalMode: true,
+    postponed: "postponed-state",
+    relativeProjectDir: ".",
+    distDir: "/bundle/.next",
+    hostname: "example.test",
+  });
+});
+
+test("dispatcher converts brrrd PPR fallback route params into Next fallbackParams request meta", async () => {
+  const root = tempDir("dispatcher-ppr-fallback-params");
+  const route = path.join(root, "route.mjs");
+
+  fs.writeFileSync(
+    route,
+    `export function handler(_req, res, ctx) {
+      const entries = Array.from(ctx.requestMeta.fallbackParams.entries()).map(([key, value]) => [key, value]);
+      res.end(JSON.stringify({
+        hasCompilerWireField: Object.prototype.hasOwnProperty.call(ctx.requestMeta, 'pprFallbackRouteParams'),
+        entries,
+      }));
+    }\n`,
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "meta", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const metaRes = res();
+  await dispatch(
+    "meta",
+    {
+      headers: { host: "example.test" },
+      __brrrd_request_meta: {
+        pprFallbackRouteParams: [
+          { paramName: "teamSlug", paramType: "dynamic" },
+          { paramName: "rest", paramType: "catchall" },
+        ],
+      },
+    },
+    metaRes,
+  );
+
+  const body = JSON.parse(metaRes.body);
+  assert.equal(body.hasCompilerWireField, false);
+  assert.equal(body.entries.length, 2);
+  assert.equal(body.entries[0][0], "teamSlug");
+  assert.match(body.entries[0][1][0], /^%%drp:teamSlug:[a-f0-9]+%%$/);
+  assert.equal(body.entries[0][1][1], "d");
+  assert.equal(body.entries[1][0], "rest");
+  assert.match(body.entries[1][1][0], /^%%drp:rest:[a-f0-9]+%%$/);
+  assert.equal(body.entries[1][1][1], "c");
 });
 
 test("dispatcher provides render404 request metadata for Next Pages notFound handling", async () => {
@@ -187,6 +285,102 @@ test("dispatcher provides render404 request metadata for Next Pages notFound han
   );
 
   assert.equal(notFoundRes.body, "error:404:/3");
+});
+
+test("dispatcher renders custom Pages 500 route when a Pages handler throws", async () => {
+  const root = tempDir("dispatcher-render500");
+  const throwingRoute = path.join(root, "throwing-route.mjs");
+  const statusRoute = path.join(root, "500-route.mjs");
+  const errorRoute = path.join(root, "error-route.mjs");
+
+  fs.writeFileSync(
+    throwingRoute,
+    "export async function handler() { const err = new Error('oof'); err.code = 'ENOENT'; throw err; }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    statusRoute,
+    "export function handler(req, res, ctx) { res.end('500:' + res.statusCode + ':' + ctx.requestMeta.invokeError.message + ':' + req.sideEffect); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    errorRoute,
+    "export function handler(req, res, ctx) { req.sideEffect = ctx.requestMeta.customErrorRender ? 'reported' : 'missing'; }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [
+      { id: "enoent", filePath: throwingRoute },
+      { id: "500", filePath: statusRoute },
+      { id: "_error", filePath: errorRoute },
+    ],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const errorRes = res();
+  await dispatch(
+    "enoent",
+    { url: "/enoent", headers: { host: "example.test" } },
+    errorRes,
+  );
+
+  assert.equal(errorRes.statusCode, 500);
+  assert.equal(errorRes.body, "500:500:oof:reported");
+});
+
+test("dispatcher wires Next router-server revalidate metadata to brrrd path invalidation", async () => {
+  const root = tempDir("dispatcher-revalidate");
+  const apiRoute = path.join(root, "api-route.mjs");
+
+  fs.writeFileSync(
+    apiRoute,
+    "export async function handler(_req, res, ctx) { await ctx.requestMeta.revalidate({ urlPath: '/stale' }); res.end('ok'); }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "api-revalidate", filePath: apiRoute }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const previousDeno = globalThis.Deno;
+  const invalidated = [];
+  globalThis.Deno = {
+    core: {
+      ops: {
+        async op_brrrd_cache_revalidate_path(pathname) {
+          invalidated.push(pathname);
+          return true;
+        },
+      },
+    },
+  };
+  try {
+    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const apiRes = res();
+    await dispatch("api-revalidate", { headers: { host: "example.test" } }, apiRes);
+    assert.equal(apiRes.body, "ok");
+    assert.deepEqual(invalidated, ["/stale"]);
+  } finally {
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
 });
 
 test("dispatcher bundling tolerates missing package requires from Next runtime files", async () => {
@@ -532,6 +726,67 @@ module.exports = {
       delete globalThis.__brrrd_external_runtime_spec;
     } else {
       globalThis.__brrrd_external_runtime_spec = previousExternalRuntimeSpec;
+    }
+  }
+});
+
+test("dispatcher resolves package main paths through global require.resolve", async () => {
+  const root = tempDir("dispatcher-runtime-require-resolve");
+  const route = path.join(root, "route.cjs");
+  const packageDir = path.join(root, "node_modules", "typescript");
+  const packageMain = path.join(packageDir, "lib", "typescript.js");
+
+  fs.mkdirSync(path.dirname(packageMain), { recursive: true });
+  fs.writeFileSync(
+    path.join(packageDir, "package.json"),
+    JSON.stringify({ name: "typescript", main: "./lib/typescript.js" }),
+    "utf8",
+  );
+  fs.writeFileSync(packageMain, "module.exports = { marker: 'ts-runtime' };\n", "utf8");
+  fs.writeFileSync(
+    route,
+    `
+const path = require('path');
+
+module.exports = {
+  handler(_req, res) {
+    const resolved = require.resolve('typescript');
+    res.end(path.basename(resolved) + ':' + require('typescript').marker);
+  },
+};
+`,
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "runtime-require-resolve", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const previousModules = globalThis.__brrrd_modules;
+  const previousNodeModulesRoot = globalThis.__brrrd_node_modules_root;
+  globalThis.__brrrd_modules = { fs, path };
+  globalThis.__brrrd_node_modules_root = path.join(root, "node_modules");
+  try {
+    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const runtimeFileRes = res();
+    await dispatch("runtime-require-resolve", { headers: { host: "example.test" } }, runtimeFileRes);
+    assert.equal(runtimeFileRes.body, "typescript.js:ts-runtime");
+  } finally {
+    if (previousModules === undefined) {
+      delete globalThis.__brrrd_modules;
+    } else {
+      globalThis.__brrrd_modules = previousModules;
+    }
+    if (previousNodeModulesRoot === undefined) {
+      delete globalThis.__brrrd_node_modules_root;
+    } else {
+      globalThis.__brrrd_node_modules_root = previousNodeModulesRoot;
     }
   }
 });
