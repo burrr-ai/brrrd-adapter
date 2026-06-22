@@ -31,7 +31,9 @@
     "test": "tsc && node --test test/*.test.mjs",
     "dev": "tsc --watch",
     "harness:fixture": "node scripts/local-harness.mjs fixture",
-    "harness:group": "node scripts/local-harness.mjs group"
+    "harness:group": "node scripts/local-harness.mjs group",
+    "harness:harvest": "node scripts/harness-harvest.mjs",
+    "harness:ledger": "node scripts/harness-ledger.mjs"
   },
   "dependencies": {
     "esbuild": "^0.25.0"
