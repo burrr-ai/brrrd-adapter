@@ -107,6 +107,88 @@ test("dispatcher loads only the requested route module", async () => {
   );
 });
 
+test("dispatcher provides Next virtual project and dist request metadata", async () => {
+  const root = tempDir("dispatcher-next-request-meta");
+  const route = path.join(root, "route.mjs");
+
+  fs.writeFileSync(
+    route,
+    "export function handler(_req, res, ctx) { res.end(JSON.stringify(ctx.requestMeta)); }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "meta", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const metaRes = res();
+  await dispatch(
+    "meta",
+    {
+      headers: { host: "example.test" },
+      __brrrd_request_meta: { preserved: "yes" },
+    },
+    metaRes,
+  );
+
+  assert.deepEqual(JSON.parse(metaRes.body), {
+    preserved: "yes",
+    relativeProjectDir: ".",
+    distDir: "/bundle/.next",
+    hostname: "example.test",
+    minimalMode: true,
+  });
+});
+
+test("dispatcher provides render404 request metadata for Next Pages notFound handling", async () => {
+  const root = tempDir("dispatcher-render404");
+  const dynamicRoute = path.join(root, "dynamic-route.mjs");
+  const errorRoute = path.join(root, "error-route.mjs");
+
+  fs.writeFileSync(
+    dynamicRoute,
+    "export async function handler(req, res, ctx) { await ctx.requestMeta.render404(req, res); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    errorRoute,
+    "export function handler(req, res) { res.end('error:' + res.statusCode + ':' + req.url); }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [
+      { id: "_slug_", filePath: dynamicRoute },
+      { id: "_error", filePath: errorRoute },
+    ],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+
+  const notFoundRes = res();
+  await dispatch(
+    "_slug_",
+    { url: "/3", headers: { host: "example.test" } },
+    notFoundRes,
+  );
+
+  assert.equal(notFoundRes.body, "error:404:/3");
+});
+
 test("dispatcher bundling tolerates missing package requires from Next runtime files", async () => {
   const root = tempDir("dispatcher-optional-runtime-dep");
   const healthyRoute = path.join(root, "healthy-route.mjs");
@@ -165,6 +247,110 @@ test("dispatcher bundling tolerates missing package requires from Next runtime f
       return true;
     },
   );
+});
+
+test("dispatcher bundling leaves missing late imports inside node_modules for runtime resolution", async () => {
+  const root = tempDir("dispatcher-node-modules-late-runtime-dep");
+  const route = path.join(root, "route.mjs");
+  const esmPackage = path.join(root, "node_modules", "esm-dead-branch");
+  const cjsPackage = path.join(root, "node_modules", "cjs-dead-branch");
+
+  fs.mkdirSync(esmPackage, { recursive: true });
+  fs.mkdirSync(cjsPackage, { recursive: true });
+  fs.writeFileSync(
+    path.join(esmPackage, "package.json"),
+    JSON.stringify({
+      name: "esm-dead-branch",
+      exports: { "./entry": { import: "./entry.mjs" } },
+      type: "module",
+    }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(esmPackage, "entry.mjs"),
+    "if (Math.random() < 0) import('missing-esm-late-dep');\nexport const value = 'esm-ok';\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cjsPackage, "package.json"),
+    JSON.stringify({
+      name: "cjs-dead-branch",
+      exports: { "./entry": { require: "./entry.cjs", import: "./entry.cjs" } },
+    }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cjsPackage, "entry.cjs"),
+    "if (Math.random() < 0) require('missing-cjs-late-dep');\nexports.value = 'cjs-ok';\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    route,
+    "import { value as esmValue } from 'esm-dead-branch/entry';\nimport cjs from 'cjs-dead-branch/entry';\nexport function handler(_req, res) { res.end(esmValue + ':' + cjs.value); }\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "late-dep", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const lateDepRes = res();
+  await dispatch("late-dep", { headers: { host: "example.test" } }, lateDepRes);
+  assert.equal(lateDepRes.body, "esm-ok:cjs-ok");
+});
+
+test("dispatcher bundling preserves require conditions for Next Pages server bundles", async () => {
+  const root = tempDir("dispatcher-pages-require-condition");
+  const distDir = path.join(root, ".next");
+  const route = path.join(distDir, "server", "pages", "ssr.js");
+  const pkg = path.join(root, "node_modules", "invalid-server-package");
+
+  fs.mkdirSync(path.dirname(route), { recursive: true });
+  fs.mkdirSync(pkg, { recursive: true });
+  fs.writeFileSync(
+    path.join(pkg, "package.json"),
+    JSON.stringify({
+      name: "invalid-server-package",
+      exports: {
+        "./entry": {
+          browser: "./browser.js",
+          import: "./correct.js",
+          require: "./alternative.js",
+        },
+      },
+    }),
+    "utf8",
+  );
+  fs.writeFileSync(path.join(pkg, "browser.js"), "module.exports = 'Browser';\n", "utf8");
+  fs.writeFileSync(path.join(pkg, "correct.js"), "module.exports = 'World';\n", "utf8");
+  fs.writeFileSync(path.join(pkg, "alternative.js"), "module.exports = 'Alternative';\n", "utf8");
+  fs.writeFileSync(
+    route,
+    "const value = require('invalid-server-package/entry');\nmodule.exports = { handler(_req, res) { res.end(String(value.default ?? value)); } };\n",
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "ssr", filePath: route }],
+    {
+      projectDir: root,
+      distDir,
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const ssrRes = res();
+  await dispatch("ssr", { headers: { host: "example.test" } }, ssrRes);
+  assert.equal(ssrRes.body, "Alternative");
 });
 
 test("dispatcher bundling still fails direct app requires for missing packages", async () => {
@@ -389,4 +575,88 @@ module.exports = {
   const otelRes = res();
   await dispatch("otel", { headers: { host: "example.test" } }, otelRes);
   assert.equal(otelRes.body, "otel-ok");
+});
+
+test("dispatcher prefers packaged OpenTelemetry API over fallback stub", async () => {
+  const root = tempDir("dispatcher-otel-real-package");
+  const otelRoute = path.join(root, "otel-route.cjs");
+  const packageDir = path.join(root, "node_modules", "@opentelemetry", "api");
+
+  fs.mkdirSync(packageDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(packageDir, "package.json"),
+    JSON.stringify({ name: "@opentelemetry/api", main: "index.js" }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(packageDir, "index.js"),
+    `
+exports.trace = {
+  getTracerProvider() {
+    return {
+      marker: 'real-otel-api',
+      getTracer() {
+        return {
+          startActiveSpan(_name, _options, _context, fn) {
+            return fn({ spanContext: () => ({ spanId: '0000000000000042' }) });
+          },
+        };
+      },
+    };
+  },
+};
+exports.context = { active() { return {}; } };
+`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    otelRoute,
+    `
+const { trace, context } = require('@opentelemetry/api');
+
+module.exports = {
+  handler(_req, res) {
+    const provider = trace.getTracerProvider();
+    const tracer = provider.getTracer('next.js', '0.0.1');
+    const result = tracer.startActiveSpan('render', {}, context.active(), (span) => {
+      return provider.marker + ':' + span.spanContext().spanId;
+    });
+    res.end(result);
+  },
+};
+`,
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "otel", filePath: otelRoute }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+    },
+  );
+
+  const previousModules = globalThis.__brrrd_modules;
+  const previousNodeModulesRoot = globalThis.__brrrd_node_modules_root;
+  globalThis.__brrrd_modules = { fs, path };
+  globalThis.__brrrd_node_modules_root = path.join(root, "node_modules");
+  try {
+    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const otelRes = res();
+    await dispatch("otel", { headers: { host: "example.test" } }, otelRes);
+    assert.equal(otelRes.body, "real-otel-api:0000000000000042");
+  } finally {
+    if (previousModules === undefined) {
+      delete globalThis.__brrrd_modules;
+    } else {
+      globalThis.__brrrd_modules = previousModules;
+    }
+    if (previousNodeModulesRoot === undefined) {
+      delete globalThis.__brrrd_node_modules_root;
+    } else {
+      globalThis.__brrrd_node_modules_root = previousNodeModulesRoot;
+    }
+  }
 });

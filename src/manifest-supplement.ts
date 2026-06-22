@@ -6,6 +6,7 @@ import type {
   BrrrdHeaderPair,
   BrrrdMiddlewareCondition,
   BrrrdMiddlewareFile,
+  BrrrdPreviewConfig,
 } from "./types.js";
 import { sanitizeId } from "./routing.js";
 
@@ -30,10 +31,12 @@ export type MiddlewareMeta = {
 export type ManifestSupplement = {
   middleware: MiddlewareMeta | null;
   edgeFunctions: Map<string, BrrrdEdgeFunction>;
+  preview: BrrrdPreviewConfig | null;
   pprPages: string[];
   appPrerenderDataRoutes: SupplementAppPrerenderDataRoute[];
   pprSegmentPrefetchRoutes: SupplementPrefetchSegmentDataRoute[];
   prerenderResponseMeta: SupplementPrerenderResponseMeta[];
+  staticResponseMeta: SupplementStaticResponseMeta[];
   dynamicPrerenderRoutes: SupplementDynamicPrerenderRoute[];
   redirects: SupplementRedirect[];
   rewrites: SupplementRewritePhases;
@@ -71,6 +74,7 @@ export type SupplementDynamicPrerenderRoute = {
   routeRegex: string;
   dataRouteRegex?: string;
   fallback: false | null | string;
+  bypass: BrrrdMiddlewareCondition[];
 };
 
 export type SupplementPrefetchSegmentDataRoute = {
@@ -89,6 +93,32 @@ export type SupplementPrerenderResponseMeta = {
   status?: number;
   headers: BrrrdHeaderPair[];
 };
+
+export type SupplementStaticResponseMeta = {
+  pathname: string;
+  sourceRel: string;
+  status?: number;
+  headers: BrrrdHeaderPair[];
+};
+
+function extractPreviewConfig(distDir: string): BrrrdPreviewConfig | null {
+  const raw = readJsonIfExists(path.join(distDir, "prerender-manifest.json"));
+  const preview = raw?.preview;
+  if (!preview || typeof preview !== "object") return null;
+  const item = preview as Record<string, unknown>;
+  if (typeof item.previewModeId !== "string" || item.previewModeId.length === 0) {
+    return null;
+  }
+  return {
+    previewModeId: item.previewModeId,
+    ...(typeof item.previewModeSigningKey === "string"
+      ? { previewModeSigningKey: item.previewModeSigningKey }
+      : {}),
+    ...(typeof item.previewModeEncryptionKey === "string"
+      ? { previewModeEncryptionKey: item.previewModeEncryptionKey }
+      : {}),
+  };
+}
 
 function readJsonIfExists(filePath: string): any | null {
   if (!fs.existsSync(filePath)) return null;
@@ -385,6 +415,7 @@ export function extractDynamicPrerenderRoutes(distDir: string): SupplementDynami
         ? { dataRouteRegex: item.dataRouteRegex }
         : {}),
       fallback,
+      bypass: normalizeConditions(item.experimentalBypassFor) ?? [],
     });
   }
   return out.sort((a, b) => a.page.localeCompare(b.page));
@@ -410,26 +441,115 @@ function appPrerenderMetaPathname(sourceRel: string): string {
   return `/${withoutExt}`;
 }
 
+function appStaticMetaPathname(sourceRel: string): string {
+  const withoutExt = sourceRel.slice(0, -".meta".length);
+  if (withoutExt === "index") return "/";
+  return `/${withoutExt}`;
+}
+
+function appStaticBodySourceRel(pathname: string): string | null {
+  if (!pathname.startsWith("/") || pathname.includes("//")) return null;
+  const rel = pathname === "/" ? "index" : pathname.slice(1);
+  if (rel.split("/").some((segment) => segment.length === 0 || segment === "..")) {
+    return null;
+  }
+  return `${rel}.body`;
+}
+
+function responseMetaFromJson(
+  raw: unknown,
+): { status?: number; headers: BrrrdHeaderPair[] } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as Record<string, unknown>;
+  const status = typeof item.status === "number" && Number.isInteger(item.status)
+    ? item.status
+    : undefined;
+  const headers = normalizeResponseHeaders(item.headers);
+  if (status === undefined && headers.length === 0) return null;
+  return {
+    ...(status !== undefined ? { status } : {}),
+    headers,
+  };
+}
+
+function mergeStaticResponseMeta(
+  byPathname: Map<string, SupplementStaticResponseMeta>,
+  next: SupplementStaticResponseMeta,
+): void {
+  const existing = byPathname.get(next.pathname);
+  if (!existing) {
+    byPathname.set(next.pathname, next);
+    return;
+  }
+  const headersByKey = new Map<string, BrrrdHeaderPair>();
+  for (const header of existing.headers) headersByKey.set(header.key.toLowerCase(), header);
+  for (const header of next.headers) headersByKey.set(header.key.toLowerCase(), header);
+  byPathname.set(next.pathname, {
+    pathname: next.pathname,
+    sourceRel: next.sourceRel,
+    ...(next.status !== undefined
+      ? { status: next.status }
+      : existing.status !== undefined
+        ? { status: existing.status }
+        : {}),
+    headers: Array.from(headersByKey.values()),
+  });
+}
+
 export function extractAppPrerenderResponseMeta(distDir: string): SupplementPrerenderResponseMeta[] {
   const appDir = path.join(distDir, "server", "app");
   const out: SupplementPrerenderResponseMeta[] = [];
   for (const filePath of walkFiles(appDir).filter((file) => file.endsWith(".meta"))) {
-    const raw = readJsonIfExists(filePath);
-    if (!raw || typeof raw !== "object") continue;
-    const item = raw as Record<string, unknown>;
-    const status = typeof item.status === "number" && Number.isInteger(item.status)
-      ? item.status
-      : undefined;
-    const headers = normalizeResponseHeaders(item.headers);
-    if (status === undefined && headers.length === 0) continue;
+    const meta = responseMetaFromJson(readJsonIfExists(filePath));
+    if (!meta) continue;
     const sourceRel = path.relative(appDir, filePath).split(path.sep).join("/");
     out.push({
       pathname: appPrerenderMetaPathname(sourceRel),
-      ...(status !== undefined ? { status } : {}),
-      headers,
+      ...meta,
     });
   }
   return out.sort((a, b) => a.pathname.localeCompare(b.pathname));
+}
+
+export function extractAppStaticResponseMeta(distDir: string): SupplementStaticResponseMeta[] {
+  const appDir = path.join(distDir, "server", "app");
+  const byPathname = new Map<string, SupplementStaticResponseMeta>();
+  const prerenderManifest = readJsonIfExists(path.join(distDir, "prerender-manifest.json"));
+  const prerenderRoutes = prerenderManifest?.routes;
+  if (prerenderRoutes && typeof prerenderRoutes === "object") {
+    for (const [pathname, raw] of Object.entries(prerenderRoutes)) {
+      if (!pathname.startsWith("/") || !raw || typeof raw !== "object") continue;
+      const sourceRel = appStaticBodySourceRel(pathname);
+      if (!sourceRel) continue;
+      const item = raw as Record<string, unknown>;
+      const statusValue = item.initialStatus ?? item.status;
+      const status = typeof statusValue === "number" && Number.isInteger(statusValue)
+        ? statusValue
+        : undefined;
+      const headers = normalizeResponseHeaders(item.initialHeaders);
+      if (status === undefined && headers.length === 0) continue;
+      mergeStaticResponseMeta(byPathname, {
+        pathname,
+        sourceRel,
+        ...(status !== undefined ? { status } : {}),
+        headers,
+      });
+    }
+  }
+  for (const filePath of walkFiles(appDir).filter((file) => file.endsWith(".meta"))) {
+    const bodyFile = filePath.slice(0, -".meta".length) + ".body";
+    if (!fs.existsSync(bodyFile)) continue;
+    const meta = responseMetaFromJson(readJsonIfExists(filePath));
+    if (!meta) continue;
+    const sourceRel = path.relative(appDir, filePath).split(path.sep).join("/");
+    const pathname = appStaticMetaPathname(sourceRel);
+    mergeStaticResponseMeta(byPathname, {
+      pathname,
+      sourceRel,
+      ...meta,
+    });
+  }
+  return Array.from(byPathname.values()).sort((a, b) => a.pathname.localeCompare(b.pathname));
 }
 
 export function extractRedirectSupplement(distDir: string): SupplementRedirect[] {
@@ -538,10 +658,12 @@ export function createManifestSupplement(distDir: string): ManifestSupplement {
   return {
     middleware: extractMiddlewareMeta(distDir),
     edgeFunctions: extractEdgeFunctions(distDir),
+    preview: extractPreviewConfig(distDir),
     pprPages: extractPprPages(distDir),
     appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir),
     pprSegmentPrefetchRoutes: extractPprSegmentPrefetchRoutes(distDir),
     prerenderResponseMeta: extractAppPrerenderResponseMeta(distDir),
+    staticResponseMeta: extractAppStaticResponseMeta(distDir),
     dynamicPrerenderRoutes: extractDynamicPrerenderRoutes(distDir),
     redirects: extractRedirectSupplement(distDir),
     rewrites: extractRewriteSupplement(distDir),

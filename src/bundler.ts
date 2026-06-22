@@ -34,6 +34,18 @@ function computeNodePaths(
   return Array.from(dirs);
 }
 
+const exposeNextAppRenderStoragesFooter = `
+try {
+  globalThis.__brrrd_next_app_render_async_storages = {
+    actionAsyncStorage: require_action_async_storage_external().actionAsyncStorage,
+    workAsyncStorage: require_work_async_storage_external().workAsyncStorage,
+    workUnitAsyncStorage: require_work_unit_async_storage_external().workUnitAsyncStorage,
+  };
+} catch (_) {
+  // Some app bundles do not include App Router render storage externals.
+}
+`;
+
 /**
  * Bundle all route handlers into a single app dispatcher.
  * Generates: dispatch(routeId, req, res) that routes to the correct handler.
@@ -87,19 +99,35 @@ export default async function dispatch(routeId, req, res) {
   const h = await resolveHandler(routeId);
   if (!h) { res.writeHead(404); res.end('Not Found'); return; }
   const brrrdRequestMeta = req.__brrrd_request_meta || {};
-  const ctx = {
-    waitUntil: (p) => {
+  const waitUntil = (p) => {
       Deno.core.ops.op_brrrd_wait_until_start(globalThis.__brrrd_realm_id);
       Promise.resolve(p)
         .catch(e => console.error('[waitUntil]', e))
         .finally(() => Deno.core.ops.op_brrrd_wait_until_end(globalThis.__brrrd_realm_id));
-    },
-    requestMeta: {
+    };
+  const createContext = () => {
+    const requestMeta = {
       ...brrrdRequestMeta,
       relativeProjectDir: '.',
+      distDir: '/bundle/.next',
       hostname: req.headers?.host || 'localhost',
-    },
+      minimalMode: true,
+    };
+    requestMeta.render404 = async (renderReq = req, renderRes = res) => {
+      const errorHandler = await resolveHandler('_error');
+      renderRes.statusCode = 404;
+      if (!errorHandler) {
+        renderRes.end('This page could not be found');
+        return;
+      }
+      return errorHandler(renderReq, renderRes, createContext());
+    };
+    return {
+      waitUntil,
+      requestMeta,
+    };
   };
+  const ctx = createContext();
   return h(req, res, ctx);
 }
 `;
@@ -118,10 +146,14 @@ export default async function dispatch(routeId, req, res) {
       outfile,
       loader: {
         ".wasm": "binary",
+        ".map": "js",
       },
       external: runtimeDependencyExternals(),
       banner: {
         js: runtimeRequireBanner(),
+      },
+      footer: {
+        js: exposeNextAppRenderStoragesFooter,
       },
       metafile: true,
       plugins: [
@@ -133,8 +165,8 @@ export default async function dispatch(routeId, req, res) {
         "process.env.NEXT_RUNTIME": '"nodejs"',
       },
       logLevel: "warning",
-      mainFields: ["module", "main"],
-      conditions: ["node", "import"],
+      mainFields: ["main", "module"],
+      conditions: ["node"],
       nodePaths: computeNodePaths(outputs.map((o) => o.assets), ctx),
     });
     runCompatibilityAfterBundle(ctx, result.metafile);

@@ -33,6 +33,7 @@ persist_diagnostics() {
     ".next/server/pages-manifest.json"
     ".next/server/middleware-manifest.json"
     "dist/brrrd/manifest.json"
+    "dist/brrrd/adapter-context.json"
   )
 
   for file in "${files[@]}"; do

@@ -16,7 +16,7 @@ const BRRRD_NODE_MODULES = [
   "timers", "timers/promises", "constants",
   "net", "tls", "dns", "child_process", "vm",
   "http2", "readline", "worker_threads",
-  "perf_hooks", "diagnostics_channel", "module",
+  "tty", "perf_hooks", "diagnostics_channel", "module",
 ] as const;
 
 const RUNTIME_PROVIDED_EXTERNALS = [
@@ -106,6 +106,10 @@ function isNextGeneratedRuntimeImporter(importer: string, ctx: BuildContext): bo
   return owningNodeModulePackage(importer) === "next";
 }
 
+function isNodeModuleRuntimeImporter(importer: string): boolean {
+  return !!importer && owningNodeModulePackage(importer) !== null;
+}
+
 export function createRuntimeDependencyPlugin(ctx: BuildContext): Plugin {
   return {
     name: "brrrd-runtime-dependency-policy",
@@ -115,12 +119,17 @@ export function createRuntimeDependencyPlugin(ctx: BuildContext): Plugin {
         // Pages runtime CSS optimizer path. Preserve Node's late
         // MODULE_NOT_FOUND behavior for those generated/runtime files instead
         // of failing the adapter's esbuild pass.
-        const externalIfMissing = EXTERNAL_IF_MISSING_PACKAGES.has(args.path)
-          || (
+        const lateRuntimeImport = isBarePackageSpecifier(args.path)
+          && (
             args.kind === "require-call"
-            && isBarePackageSpecifier(args.path)
-            && isNextGeneratedRuntimeImporter(args.importer, ctx)
+            || args.kind === "dynamic-import"
+          )
+          && (
+            isNextGeneratedRuntimeImporter(args.importer, ctx)
+            || isNodeModuleRuntimeImporter(args.importer)
           );
+        const externalIfMissing = EXTERNAL_IF_MISSING_PACKAGES.has(args.path)
+          || lateRuntimeImport;
         if (!externalIfMissing) return undefined;
         if (canResolveFromBuild(args.path, ctx, args.resolveDir)) return undefined;
         return {
@@ -271,7 +280,6 @@ var require = globalThis.__brrrd_require || ((id) => {
     }
     return r;
   }
-  if (id === "@opentelemetry/api") return ${OTEL_STUB_SOURCE};
   if (id === "module" || id === "node:module") {
     function normalizeBuiltinId(x) { return String(x).startsWith("node:") ? String(x).slice(5) : String(x); }
     function isBuiltin(x) {
@@ -294,6 +302,7 @@ var require = globalThis.__brrrd_require || ((id) => {
   }
   var resolvedFile = __brrrd_resolve_cjs_file(id, "/bundle");
   if (resolvedFile) return __brrrd_load_cjs_file(resolvedFile);
+  if (id === "@opentelemetry/api") return ${OTEL_STUB_SOURCE};
   var optionalEmptyModules = new Set(${emptyStubOptionalPackages});
   if (optionalEmptyModules.has(id)) {
     console.warn("[brrrd] require: optional module '" + id + "', returning empty stub");

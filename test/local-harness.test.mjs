@@ -63,6 +63,28 @@ test("parseArgs supports fixture mode with explicit local paths", () => {
   assert.equal(options.nodeVersion, "20");
   assert.equal(options.artifactsDir, "/tmp/artifacts");
   assert.equal(options.timeoutMs, "12345");
+  assert.equal(options.cleanResults, false);
+});
+
+test("parseArgs enables explicit result cleanup for serial harness runs", () => {
+  const options = parseArgs(["group", "--clean-results"], {});
+
+  assert.equal(options.mode, "group");
+  assert.equal(options.cleanResults, true);
+});
+
+test("parseArgs enables Adapter API context capture diagnostics", () => {
+  assert.equal(
+    parseArgs(["fixture", "--fixture", "test/e2e/sample/sample.test.ts", "--capture-context"], {})
+      .captureContext,
+    true,
+  );
+  assert.equal(
+    parseArgs(["fixture", "--fixture", "test/e2e/sample/sample.test.ts"], {
+      BRRRD_HARNESS_CAPTURE_CONTEXT: "1",
+    }).captureContext,
+    true,
+  );
 });
 
 test("parseArgs defaults group mode to 1/64 and rejects unknown bundlers", () => {
@@ -232,6 +254,8 @@ test("harnessEnv wires official deploy scripts and bundler axis", () => {
   assert.match(env.NEXT_TEST_DEPLOY_LOGS_SCRIPT_PATH, /scripts\/e2e-logs\.sh$/);
   assert.match(env.NEXT_TEST_CLEANUP_SCRIPT_PATH, /scripts\/e2e-cleanup\.sh$/);
   assert.equal(env.NEXT_E2E_TEST_TIMEOUT, "240000");
+  assert.equal(env.NEXT_PRIVATE_TEST_MODE, "e2e");
+  assert.equal(env.VERCEL_NEXT_BUNDLED_SERVER, "1");
   assert.equal(env.BRRRD_BIN, "/tmp/brrrd-bin");
   assert.equal(env.GITHUB_WORKSPACE, "/tmp/artifacts");
   assert.equal(env.TMPDIR, "/tmp/artifacts/tmp");
@@ -256,6 +280,25 @@ test("harnessEnv keeps next-default free of explicit bundler test flags", () => 
 
   assert.equal(env.IS_WEBPACK_TEST, undefined);
   assert.equal(env.IS_TURBOPACK_TEST, undefined);
+});
+
+test("harnessEnv wires optional Adapter API context capture", () => {
+  const nextDir = fakeNextCheckout();
+  const options = parseArgs([
+    "fixture",
+    "--fixture",
+    "test/e2e/sample/sample.test.ts",
+    "--capture-context",
+  ], {});
+  const env = harnessEnv({
+    options,
+    nextDir,
+    brrrdBin: "/tmp/brrrd-bin",
+    artifactsDir: "/tmp/artifacts",
+  });
+
+  assert.equal(env.BRRRD_HARNESS_CAPTURE_CONTEXT, "1");
+  assert.equal(env.BRRRD_ADAPTER_DEBUG_CONTEXT, "1");
 });
 
 test("artifactRunDir derives a stable readable target label", () => {

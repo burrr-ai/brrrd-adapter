@@ -5,10 +5,14 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { bundleAppHandler } from "../dist/bundler.js";
 import { onBuildComplete } from "../dist/build.js";
+import { writeManifest } from "../dist/manifest-emitter.js";
+import { runtimeDependencyExternals } from "../dist/runtime-dependency-policy.js";
 import {
   extractAppPrerenderDataRoutes,
   extractAppPrerenderResponseMeta,
+  extractAppStaticResponseMeta,
   extractDynamicPrerenderRoutes,
   extractEdgeFunctions,
   extractMiddlewareMeta,
@@ -99,6 +103,210 @@ test("onBuildComplete rejects native .node traced assets", async () => {
   );
 });
 
+test("runtime dependency policy externalizes terminal builtin probes", () => {
+  const externals = new Set(runtimeDependencyExternals());
+  assert.equal(externals.has("tty"), true);
+  assert.equal(externals.has("node:tty"), true);
+});
+
+test("bundleAppHandler excludes server source maps from webpack dynamic chunk require contexts", async () => {
+  const root = tempDir("server-source-map-context");
+  const distDir = path.join(root, ".next");
+  const outDir = path.join(root, "dist", "brrrd");
+  const chunksDir = path.join(distDir, "server", "chunks");
+  const runtimePath = path.join(distDir, "server", "webpack-runtime.js");
+  const handlerPath = path.join(distDir, "server", "app", "page.js");
+
+  fs.mkdirSync(chunksDir, { recursive: true });
+  fs.mkdirSync(path.dirname(handlerPath), { recursive: true });
+  fs.writeFileSync(path.join(chunksDir, "224.js"), "module.exports = { ok: true };\n", "utf8");
+  fs.writeFileSync(path.join(chunksDir, "224.js.map"), "{\"version\":3,\"sources\":[\"chunk.js\"]}\n", "utf8");
+  fs.writeFileSync(
+    runtimePath,
+    `
+const g = { u(id) { return id === 224 ? "224.js" : "224.js.map"; } };
+module.exports = function loadChunk(id) {
+  return require("./chunks/" + g.u(id));
+};
+`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    handlerPath,
+    `
+const loadChunk = require("../webpack-runtime.js");
+module.exports = function handler(req, res) {
+  loadChunk(224);
+  res.end("ok");
+};
+`,
+    "utf8",
+  );
+
+  await bundleAppHandler(
+    [{ id: "/", filePath: handlerPath, assets: {} }],
+    { projectDir: root, distDir, outDir },
+  );
+
+  const bundlePath = path.join(outDir, "bundles", "app.js");
+  assert.equal(fs.existsSync(bundlePath), true);
+  assert.doesNotMatch(fs.readFileSync(bundlePath, "utf8"), /"sources":\["chunk\.js"\]/);
+});
+
+test("bundleAppHandler does not globally empty user-authored source map imports", async () => {
+  const root = tempDir("user-source-map-import");
+  const distDir = path.join(root, ".next");
+  const outDir = path.join(root, "dist", "brrrd");
+  const handlerPath = path.join(root, "route.cjs");
+
+  fs.writeFileSync(path.join(root, "route.js.map"), "{\"version\":3}\n", "utf8");
+  fs.writeFileSync(
+    handlerPath,
+    `
+const map = require("./route.js.map");
+module.exports = function handler(req, res) {
+  res.end(String(map.version));
+};
+`,
+    "utf8",
+  );
+
+  await assert.rejects(
+    bundleAppHandler(
+      [{ id: "/", filePath: handlerPath, assets: {} }],
+      { projectDir: root, distDir, outDir },
+    ),
+    /source map imports outside Next server output are not executable|No loader is configured for ".map" files|Unexpected token/,
+  );
+});
+
+test("writeManifest records NEXT_DEPLOYMENT_ID as build metadata", () => {
+  const root = tempDir("deployment-id");
+  const previous = process.env.NEXT_DEPLOYMENT_ID;
+  process.env.NEXT_DEPLOYMENT_ID = "deploy-test-123";
+  try {
+    writeManifest(
+      root,
+      { buildId: "build-1", nextVersion: "16.3.0-canary" },
+      [],
+      {},
+      {
+        headers: [],
+        redirects: [],
+        proxy: null,
+        rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
+      },
+      [],
+      { policies: [] },
+      undefined,
+    );
+  } finally {
+    if (previous === undefined) {
+      delete process.env.NEXT_DEPLOYMENT_ID;
+    } else {
+      process.env.NEXT_DEPLOYMENT_ID = previous;
+    }
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
+  assert.equal(manifest.build.deploymentId, "deploy-test-123");
+});
+
+test("writeManifest records Next image optimizer policy", () => {
+  const root = tempDir("image-config");
+  writeManifest(
+    root,
+    {
+      buildId: "build-1",
+      nextVersion: "16.3.0-canary",
+      config: {
+        images: {
+          domains: ["legacy.example.test"],
+          remotePatterns: [{
+            protocol: "https",
+            hostname: "image-optimization-test.vercel.app",
+            pathname: "/**",
+          }],
+          localPatterns: [{ pathname: "/assets/**" }],
+          qualities: [50, 75],
+          minimumCacheTTL: 60,
+        },
+      },
+    },
+    [],
+    {},
+    {
+      headers: [],
+      redirects: [],
+      proxy: null,
+      rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
+    },
+    [],
+    { policies: [] },
+    undefined,
+  );
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.images, {
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [32, 48, 64, 96, 128, 256, 384],
+    domains: ["legacy.example.test"],
+    remotePatterns: [{
+      protocol: "https",
+      hostname: "image-optimization-test.vercel.app",
+      pathname: "/**",
+    }],
+    localPatterns: [{ pathname: "/assets/**" }],
+    qualities: [50, 75],
+    minimumCacheTTL: 60,
+  });
+});
+
+test("onBuildComplete emits Next preview metadata for draft-mode routing", async () => {
+  const root = tempDir("preview-metadata");
+  const distDir = path.join(root, ".next");
+  const appDir = path.join(distDir, "server", "app");
+  const handler = path.join(appDir, "page.js");
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(handler, "export default function Page() {}\n", "utf8");
+  fs.writeFileSync(path.join(appDir, "index.html"), "<main>static</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    version: 4,
+    routes: {
+      "/": {
+        initialRevalidateSeconds: false,
+        srcRoute: null,
+        dataRoute: null,
+      },
+    },
+    dynamicRoutes: {},
+    preview: {
+      previewModeId: "preview-id",
+      previewModeSigningKey: "signing-key",
+      previewModeEncryptionKey: "encryption-key",
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.prerenders = [
+    { id: "/", pathname: "/", filePath: path.join(appDir, "index.html") },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.preview, {
+    previewModeId: "preview-id",
+    previewModeSigningKey: "signing-key",
+    previewModeEncryptionKey: "encryption-key",
+  });
+});
+
 test("onBuildComplete rejects edge app route outputs without function metadata", async () => {
   const root = tempDir("edge-app-route");
   const distDir = path.join(root, ".next");
@@ -171,6 +379,394 @@ test("onBuildComplete uses Adapter API edgeRuntime metadata without middleware-m
   );
 });
 
+test("onBuildComplete compiles Adapter API node proxy middleware without middleware-manifest entry", async () => {
+  const root = tempDir("node-proxy-middleware-output");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const runtimeRel = "server/webpack-runtime.js";
+  const runtimePath = path.join(distDir, runtimeRel);
+  const middlewareRel = "server/middleware.js";
+  const middlewarePath = path.join(distDir, middlewareRel);
+
+  fs.writeFileSync(path.join(root, "proxy.ts"), "export function proxy() {}\n", "utf8");
+  fs.writeFileSync(handler, "export default function handler() {}\n", "utf8");
+  fs.mkdirSync(path.dirname(middlewarePath), { recursive: true });
+  fs.writeFileSync(runtimePath, "globalThis.__webpack_require__ = function() {};\n", "utf8");
+  fs.writeFileSync(middlewarePath, "globalThis._ENTRIES = globalThis._ENTRIES || {};\n", "utf8");
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {},
+    functions: {},
+    sortedMiddleware: [],
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.middleware = {
+    id: "/_middleware",
+    pathname: "/_middleware",
+    type: "MIDDLEWARE",
+    runtime: "nodejs",
+    filePath: middlewarePath,
+    sourcePage: "middleware",
+    assets: {
+      [middlewareRel]: middlewarePath,
+      [runtimeRel]: runtimePath,
+    },
+    config: {
+      matchers: [{
+        source: "/:path*",
+        sourceRegex: "^/.*$",
+        has: [{ type: "header", key: "x-proxy-test", value: "1" }],
+        missing: [{ type: "header", key: "x-prerender-revalidate", value: "preview" }],
+      }],
+    },
+  };
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(manifest.routing.proxy, { source: "proxy" });
+  assert.deepEqual(manifest.middleware, {
+    moduleFormat: "node",
+    files: [runtimeRel, middlewareRel],
+    runtime: runtimeRel,
+    entry: middlewareRel,
+    name: "middleware",
+    page: "/proxy",
+    matchers: [{
+      regexp: "^/.*$",
+      originalSource: "/:path*",
+      has: [{ type: "header", key: "x-proxy-test", value: "1" }],
+      missing: [{ type: "header", key: "x-prerender-revalidate", value: "preview" }],
+    }],
+    wasm: [],
+    assets: [],
+    env: {},
+  });
+  assert.equal(
+    fs.existsSync(path.join(root, "dist", "brrrd", "runtime", middlewareRel)),
+    true,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.kind === "middleware" && artifact.packagePath === `runtime/${middlewareRel}`
+    )),
+    true,
+  );
+});
+
+test("onBuildComplete preserves Adapter API node middleware root package assets", async () => {
+  const root = tempDir("node-proxy-root-assets");
+  const distDir = path.join(root, ".next");
+  const runtimeRel = "server/webpack-runtime.js";
+  const runtimePath = path.join(distDir, runtimeRel);
+  const middlewareRel = "server/middleware.js";
+  const middlewarePath = path.join(distDir, middlewareRel);
+
+  writeJson(path.join(root, "package.json"), {
+    dependencies: { fixture: "1.0.0" },
+  });
+  writeJson(path.join(distDir, "package.json"), { type: "commonjs" });
+  fs.mkdirSync(path.dirname(middlewarePath), { recursive: true });
+  fs.writeFileSync(runtimePath, "globalThis.__webpack_require__ = function() {};\n", "utf8");
+  fs.writeFileSync(middlewarePath, "globalThis._ENTRIES = globalThis._ENTRIES || {};\n", "utf8");
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {},
+    functions: {},
+    sortedMiddleware: [],
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: middlewarePath,
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.middleware = {
+    id: "/_middleware",
+    pathname: "/_middleware",
+    type: "MIDDLEWARE",
+    runtime: "nodejs",
+    filePath: middlewarePath,
+    sourcePage: "middleware",
+    assets: {
+      [middlewareRel]: middlewarePath,
+      [runtimeRel]: runtimePath,
+      "package.json": path.join(root, "package.json"),
+      ".next/package.json": path.join(distDir, "package.json"),
+    },
+    config: { matchers: [] },
+  };
+
+  await onBuildComplete(context);
+
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(root, "dist", "brrrd", "runtime", "package.json"), "utf8")),
+    { dependencies: { fixture: "1.0.0" } },
+  );
+  assert.deepEqual(
+    JSON.parse(
+      fs.readFileSync(path.join(root, "dist", "brrrd", "runtime", ".next", "package.json"), "utf8"),
+    ),
+    { type: "commonjs" },
+  );
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.packagePath === "runtime/package.json"
+        && artifact.sourcePath === "package.json"
+        && artifact.reason === "Next Adapter API proxy/middleware runtime asset"
+    ),
+    true,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.packagePath === "runtime/.next/package.json"
+        && artifact.sourcePath === ".next/package.json"
+        && artifact.reason === "Next Adapter API proxy/middleware runtime asset"
+    ),
+    true,
+  );
+});
+
+test("onBuildComplete packages compiled next-server runtimes for node proxy middleware", async () => {
+  const root = tempDir("node-proxy-next-server-runtime");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const runtimeRel = "server/webpack-runtime.js";
+  const middlewareRel = "server/middleware.js";
+  const runtimePath = path.join(distDir, runtimeRel);
+  const middlewarePath = path.join(distDir, middlewareRel);
+  const nextServerDir = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "next-server",
+  );
+  const sourceMapDir = path.join(root, "node_modules", "next", "dist", "compiled", "source-map");
+  const stacktraceDir = path.join(root, "node_modules", "next", "dist", "compiled", "stacktrace-parser");
+  const moduleLoadingDir = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "server",
+    "app-render",
+    "module-loading",
+  );
+  const cacheSignalPath = path.join(
+    root,
+    "node_modules",
+    "next",
+    "dist",
+    "server",
+    "app-render",
+    "cache-signal.js",
+  );
+
+  fs.writeFileSync(path.join(root, "proxy.ts"), "export function proxy() {}\n", "utf8");
+  fs.writeFileSync(handler, "export default function handler() {}\n", "utf8");
+  fs.mkdirSync(path.dirname(middlewarePath), { recursive: true });
+  fs.writeFileSync(runtimePath, "module.exports = function __webpack_require__() {};\n", "utf8");
+  fs.writeFileSync(middlewarePath, "module.exports.default = async () => ({ response: new Response(null) });\n", "utf8");
+  fs.mkdirSync(nextServerDir, { recursive: true });
+  fs.mkdirSync(sourceMapDir, { recursive: true });
+  fs.mkdirSync(stacktraceDir, { recursive: true });
+  fs.mkdirSync(moduleLoadingDir, { recursive: true });
+  fs.mkdirSync(path.dirname(cacheSignalPath), { recursive: true });
+  writeJson(path.join(root, "node_modules", "next", "package.json"), {
+    name: "next",
+    version: "16.3.0-test",
+  });
+  fs.writeFileSync(
+    path.join(nextServerDir, "pages.runtime.prod.js"),
+    "module.exports = require('next/dist/compiled/stacktrace-parser');\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(nextServerDir, "app-page.runtime.prod.js"),
+    "require('next/dist/server/app-render/module-loading/track-module-loading.external.js'); module.exports = require('next/dist/compiled/source-map');\n",
+    "utf8",
+  );
+  fs.writeFileSync(path.join(nextServerDir, "not-runtime.js"), "module.exports = {};\n", "utf8");
+  writeJson(path.join(sourceMapDir, "package.json"), { main: "source-map.js" });
+  fs.writeFileSync(
+    path.join(sourceMapDir, "source-map.js"),
+    "module.exports = require('next/dist/compiled/stacktrace-parser');\n",
+    "utf8",
+  );
+  fs.writeFileSync(path.join(stacktraceDir, "index.js"), "module.exports = {};\n", "utf8");
+  fs.writeFileSync(
+    path.join(moduleLoadingDir, "track-module-loading.external.js"),
+    "module.exports = require('./track-module-loading.instance');\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(moduleLoadingDir, "track-module-loading.instance.js"),
+    "module.exports = require('../cache-signal');\n",
+    "utf8",
+  );
+  fs.writeFileSync(cacheSignalPath, "module.exports = { CacheSignal: function CacheSignal() {} };\n", "utf8");
+  writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
+    middleware: {},
+    functions: {},
+    sortedMiddleware: [],
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.middleware = {
+    id: "/_middleware",
+    pathname: "/_middleware",
+    type: "MIDDLEWARE",
+    runtime: "nodejs",
+    filePath: middlewarePath,
+    sourcePage: "middleware",
+    assets: {
+      [middlewareRel]: middlewarePath,
+      [runtimeRel]: runtimePath,
+    },
+    config: {
+      matchers: [{ source: "/:path*", sourceRegex: "^/.*$" }],
+    },
+  };
+
+  await onBuildComplete(context);
+
+  const packagedDir = path.join(
+    root,
+    "dist",
+    "brrrd",
+    "runtime",
+    "node_modules",
+    "next",
+    "dist",
+    "compiled",
+    "next-server",
+  );
+  assert.equal(fs.existsSync(path.join(packagedDir, "pages.runtime.prod.js")), true);
+  assert.equal(fs.existsSync(path.join(packagedDir, "app-page.runtime.prod.js")), true);
+  assert.equal(fs.existsSync(path.join(packagedDir, "not-runtime.js")), false);
+  assert.equal(
+    fs.existsSync(path.join(
+      root,
+      "dist",
+      "brrrd",
+      "runtime",
+      "node_modules",
+      "next",
+      "dist",
+      "compiled",
+      "source-map",
+      "source-map.js",
+    )),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(
+      root,
+      "dist",
+      "brrrd",
+      "runtime",
+      "node_modules",
+      "next",
+      "dist",
+      "server",
+      "app-render",
+      "module-loading",
+      "track-module-loading.external.js",
+    )),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(
+      root,
+      "dist",
+      "brrrd",
+      "runtime",
+      "node_modules",
+      "next",
+      "dist",
+      "server",
+      "app-render",
+      "module-loading",
+      "track-module-loading.instance.js",
+    )),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(
+      root,
+      "dist",
+      "brrrd",
+      "runtime",
+      "node_modules",
+      "next",
+      "dist",
+      "server",
+      "app-render",
+      "cache-signal.js",
+    )),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(
+      root,
+      "dist",
+      "brrrd",
+      "runtime",
+      "node_modules",
+      "next",
+      "dist",
+      "compiled",
+      "stacktrace-parser",
+      "index.js",
+    )),
+    true,
+  );
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.kind === "runtime-file"
+      && artifact.packagePath === "runtime/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js"
+    )),
+    true,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.kind === "runtime-file"
+      && artifact.packagePath === "runtime/node_modules/next/dist/compiled/source-map/source-map.js"
+    )),
+    true,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.kind === "runtime-file"
+      && artifact.packagePath === "runtime/node_modules/next/dist/server/app-render/module-loading/track-module-loading.external.js"
+    )),
+    true,
+  );
+});
+
 test("onBuildComplete emits edge app route function metadata and artifacts", async () => {
   const root = tempDir("edge-app-route");
   const distDir = path.join(root, ".next");
@@ -182,6 +778,9 @@ test("onBuildComplete emits edge app route function metadata and artifacts", asy
     fs.mkdirSync(path.dirname(path.join(distDir, file)), { recursive: true });
     fs.writeFileSync(path.join(distDir, file), "", "utf8");
   }
+  const fontAsset = "server/edge-chunks/asset_Test-Regular.1234.ttf";
+  fs.mkdirSync(path.dirname(path.join(distDir, fontAsset)), { recursive: true });
+  fs.writeFileSync(path.join(distDir, fontAsset), "font-bytes", "utf8");
   writeJson(path.join(distDir, "server", "middleware-manifest.json"), {
     middleware: {},
     functions: {
@@ -211,7 +810,16 @@ test("onBuildComplete emits edge app route function metadata and artifacts", asy
         pathname: "/api/edge",
         runtime: "edge",
         filePath: path.join(distDir, "server", "app", "api", "edge", "route.js"),
-        assets: {},
+        edgeRuntime: {
+          modulePath: path.join(distDir, "server", "app", "api", "edge", "route.js"),
+          entryKey: "middleware_app/api/edge/route",
+          handlerExport: "handler",
+        },
+        assets: {
+          "server/chunks/edge-runtime.js": path.join(distDir, "server", "chunks", "edge-runtime.js"),
+          "server/app/api/edge/route.js": path.join(distDir, "server", "app", "api", "edge", "route.js"),
+          "Test-Regular.1234.ttf": path.join(distDir, fontAsset),
+        },
       }],
       pagesApi: [],
       middleware: undefined,
@@ -223,7 +831,7 @@ test("onBuildComplete emits edge app route function metadata and artifacts", asy
   const manifest = JSON.parse(
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
-  assert.equal(manifest.schemaVersion, 5);
+  assert.equal(manifest.schemaVersion, 6);
   assert.equal(manifest.routes.find((route) => route.id === "app-api-edge-route").runtime, "edge");
   assert.equal(
     manifest.edgeFunctions["app-api-edge-route"].entry,
@@ -233,9 +841,23 @@ test("onBuildComplete emits edge app route function metadata and artifacts", asy
     manifest.edgeFunctions["app-api-edge-route"].entryKey,
     "middleware_app/api/edge/route",
   );
+  assert.deepEqual(
+    manifest.edgeFunctions["app-api-edge-route"].files,
+    edgeFiles,
+  );
+  assert.deepEqual(
+    manifest.edgeFunctions["app-api-edge-route"].assets,
+    [{ name: "Test-Regular.1234.ttf", filePath: fontAsset }],
+  );
   assert.equal(
     fs.existsSync(
       path.join(root, "dist", "brrrd", "runtime", "server", "app", "api", "edge", "route.js"),
+    ),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(root, "dist", "brrrd", "runtime", fontAsset),
     ),
     true,
   );
@@ -391,6 +1013,165 @@ test("extractAppPrerenderResponseMeta reads status and headers from App .meta fi
   ]);
 });
 
+test("extractAppStaticResponseMeta reads metadata route .body response headers", () => {
+  const root = tempDir("app-static-meta-supplement");
+  const distDir = path.join(root, ".next");
+  const appDir = path.join(distDir, "server", "app");
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(path.join(appDir, "manifest.webmanifest.body"), "{\"name\":\"test\"}", "utf8");
+  writeJson(path.join(appDir, "manifest.webmanifest.meta"), {
+    status: 200,
+    headers: {
+      "content-type": "application/manifest+json",
+      "cache-control": "public, max-age=0, must-revalidate",
+    },
+  });
+  writeJson(path.join(appDir, "unpaired.meta"), {
+    headers: {
+      "cache-control": "must not leak",
+    },
+  });
+
+  assert.deepEqual(extractAppStaticResponseMeta(distDir), [
+    {
+      pathname: "/manifest.webmanifest",
+      sourceRel: "manifest.webmanifest.meta",
+      status: 200,
+      headers: [
+        { key: "content-type", value: "application/manifest+json" },
+        { key: "cache-control", value: "public, max-age=0, must-revalidate" },
+      ],
+    },
+  ]);
+});
+
+test("onBuildComplete emits App metadata static response headers from .meta files", async () => {
+  const root = tempDir("app-static-response-meta");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic'); }\n",
+    "utf8",
+  );
+
+  const appDir = path.join(distDir, "server", "app");
+  const bodyFile = path.join(appDir, "manifest.webmanifest.body");
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(bodyFile, "{\"name\":\"test\"}", "utf8");
+  writeJson(path.join(appDir, "manifest.webmanifest.meta"), {
+    status: 200,
+    headers: {
+      "content-type": "application/manifest+json",
+      "cache-control": "public, max-age=0, must-revalidate",
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/page",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.staticFiles = [
+    {
+      id: "/manifest.webmanifest",
+      pathname: "/manifest.webmanifest",
+      filePath: bodyFile,
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "static-manifest_webmanifest"),
+    {
+      id: "static-manifest_webmanifest",
+      pattern: "^/manifest\\.webmanifest$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/manifest.webmanifest",
+      immutable: false,
+      status: 200,
+      headers: [
+        { key: "content-type", value: "application/manifest+json" },
+        { key: "cache-control", value: "public, max-age=0, must-revalidate" },
+      ],
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "static:manifest_webmanifest"),
+    {
+      id: "static:manifest_webmanifest",
+      kind: "static",
+      ownerRouteId: "static-manifest_webmanifest",
+      sourcePath: ".next/server/app/manifest.webmanifest.body",
+      packagePath: "static/manifest.webmanifest",
+      mountPath: "/manifest.webmanifest",
+      contentType: "application/manifest+json",
+      immutable: false,
+      required: true,
+      reason: "Next Adapter API staticFiles output",
+    },
+  );
+});
+
+test("onBuildComplete does not publish Pages Router rsc-fallback as RSC data", async () => {
+  const root = tempDir("pages-rsc-fallback");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic'); }\n",
+    "utf8",
+  );
+
+  const pagesHtml = path.join(distDir, "server", "pages", "pages-dir.html");
+  const rscFallback = path.join(distDir, "server", "rsc-fallback.json");
+  fs.mkdirSync(path.dirname(pagesHtml), { recursive: true });
+  fs.writeFileSync(pagesHtml, "<html><body>Hello from a pages route</body></html>", "utf8");
+  fs.writeFileSync(rscFallback, "{}", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/page",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.staticFiles = [
+    {
+      id: "/pages-dir",
+      pathname: "/pages-dir",
+      filePath: pagesHtml,
+    },
+    {
+      id: "/pages-dir.rsc",
+      pathname: "/pages-dir.rsc",
+      filePath: rscFallback,
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.routes.some((route) => route.id === "static-pages-dir_rsc"),
+    false,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => artifact.id === "static:pages-dir_rsc"),
+    false,
+  );
+  assert.ok(manifest.routes.some((route) => route.id === "static-pages-dir"));
+  assert.ok(manifest.artifacts.some((artifact) => artifact.id === "static:pages-dir"));
+});
+
 test("onBuildComplete exposes PPR segment prefetch artifacts through the static store", async () => {
   const root = tempDir("ppr-segment-prefetch");
   const distDir = path.join(root, ".next");
@@ -486,7 +1267,7 @@ test("onBuildComplete exposes PPR segment prefetch artifacts through the static 
   assert.ok(dynamicRscIndex >= 0);
   assert.ok(segmentRouteIndex < dynamicRscIndex);
   assert.equal(manifest.routes[segmentRouteIndex].type, "static");
-  assert.equal(manifest.routes[segmentRouteIndex].file, "/");
+  assert.equal(manifest.routes[segmentRouteIndex].file, "/[slug].segments/$d$slug$segment");
   assert.deepEqual(
     manifest.routes.find((route) => route.id === "app-prerender-data-alpha_rsc"),
     {
@@ -610,6 +1391,37 @@ test("onBuildComplete maps Pages Router static index HTML to root route", async 
       reason: "Next Adapter API staticFiles output",
     },
   );
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "static", "_next", "data", "test-build", "index.json"),
+      "utf8",
+    ),
+    JSON.stringify({ pageProps: {} }),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "pages-static-data-index"),
+    {
+      id: "pages-static-data-index",
+      pattern: "^/_next/data/test-build/index\\.json$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/_next/data/test-build/index.json",
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "static-data:index"),
+    {
+      id: "static-data:index",
+      kind: "static",
+      ownerRouteId: "pages-static-data-index",
+      packagePath: "static/_next/data/test-build/index.json",
+      mountPath: "/_next/data/test-build/index.json",
+      contentType: "application/json",
+      required: true,
+      reason: "Pages Router auto-export data JSON generated for client navigation",
+    },
+  );
 });
 
 test("onBuildComplete stores parent static HTML under index when child paths need a directory", async () => {
@@ -682,7 +1494,9 @@ test("onBuildComplete stores parent static HTML under index when child paths nee
       bundle: "",
       file: "/[post]/index",
       immutable: false,
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
       params: ["post"],
+      paramTypes: { post: "single" },
     },
   );
   assert.deepEqual(
@@ -738,6 +1552,261 @@ test("onBuildComplete resolves Pages Router prerender HTML from server/pages", a
   assert.equal(
     manifest.artifacts.find((artifact) => artifact.id === "prerender:gsp").sourcePath,
     ".next/server/pages/gsp.html",
+  );
+});
+
+test("onBuildComplete packages Pages Router dynamic SSG fallback shells", async () => {
+  const root = tempDir("pages-dynamic-fallback-html");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const fallbackHtml = path.join(distDir, "server", "pages", "[slug].html");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(fallbackHtml), { recursive: true });
+  fs.writeFileSync(fallbackHtml, "<!doctype html><main>fallback shell</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/[slug]": {
+        routeRegex: "^/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/test\\-build/([^/]+?)\\.json$",
+        fallback: "/[slug].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/[slug]",
+      pathname: "/[slug]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "[slug]"), "utf8"),
+    "<!doctype html><main>fallback shell</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "prerender-fallback-_slug_"),
+    {
+      id: "prerender-fallback-_slug_",
+      pattern: "^/([^/]+?)(?:/)?$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/[slug]",
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
+      pagesFallbackShell: true,
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender-fallback:_slug_"),
+    {
+      id: "prerender-fallback:_slug_",
+      kind: "prerender",
+      ownerRouteId: "prerender-fallback-_slug_",
+      sourcePath: ".next/server/pages/[slug].html",
+      packagePath: "static/[slug]",
+      mountPath: "/[slug]",
+      contentType: "text/html; charset=utf-8",
+      required: true,
+      reason: "Pages Router dynamic SSG fallback shell served before invoking the handler",
+    },
+  );
+});
+
+test("onBuildComplete avoids fallback shell storage collisions with public children", async () => {
+  const root = tempDir("pages-dynamic-fallback-html-child");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const fallbackHtml = path.join(distDir, "server", "pages", "blog", "[post].html");
+  const childHtml = path.join(root, "child.html");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(fallbackHtml), { recursive: true });
+  fs.writeFileSync(fallbackHtml, "<!doctype html><main>fallback shell</main>", "utf8");
+  fs.writeFileSync(childHtml, "<!doctype html><main>child</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/blog/[post]": {
+        routeRegex: "^/blog/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/test\\-build/blog/([^/]+?)\\.json$",
+        fallback: "/blog/[post].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/blog/[post]",
+      pathname: "/blog/[post]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.staticFiles = [
+    {
+      id: "/blog/[post]/comments",
+      pathname: "/blog/[post]/comments",
+      urlPath: "/blog/[post]/comments",
+      filePath: childHtml,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "blog", "[post]", "index"), "utf8"),
+    "<!doctype html><main>fallback shell</main>",
+  );
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "blog", "[post]", "comments"), "utf8"),
+    "<!doctype html><main>child</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.routes.find((route) => route.id === "prerender-fallback-blog-_post_")?.file,
+    "/blog/[post]/index",
+  );
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender-fallback:blog-_post_")?.packagePath,
+    "static/blog/[post]/index",
+  );
+});
+
+test("onBuildComplete resolves Pages Router basePath prerender HTML from unprefixed server/pages", async () => {
+  const root = tempDir("pages-basepath-prerender-html");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "pages", "gsp.js");
+  const gspHtml = path.join(distDir, "server", "pages", "gsp.html");
+  fs.mkdirSync(path.dirname(gspHtml), { recursive: true });
+  fs.writeFileSync(handler, "export default function Page() {}\n", "utf8");
+  fs.writeFileSync(gspHtml, "<!doctype html><main>base gsp</main>", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.config = { basePath: "/base" };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/base/gsp",
+      pathname: "/base/gsp",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/base/gsp",
+      pathname: "/base/gsp",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "base", "gsp"), "utf8"),
+    "<!doctype html><main>base gsp</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender:base-gsp"),
+    {
+      id: "prerender:base-gsp",
+      kind: "prerender",
+      ownerRouteId: "prerender-base-gsp",
+      sourcePath: ".next/server/pages/gsp.html",
+      packagePath: "static/base/gsp",
+      mountPath: "/base/gsp",
+      contentType: "text/html; charset=utf-8",
+      required: true,
+      reason: "static prerender HTML served without invoking the handler",
+    },
+  );
+});
+
+test("onBuildComplete resolves App Router basePath prerender HTML from unprefixed server/app", async () => {
+  const root = tempDir("app-basepath-prerender-html");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "app", "another", "page.js");
+  const html = path.join(distDir, "server", "app", "another.html");
+  fs.mkdirSync(path.dirname(html), { recursive: true });
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.writeFileSync(handler, "export default function Page() {}\n", "utf8");
+  fs.writeFileSync(html, "<!doctype html><main>base app</main>", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/another",
+    pathname: "/base/another",
+    filePath: handler,
+    sourcePage: "/another/page",
+    assets: {},
+  });
+  context.config = { basePath: "/base" };
+  context.outputs.prerenders = [
+    {
+      id: "/another",
+      pathname: "/base/another",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "base", "another"), "utf8"),
+    "<!doctype html><main>base app</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender:base-another"),
+    {
+      id: "prerender:base-another",
+      kind: "prerender",
+      ownerRouteId: "prerender-base-another",
+      sourcePath: ".next/server/app/another.html",
+      packagePath: "static/base/another",
+      mountPath: "/base/another",
+      contentType: "text/html; charset=utf-8",
+      required: true,
+      reason: "static prerender HTML served without invoking the handler",
+    },
   );
 });
 
@@ -799,6 +1868,72 @@ test("onBuildComplete resolves Pages Router prerender data JSON from server/page
       sourcePath: ".next/server/pages/gsp.json",
       packagePath: "static/_next/data/test-build/gsp.json",
       mountPath: "/_next/data/test-build/gsp.json",
+      contentType: "application/json",
+      required: true,
+      reason: "Pages Router prerender data JSON served without invoking the handler",
+    },
+  );
+});
+
+test("onBuildComplete resolves Pages Router basePath prerender data JSON from unprefixed server/pages", async () => {
+  const root = tempDir("pages-basepath-prerender-data-json");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const dataJson = path.join(distDir, "server", "pages", "gsp.json");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(dataJson), { recursive: true });
+  fs.writeFileSync(dataJson, JSON.stringify({ pageProps: { from: "base gsp" } }), "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/base/gsp",
+    pathname: "/base/gsp",
+    filePath: handler,
+    assets: {},
+  });
+  context.config = { basePath: "/base" };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/base/gsp",
+      pathname: "/base/gsp",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/base/_next/data/test-build/gsp.json",
+      pathname: "/base/_next/data/test-build/gsp.json",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "static", "base", "_next", "data", "test-build", "gsp.json"),
+      "utf8",
+    ),
+    JSON.stringify({ pageProps: { from: "base gsp" } }),
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => (
+      artifact.id === "prerender:base-_next-data-test-build-gsp_json"
+    )),
+    {
+      id: "prerender:base-_next-data-test-build-gsp_json",
+      kind: "prerender",
+      ownerRouteId: "prerender-base-_next-data-test-build-gsp_json",
+      sourcePath: ".next/server/pages/gsp.json",
+      packagePath: "static/base/_next/data/test-build/gsp.json",
+      mountPath: "/base/_next/data/test-build/gsp.json",
       contentType: "application/json",
       required: true,
       reason: "Pages Router prerender data JSON served without invoking the handler",
@@ -882,6 +2017,96 @@ test("onBuildComplete does not materialize route handler prerenders as page HTML
       type: "route",
       runtime: "nodejs",
       params: ["dyn"],
+      paramTypes: { dyn: "single" },
+    },
+  );
+});
+
+test("onBuildComplete preserves static route handler prerender response metadata", async () => {
+  const root = tempDir("static-route-handler-prerender-meta");
+  const distDir = path.join(root, ".next");
+  const bodyPath = path.join(distDir, "server", "app", "manifest.webmanifest.body");
+  fs.mkdirSync(path.dirname(bodyPath), { recursive: true });
+  fs.writeFileSync(bodyPath, JSON.stringify({ name: "brrrd" }), "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    routes: {
+      "/manifest.webmanifest": {
+        srcRoute: "/manifest.webmanifest",
+        dataRoute: null,
+        initialHeaders: {
+          "cache-control": "public, max-age=0, must-revalidate",
+          "content-type": "application/manifest+json",
+        },
+      },
+    },
+    dynamicRoutes: {},
+  });
+
+  await onBuildComplete({
+    routing: {
+      beforeMiddleware: [],
+      beforeFiles: [],
+      afterFiles: [],
+      dynamicRoutes: [],
+      onMatch: [],
+      fallback: [],
+      shouldNormalizeNextData: false,
+      rsc: null,
+    },
+    outputs: {
+      pages: [],
+      appPages: [],
+      appRoutes: [],
+      pagesApi: [],
+      prerenders: [],
+      staticFiles: [
+        {
+          id: "/manifest.webmanifest",
+          pathname: "/manifest.webmanifest",
+          filePath: bodyPath,
+        },
+      ],
+    },
+    projectDir: root,
+    repoRoot: root,
+    distDir,
+    config: {},
+    nextVersion: "16.3.0-canary.59",
+    buildId: "test-build",
+  });
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.deepEqual(
+    manifest.routes.find((route) => route.id === "static-manifest_webmanifest"),
+    {
+      id: "static-manifest_webmanifest",
+      pattern: "^/manifest\\.webmanifest$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/manifest.webmanifest",
+      immutable: false,
+      headers: [
+        { key: "cache-control", value: "public, max-age=0, must-revalidate" },
+        { key: "content-type", value: "application/manifest+json" },
+      ],
+    },
+  );
+  assert.deepEqual(
+    manifest.artifacts.find((artifact) => artifact.id === "static:manifest_webmanifest"),
+    {
+      id: "static:manifest_webmanifest",
+      kind: "static",
+      ownerRouteId: "static-manifest_webmanifest",
+      sourcePath: ".next/server/app/manifest.webmanifest.body",
+      packagePath: "static/manifest.webmanifest",
+      mountPath: "/manifest.webmanifest",
+      contentType: "application/manifest+json",
+      immutable: false,
+      required: true,
+      reason: "Next Adapter API staticFiles output",
     },
   );
 });
@@ -970,9 +2195,20 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
   const distDir = path.join(root, ".next");
   const handler = path.join(distDir, "server", "pages", "404.js");
   const chunk = path.join(distDir, "server", "chunks", "ssr", "chunk.js");
+  const assetModule = path.join(
+    distDir,
+    "server",
+    "chunks",
+    "static",
+    "media",
+    "my-data.1234.json",
+  );
+  const projectAsset = path.join(root, "assets", "typewr__.ttf");
   const routeManifest = path.join(distDir, "server", "pages", "404", "react-loadable-manifest.json");
   fs.mkdirSync(path.dirname(handler), { recursive: true });
   fs.mkdirSync(path.dirname(chunk), { recursive: true });
+  fs.mkdirSync(path.dirname(assetModule), { recursive: true });
+  fs.mkdirSync(path.dirname(projectAsset), { recursive: true });
   fs.mkdirSync(path.dirname(routeManifest), { recursive: true });
   fs.writeFileSync(
     handler,
@@ -983,17 +2219,23 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
     version: 1,
     files: [
       "../chunks/ssr/chunk.js",
+      "../chunks/static/media/my-data.1234.json",
       "./404/react-loadable-manifest.json",
     ],
   }), "utf8");
   fs.writeFileSync(chunk, "module.exports = [];\n", "utf8");
+  fs.writeFileSync(assetModule, "{\"message\":\"hello\"}\n", "utf8");
+  fs.writeFileSync(projectAsset, "font-bytes", "utf8");
   fs.writeFileSync(routeManifest, "{}", "utf8");
 
   const context = minimalContext(root, distDir, {
     id: "/404",
     pathname: "/404",
     filePath: handler,
-    assets: {},
+    assets: {
+      "server/chunks/static/media/my-data.1234.json": assetModule,
+      "assets/typewr__.ttf": projectAsset,
+    },
   });
   context.outputs.appPages = [];
   context.outputs.pages = [
@@ -1001,7 +2243,10 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
       id: "/404",
       pathname: "/404",
       filePath: handler,
-      assets: {},
+      assets: {
+        "server/chunks/static/media/my-data.1234.json": assetModule,
+        "assets/typewr__.ttf": projectAsset,
+      },
     },
   ];
 
@@ -1031,6 +2276,29 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
     ),
     "{}",
   );
+  assert.equal(
+    fs.readFileSync(
+      path.join(
+        root,
+        "dist",
+        "brrrd",
+        "runtime",
+        "chunks",
+        "static",
+        "media",
+        "my-data.1234.json",
+      ),
+      "utf8",
+    ),
+    "{\"message\":\"hello\"}\n",
+  );
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "runtime", "assets", "typewr__.ttf"),
+      "utf8",
+    ),
+    "font-bytes",
+  );
   const manifest = JSON.parse(
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
@@ -1039,6 +2307,79 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
       artifact.packagePath === "runtime/.next/server/chunks/ssr/chunk.js"
     ).length,
     1,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.packagePath === "runtime/chunks/static/media/my-data.1234.json"
+        && artifact.mountPath === "chunks/static/media/my-data.1234.json"
+        && artifact.reason === "Next traced route runtime dependency for app bundle runtime chunk URL"
+    ),
+    true,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.packagePath === "runtime/assets/typewr__.ttf"
+        && artifact.mountPath === "assets/typewr__.ttf"
+        && artifact.reason === "Next traced route runtime dependency for project-relative server asset"
+    ),
+    true,
+  );
+});
+
+test("onBuildComplete copies App Route project-relative traced assets into runtime fs", async () => {
+  const root = tempDir("app-route-project-assets");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(distDir, "server", "app", "font", "opengraph-image2", "route.js");
+  const projectAsset = path.join(root, "assets", "typewr__.ttf");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.mkdirSync(path.dirname(projectAsset), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('image'); }\n",
+    "utf8",
+  );
+  fs.writeFileSync(projectAsset, "font-bytes", "utf8");
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(distDir, "server", "app", "page.js"),
+    assets: {},
+  });
+  fs.writeFileSync(context.outputs.appPages[0].filePath, "export function handler() {}\n", "utf8");
+  context.outputs.appRoutes = [
+    {
+      id: "/font/opengraph-image2",
+      pathname: "/font/opengraph-image2",
+      filePath: handler,
+      runtime: "nodejs",
+      sourcePage: "/font/opengraph-image2/route",
+      assets: {
+        "assets/typewr__.ttf": projectAsset,
+      },
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "runtime", "assets", "typewr__.ttf"),
+      "utf8",
+    ),
+    "font-bytes",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) =>
+      artifact.ownerRouteId === "font-opengraph-image2"
+        && artifact.packagePath === "runtime/assets/typewr__.ttf"
+        && artifact.mountPath === "assets/typewr__.ttf"
+        && artifact.reason === "Next traced route runtime dependency for project-relative server asset"
+    ),
+    true,
   );
 });
 
@@ -1412,10 +2753,93 @@ test("compileRouting preserves Adapter API routing phases and conditions", () =>
           destination: "/b",
           has: [{ type: "query", key: "modal", value: "1" }],
         },
+        {
+          regex: "^/_next/data/test-build/a\\.json$",
+          source: "/_next/data/test-build/a.json",
+          destination: "/_next/data/test-build/b.json",
+          has: [{ type: "query", key: "modal", value: "1" }],
+        },
       ],
-      afterFiles: [{ regex: "^/c$", source: "/c", destination: "/d" }],
-      fallback: [{ regex: "^/(.*)$", source: "/:path*", destination: "/legacy/:path*" }],
+      afterFiles: [
+        { regex: "^/c$", source: "/c", destination: "/d" },
+        {
+          regex: "^/_next/data/test-build/c\\.json$",
+          source: "/_next/data/test-build/c.json",
+          destination: "/_next/data/test-build/d.json",
+        },
+      ],
+      fallback: [
+        { regex: "^/(.*)$", source: "/:path*", destination: "/legacy/:path*" },
+        {
+          regex: "^/_next/data/test-build/(.*)\\.json$",
+          source: "/_next/data/test-build/:path*.json",
+          destination: "/_next/data/test-build/legacy/:path*.json",
+        },
+      ],
     },
+  });
+});
+
+test("compileRouting emits Pages data rewrite aliases for client transitions", () => {
+  const root = tempDir("pages-data-rewrite-alias");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    config: {
+      i18n: {
+        locales: ["en", "fr", "nl"],
+        defaultLocale: "en",
+      },
+    },
+    routing: {
+      afterFiles: [{
+        source: "/:nextInternalLocale(en|fr|nl)/rewrite-1",
+        sourceRegex: "^(?:\\/(en|fr|nl))\\/rewrite-1(?:\\/)?$",
+        destination: "/$1/ssr-page?from=config&nextInternalLocale=$1",
+      }],
+    },
+  });
+
+  assert.deepEqual(compileRouting(model).rewrites.afterFiles, [
+    {
+      regex: "^(?:\\/(en|fr|nl))\\/rewrite-1(?:\\/)?$",
+      source: "/:nextInternalLocale(en|fr|nl)/rewrite-1",
+      destination: "/$1/ssr-page?from=config&nextInternalLocale=$1",
+    },
+    {
+      regex: "^/_next/data/test-build(?:\\/(en|fr|nl))\\/rewrite-1\\.json$",
+      source: "/_next/data/test-build/:nextInternalLocale(en|fr|nl)/rewrite-1.json",
+      destination: "/_next/data/test-build/$1/ssr-page.json?from=config&nextInternalLocale=$1",
+    },
+  ]);
+});
+
+test("compileRouting preserves i18n localeDetection false", () => {
+  const root = tempDir("i18n-locale-detection");
+  const model = createNextBuildModel({
+    ...minimalContext(root, path.join(root, ".next"), {
+      id: "/",
+      pathname: "/",
+      filePath: path.join(root, "handler.js"),
+      assets: {},
+    }),
+    config: {
+      i18n: {
+        locales: ["en", "id"],
+        defaultLocale: "en",
+        localeDetection: false,
+      },
+    },
+  });
+
+  assert.deepEqual(compileRouting(model).i18n, {
+    locales: ["en", "id"],
+    defaultLocale: "en",
+    localeDetection: false,
   });
 });
 
@@ -1539,6 +2963,11 @@ test("compileRouting preserves i18n locale-disabled rewrite semantics from route
         source: "/:locale/rewrite-files/:path*",
         destination: "/$2",
         locale: false,
+      }, {
+        regex: "^/basepath/_next/data/test-build(?:\\/([^\\/]+?))\\/rewrite-files(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))?\\.json$",
+        source: "/basepath/_next/data/test-build/:locale/rewrite-files/:path*.json",
+        destination: "/basepath/_next/data/test-build/$2.json",
+        locale: false,
       }],
       afterFiles: [],
       fallback: [],
@@ -1627,6 +3056,9 @@ test("extractDynamicPrerenderRoutes preserves Next fallback modes", () => {
         routeRegex: "^/([^/]+?)(?:/)?$",
         dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
         fallback: false,
+        experimentalBypassFor: [
+          { type: "header", key: "next-action" },
+        ],
       },
       "/[first]/[second]": {
         routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
@@ -1647,16 +3079,21 @@ test("extractDynamicPrerenderRoutes preserves Next fallback modes", () => {
         routeRegex: "^/([^/]+?)(?:/)?$",
         dataRouteRegex: "^/_next/data/build/([^/]+?)\\.json$",
         fallback: false,
+        bypass: [
+          { type: "header", key: "next-action" },
+        ],
       },
       {
         page: "/[first]/[second]",
         routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
         fallback: null,
+        bypass: [],
       },
       {
         page: "/posts/[id]",
         routeRegex: "^/posts/([^/]+?)(?:/)?$",
         fallback: "/posts/[id].html",
+        bypass: [],
       },
     ],
   );
@@ -1678,6 +3115,7 @@ test("compileRouting treats status plus Location as redirect only", () => {
           sourceRegex: "^(?:\\/((?:[^\\/]+?)(?:\\/(?:[^\\/]+?))*))\\/$",
           headers: { Location: "/$1" },
           status: 308,
+          internal: true,
         },
       ],
     },
@@ -1690,6 +3128,7 @@ test("compileRouting treats status plus Location as redirect only", () => {
     source: "/:path+/",
     destination: "/$1",
     statusCode: 308,
+    internal: true,
   }]);
 });
 

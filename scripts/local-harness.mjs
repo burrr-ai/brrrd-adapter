@@ -39,6 +39,8 @@ Options:
   --artifacts-dir <path> Artifact root. Default: ../.brrrd-local-harness.
   --name <label>         Stable artifact label. Default: derived from mode/target.
   --timeout-ms <ms>      Hard timeout for the harness child process. Default: BRRRD_LOCAL_HARNESS_TIMEOUT_MS or 3600000.
+  --clean-results        Remove existing Next *.results.json files before running. Off by default so parallel harvests do not race.
+  --capture-context      Persist Adapter API raw/normalized context diagnostics for each deploy.
   --dry-run              Print the command and environment without executing it.
   --help                 Show this help.
 `;
@@ -71,6 +73,8 @@ export function parseArgs(argv, env = process.env) {
     artifactsDir: env.BRRRD_HARNESS_ARTIFACTS_DIR || env.BRRD_HARNESS_ARTIFACTS_DIR || null,
     name: null,
     timeoutMs: env.BRRRD_LOCAL_HARNESS_TIMEOUT_MS || env.BRRRD_HARNESS_TIMEOUT_MS || "3600000",
+    cleanResults: env.BRRRD_LOCAL_HARNESS_CLEAN_RESULTS === "1",
+    captureContext: env.BRRRD_HARNESS_CAPTURE_CONTEXT === "1",
     dryRun: false,
     help: false,
   };
@@ -122,6 +126,12 @@ export function parseArgs(argv, env = process.env) {
         options.timeoutMs = popValue(args, i, arg);
         i += 1;
         break;
+      case "--clean-results":
+        options.cleanResults = true;
+        break;
+      case "--capture-context":
+        options.captureContext = true;
+        break;
       case "--dry-run":
         options.dryRun = true;
         break;
@@ -170,7 +180,7 @@ function firstExistingDir(candidates) {
   return candidates.find((candidate) => candidate && fs.existsSync(candidate) && fs.statSync(candidate).isDirectory());
 }
 
-function resolveExecutable(options) {
+export function resolveExecutable(options) {
   const brrrdBin = options.brrrdBin
     ? path.resolve(options.brrrdBin)
     : firstExistingFile(defaultBrrrdBinCandidates);
@@ -181,7 +191,7 @@ function resolveExecutable(options) {
   return brrrdBin;
 }
 
-function resolveNextDir(options) {
+export function resolveNextDir(options) {
   const nextDir = options.nextDir
     ? path.resolve(options.nextDir)
     : firstExistingDir(defaultNextDirCandidates);
@@ -299,6 +309,8 @@ export function harnessEnv({ options, nextDir, brrrdBin, artifactsDir }) {
     NEXT_TEST_SKIP_RESULT_CACHE: "1",
     NEXT_E2E_TEST_TIMEOUT: process.env.NEXT_E2E_TEST_TIMEOUT || "240000",
     NEXT_TELEMETRY_DISABLED: "1",
+    NEXT_PRIVATE_TEST_MODE: "e2e",
+    VERCEL_NEXT_BUNDLED_SERVER: "1",
     NEXT_TEST_JOB: "1",
     HEADLESS: "true",
     NEXT_TEST_CI: "true",
@@ -311,6 +323,10 @@ export function harnessEnv({ options, nextDir, brrrdBin, artifactsDir }) {
     env.IS_WEBPACK_TEST = "1";
   } else if (options.bundler === "turbopack") {
     env.IS_TURBOPACK_TEST = "1";
+  }
+  if (options.captureContext) {
+    env.BRRRD_HARNESS_CAPTURE_CONTEXT = "1";
+    env.BRRRD_ADAPTER_DEBUG_CONTEXT = "1";
   }
   env.BRRRD_LOCAL_HARNESS_NEXT_DIR = nextDir;
   env.BRRRD_LOCAL_HARNESS_ARTIFACTS_DIR = artifactsDir;
@@ -404,8 +420,15 @@ function terminateProcessGroup(child, signal) {
   }
 }
 
-function runProcess(invocation, env, timeoutMs) {
+function runProcess(invocation, env, timeoutMs, logFiles = {}) {
   return new Promise((resolve) => {
+    if (logFiles.stdout) fs.writeFileSync(logFiles.stdout, "");
+    if (logFiles.stderr) fs.writeFileSync(logFiles.stderr, "");
+
+    function appendLog(file, text) {
+      if (file) fs.appendFileSync(file, text);
+    }
+
     const child = spawn(invocation.command, invocation.args, {
       cwd: invocation.cwd,
       env,
@@ -415,11 +438,44 @@ function runProcess(invocation, env, timeoutMs) {
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let abortedSignal = null;
     let settled = false;
+    const startedAt = Date.now();
+    const heartbeatMs = Number(env.BRRRD_LOCAL_HARNESS_HEARTBEAT_MS || "15000");
+
+    const heartbeat = Number.isFinite(heartbeatMs) && heartbeatMs > 0
+      ? setInterval(() => {
+          const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
+          const message = `[brrrd-local-harness] still running after ${elapsedSec}s\n`;
+          stderr += message;
+          appendLog(logFiles.stderr, message);
+          process.stderr.write(message);
+        }, heartbeatMs)
+      : null;
+    heartbeat?.unref();
+
+    function abortChild(signal) {
+      if (settled) return;
+      abortedSignal = signal;
+      const message = `\n[brrrd-local-harness] received ${signal}; terminating process group\n`;
+      stderr += message;
+      appendLog(logFiles.stderr, message);
+      terminateProcessGroup(child, "SIGTERM");
+      setTimeout(() => {
+        if (!settled) terminateProcessGroup(child, "SIGKILL");
+      }, 5000).unref();
+    }
+
+    const onSigint = () => abortChild("SIGINT");
+    const onSigterm = () => abortChild("SIGTERM");
+    process.once("SIGINT", onSigint);
+    process.once("SIGTERM", onSigterm);
 
     const timeout = setTimeout(() => {
       timedOut = true;
-      stderr += `\n[brrrd-local-harness] timed out after ${timeoutMs}ms; terminating process group\n`;
+      const message = `\n[brrrd-local-harness] timed out after ${timeoutMs}ms; terminating process group\n`;
+      stderr += message;
+      appendLog(logFiles.stderr, message);
       terminateProcessGroup(child, "SIGTERM");
       setTimeout(() => {
         if (!settled) terminateProcessGroup(child, "SIGKILL");
@@ -428,18 +484,27 @@ function runProcess(invocation, env, timeoutMs) {
     timeout.unref();
 
     child.stdout?.on("data", (chunk) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      stdout += text;
+      appendLog(logFiles.stdout, text);
     });
     child.stderr?.on("data", (chunk) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      appendLog(logFiles.stderr, text);
     });
     child.on("error", (error) => {
-      stderr += `\n[brrrd-local-harness] spawn error: ${error.message}\n`;
+      const message = `\n[brrrd-local-harness] spawn error: ${error.message}\n`;
+      stderr += message;
+      appendLog(logFiles.stderr, message);
     });
     child.on("close", (status, signal) => {
       settled = true;
       clearTimeout(timeout);
-      resolve({ stdout, stderr, status, signal, timedOut });
+      if (heartbeat) clearInterval(heartbeat);
+      process.removeListener("SIGINT", onSigint);
+      process.removeListener("SIGTERM", onSigterm);
+      resolve({ stdout, stderr, status, signal: signal ?? abortedSignal, timedOut });
     });
   });
 }
@@ -449,8 +514,10 @@ export async function runHarness(options) {
   const brrrdBin = resolveExecutable(options);
   const artifactsDir = artifactRunDir(options);
   fs.mkdirSync(artifactsDir, { recursive: true });
-  const resultFileCleanup = removeGeneratedResultFiles(nextDir);
-  if (resultFileCleanup.removed > 0) {
+  const resultFileCleanup = options.cleanResults
+    ? removeGeneratedResultFiles(nextDir)
+    : { removed: 0, skipped: true };
+  if (options.cleanResults && resultFileCleanup.removed > 0) {
     console.error(
       `[brrrd-local-harness] removed ${resultFileCleanup.removed} stale Next test result files`,
     );
@@ -488,9 +555,14 @@ export async function runHarness(options) {
   console.error(`[brrrd-local-harness] cwd: ${invocation.cwd}`);
   console.error(`[brrrd-local-harness] $ ${[invocation.command, ...invocation.args].join(" ")}`);
 
-  const result = await runProcess(invocation, env, Number(options.timeoutMs));
-  fs.writeFileSync(path.join(artifactsDir, "stdout.log"), result.stdout ?? "");
-  fs.writeFileSync(path.join(artifactsDir, "stderr.log"), result.stderr ?? "");
+  const stdoutLog = path.join(artifactsDir, "stdout.log");
+  const stderrLog = path.join(artifactsDir, "stderr.log");
+  const result = await runProcess(invocation, env, Number(options.timeoutMs), {
+    stdout: stdoutLog,
+    stderr: stderrLog,
+  });
+  fs.writeFileSync(stdoutLog, result.stdout ?? "");
+  fs.writeFileSync(stderrLog, result.stderr ?? "");
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
 
@@ -522,6 +594,6 @@ async function main() {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await main();
 }

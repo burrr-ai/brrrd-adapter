@@ -1,6 +1,7 @@
 import type { Metafile, Plugin } from "esbuild";
 import type { BuildContext } from "../types.js";
 import { nextOgPolicy } from "./next-og.js";
+import { nextServerSourceMapPolicy } from "./next-server-source-map.js";
 import { turbopackServerPolicy } from "./turbopack-server.js";
 import type { CompatibilityPolicy, CompatibilityTracedOutput } from "./types.js";
 
@@ -9,6 +10,7 @@ import type { CompatibilityPolicy, CompatibilityTracedOutput } from "./types.js"
 // module quirks such as @vercel/og assets or optional native fallbacks.
 const POLICIES: CompatibilityPolicy[] = [
   nextOgPolicy,
+  nextServerSourceMapPolicy,
   turbopackServerPolicy,
 ];
 

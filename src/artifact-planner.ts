@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as zlib from "node:zlib";
 
 import type { ManifestSupplement } from "./manifest-supplement.js";
+import type { SupplementStaticResponseMeta } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import { requestOutputs } from "./model.js";
 import {
@@ -15,8 +16,19 @@ import {
   isAuxiliaryPrerenderPath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import type { BrrrdArtifact, BrrrdEdgeFunction } from "./types.js";
+import type { BrrrdArtifact, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
 import { sanitizeId } from "./routing.js";
+import {
+  isPagesRscFallbackOutput,
+  pagesStaticDataJson,
+  pagesStaticDataPathname,
+} from "./pages-static-data.js";
+import {
+  pagesDynamicFallbackPublicPathname,
+  pagesDynamicFallbackPublicPathnames,
+  pagesDynamicFallbackSourcePath,
+} from "./pages-dynamic-prerender.js";
+import { basePath } from "./next-config.js";
 
 const require = createRequire(import.meta.url);
 
@@ -28,6 +40,7 @@ const COMPRESS_MIN_BYTES = 1024;
 export type ArtifactPlanItem = BrrrdArtifact & {
   packagePath: string;
   sourceAbsPath?: string;
+  generatedContent?: string | Buffer;
   precompress?: boolean;
 };
 
@@ -123,16 +136,39 @@ function artifactItem(
   };
 }
 
+function headerValue(headers: readonly { key: string; value: string }[], name: string): string | undefined {
+  const match = headers.find((header) => header.key.toLowerCase() === name.toLowerCase());
+  return match?.value;
+}
+
+function staticResponseMetaByPathname(
+  metas: readonly SupplementStaticResponseMeta[] | undefined,
+): Map<string, SupplementStaticResponseMeta> {
+  const out = new Map<string, SupplementStaticResponseMeta>();
+  for (const meta of metas ?? []) out.set(meta.pathname, meta);
+  return out;
+}
+
+function inferredNextStaticContentType(output: NormalizedOutput): string | undefined {
+  if (output.kind === "public") return undefined;
+  if (!output.pathname.includes("[") || !output.filePath?.endsWith(".html")) return undefined;
+  return "text/html; charset=utf-8";
+}
+
 function staticArtifact(
   model: NextBuildModel,
   output: NormalizedOutput,
   allPublicPathnames: readonly string[],
+  responseMeta?: SupplementStaticResponseMeta,
 ): ArtifactPlanItem {
   if (!output.filePath) throw new Error(`missing filePath for static file ${output.pathname}`);
   const packagePath = packageJoin(
     "static",
     publicStoragePackagePath(output.pathname, allPublicPathnames),
   );
+  const contentType = responseMeta
+    ? headerValue(responseMeta.headers, "content-type")
+    : inferredNextStaticContentType(output);
   return artifactItem(model, {
     id: `static:${sanitizeId(output.urlPath)}`,
     kind: output.kind === "public" ? "public" : "static",
@@ -140,6 +176,7 @@ function staticArtifact(
     sourceAbsPath: output.filePath,
     packagePath,
     mountPath: output.urlPath,
+    ...(contentType ? { contentType } : {}),
     immutable: !!output.immutableHash,
     required: true,
     reason: output.kind === "public"
@@ -161,7 +198,8 @@ function nextDataRoutePathname(
   model: NextBuildModel,
   pathname: string,
 ): string | null {
-  const match = pathname.match(/^\/_next\/data\/([^/]+)\/(.+\.json)$/);
+  const sourcePathname = stripBasePathForSource(model, pathname);
+  const match = sourcePathname.match(/^\/_next\/data\/([^/]+)\/(.+\.json)$/);
   if (!match) return null;
   if (match[1] !== model.buildId) return null;
   const rel = match[2];
@@ -169,16 +207,25 @@ function nextDataRoutePathname(
   return rel;
 }
 
+function stripBasePathForSource(model: NextBuildModel, pathname: string): string {
+  const configured = basePath(model.config);
+  if (!configured) return pathname;
+  if (pathname === configured) return "/";
+  const prefix = `${configured}/`;
+  return pathname.startsWith(prefix) ? `/${pathname.slice(prefix.length)}` : pathname;
+}
+
 function prerenderHtmlArtifact(
   model: NextBuildModel,
   prerender: NormalizedOutput,
   allPublicPathnames: readonly string[],
 ): PrerenderPublicArtifact {
-  const htmlName = prerender.pathname === "/"
-    ? "index.html"
-    : prerender.pathname.replace(/^\//, "") + ".html";
   const owner = findPrerenderOwner(model, prerender);
   const routeRoot = owner.kind === "page" ? "pages" : "app";
+  const sourcePathname = stripBasePathForSource(model, prerender.pathname);
+  const htmlName = sourcePathname === "/"
+    ? "index.html"
+    : sourcePathname.replace(/^\//, "") + ".html";
   const sourceAbsPath = prerender.filePath
     ? prerender.filePath
     : path.join(model.distDir, "server", routeRoot, htmlName);
@@ -189,6 +236,7 @@ function prerenderHtmlArtifact(
     sourceAbsPath,
     packagePath: packageJoin("static", destName),
     mountPath: prerender.pathname,
+    contentType: "text/html; charset=utf-8",
     reason: "static prerender HTML served without invoking the handler",
   };
 }
@@ -239,6 +287,59 @@ function prerenderArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
       ...(artifact.contentType ? { contentType: artifact.contentType } : {}),
       required: true,
       reason: artifact.reason,
+      precompress: true,
+    }));
+  }
+  return items;
+}
+
+function pagesDynamicFallbackArtifacts(
+  model: NextBuildModel,
+  supplement: ManifestSupplement,
+): ArtifactPlanItem[] {
+  const items: ArtifactPlanItem[] = [];
+  const allPublicPathnames = uniqueStrings([
+    ...publicArtifactPathnames(model),
+    ...pagesDynamicFallbackPublicPathnames(model, supplement.dynamicPrerenderRoutes),
+  ]);
+  for (const route of supplement.dynamicPrerenderRoutes) {
+    const pathname = pagesDynamicFallbackPublicPathname(model, route);
+    const sourceAbsPath = pagesDynamicFallbackSourcePath(model, route);
+    if (!pathname || !sourceAbsPath) continue;
+    items.push(artifactItem(model, {
+      id: `prerender-fallback:${sanitizeId(route.page)}`,
+      kind: "prerender",
+      ownerRouteId: `prerender-fallback-${sanitizeId(route.page)}`,
+      sourceAbsPath,
+      packagePath: packageJoin(
+        "static",
+        publicStoragePackagePath(pathname, allPublicPathnames),
+      ),
+      mountPath: pathname,
+      contentType: "text/html; charset=utf-8",
+      required: true,
+      reason: "Pages Router dynamic SSG fallback shell served before invoking the handler",
+      precompress: true,
+    }));
+  }
+  return items;
+}
+
+function pagesStaticDataArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const items: ArtifactPlanItem[] = [];
+  for (const output of model.outputs.staticFiles) {
+    const pathname = pagesStaticDataPathname(model, output);
+    if (!pathname) continue;
+    items.push(artifactItem(model, {
+      id: `static-data:${sanitizeId(output.urlPath)}`,
+      kind: "static",
+      ownerRouteId: `pages-static-data-${sanitizeId(output.urlPath)}`,
+      generatedContent: pagesStaticDataJson(),
+      packagePath: packageJoin("static", pathname),
+      mountPath: pathname,
+      contentType: "application/json",
+      required: true,
+      reason: "Pages Router auto-export data JSON generated for client navigation",
       precompress: true,
     }));
   }
@@ -426,6 +527,28 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
   const items: ArtifactPlanItem[] = [];
   const seenPackagePaths = new Set<string>();
 
+  const appBundleChunkAlias = (
+    sourceAbsPath: string,
+  ): { rel: string; packagePath: string; mountPath: string } | null => {
+    const serverChunksDir = path.join(model.distDir, "server", "chunks");
+    if (!isInsideDir(sourceAbsPath, serverChunksDir)) return null;
+    const rel = path.relative(serverChunksDir, sourceAbsPath).split(path.sep).join("/");
+    if (!rel || rel.split("/").some((segment) => segment === ".." || segment === "")) {
+      return null;
+    }
+    return {
+      rel: packageJoin("chunks", rel),
+      packagePath: packageJoin("runtime/chunks", rel),
+      mountPath: packageJoin("chunks", rel),
+    };
+  };
+
+  const pushItem = (item: ArtifactPlanItem) => {
+    if (seenPackagePaths.has(item.packagePath)) return;
+    seenPackagePaths.add(item.packagePath);
+    items.push(item);
+  };
+
   const add = (sourceAbsPath: string, owner: NormalizedOutput, reason: string) => {
     if (!isRegularFile(sourceAbsPath)) return;
 
@@ -439,16 +562,22 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
       mountPath = packageJoin(".next", rel);
     } else {
       const nodeRel = nodeModulePackageRel(sourceAbsPath);
-      if (!nodeRel) return;
-      rel = packageJoin("node_modules", nodeRel);
-      packagePath = packageJoin("runtime", rel);
-      mountPath = rel;
-      artifactReason = `${reason} for server external require`;
+      if (nodeRel) {
+        rel = packageJoin("node_modules", nodeRel);
+        packagePath = packageJoin("runtime", rel);
+        mountPath = rel;
+        artifactReason = `${reason} for server external require`;
+      } else if (isInsideDir(sourceAbsPath, model.projectDir)) {
+        rel = path.relative(model.projectDir, sourceAbsPath).split(path.sep).join("/");
+        packagePath = packageJoin("runtime", rel);
+        mountPath = rel;
+        artifactReason = `${reason} for project-relative server asset`;
+      } else {
+        return;
+      }
     }
 
-    if (seenPackagePaths.has(packagePath)) return;
-    seenPackagePaths.add(packagePath);
-    items.push(artifactItem(model, {
+    pushItem(artifactItem(model, {
       id: `route-runtime:${sanitizeId(owner.id)}:${sanitizeId(rel)}`,
       kind: "runtime-file",
       ownerRouteId: sanitizeId(owner.id),
@@ -458,6 +587,20 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
       required: true,
       reason: artifactReason,
     }));
+
+    const chunkAlias = appBundleChunkAlias(sourceAbsPath);
+    if (chunkAlias) {
+      pushItem(artifactItem(model, {
+        id: `route-runtime:${sanitizeId(owner.id)}:${sanitizeId(chunkAlias.rel)}`,
+        kind: "runtime-file",
+        ownerRouteId: sanitizeId(owner.id),
+        sourceAbsPath,
+        packagePath: chunkAlias.packagePath,
+        mountPath: chunkAlias.mountPath,
+        required: true,
+        reason: `${reason} for app bundle runtime chunk URL`,
+      }));
+    }
   };
 
   for (const output of requestOutputs(model)) {
@@ -483,9 +626,11 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
 function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const chunkRoot = path.join(model.distDir, "server", "chunks");
   const files = walkFiles(chunkRoot);
-  return files.map((sourceAbsPath) => {
+  return files.flatMap((sourceAbsPath) => {
     const rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
-    return artifactItem(model, {
+    const chunkRel = path.relative(chunkRoot, sourceAbsPath).split(path.sep).join("/");
+    return [
+      artifactItem(model, {
       id: `server-chunk:${sanitizeId(rel)}`,
       kind: "runtime-file",
       sourceAbsPath,
@@ -493,7 +638,17 @@ function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
       mountPath: packageJoin(".next", rel),
       required: true,
       reason: "Next server runtime chunk graph",
-    });
+      }),
+      artifactItem(model, {
+        id: `server-chunk:${sanitizeId(packageJoin("chunks", chunkRel))}`,
+        kind: "runtime-file",
+        sourceAbsPath,
+        packagePath: packageJoin("runtime/chunks", chunkRel),
+        mountPath: packageJoin("chunks", chunkRel),
+        required: true,
+        reason: "Next server runtime chunk graph for app bundle runtime chunk URL",
+      }),
+    ];
   });
 }
 
@@ -514,9 +669,8 @@ function cacheHandlerArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
 
 function middlewareArtifacts(
   model: NextBuildModel,
-  supplement: ManifestSupplement,
+  middleware: BrrrdMiddleware | undefined,
 ): ArtifactPlanItem[] {
-  const middleware = supplement.middleware;
   if (!middleware) return [];
   const refs = [
     ...middleware.files,
@@ -532,6 +686,275 @@ function middlewareArtifacts(
     required: true,
     reason: "Next proxy/middleware compiled chunk or supporting asset",
   }));
+}
+
+function normalizedAssetName(name: string): string | null {
+  const normalized = name.split(path.sep).join("/");
+  if (
+    normalized.length === 0
+    || normalized.startsWith("/")
+    || normalized.split("/").some((segment) => segment === ".." || segment.length === 0)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function adapterAssetPackageTarget(
+  model: NextBuildModel,
+  name: string,
+  sourceAbsPath: string,
+): { rel: string; packagePath: string; mountPath: string } | null {
+  if (!isRegularFile(sourceAbsPath)) return null;
+
+  const normalizedName = normalizedAssetName(name);
+  if (normalizedName?.startsWith(".next/")) {
+    const rel = normalizedName.slice(".next/".length);
+    return {
+      rel,
+      packagePath: packageJoin("runtime/.next", rel),
+      mountPath: packageJoin(".next", rel),
+    };
+  }
+
+  const nodeRel = nodeModulePackageRel(sourceAbsPath);
+  if (nodeRel) {
+    return {
+      rel: packageJoin("node_modules", nodeRel),
+      packagePath: packageJoin("runtime/node_modules", nodeRel),
+      mountPath: packageJoin("node_modules", nodeRel),
+    };
+  }
+
+  if (isInsideDir(sourceAbsPath, model.distDir)) {
+    const rel = path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/");
+    return {
+      rel,
+      packagePath: packageJoin("runtime/.next", rel),
+      mountPath: packageJoin(".next", rel),
+    };
+  }
+
+  if (!normalizedName) return null;
+  return {
+    rel: normalizedName,
+    packagePath: packageJoin("runtime", normalizedName),
+    mountPath: normalizedName,
+  };
+}
+
+function middlewareAdapterAssetArtifacts(
+  model: NextBuildModel,
+  middleware: BrrrdMiddleware | undefined,
+): ArtifactPlanItem[] {
+  const output = model.outputs.middleware;
+  if (!output) return [];
+
+  const evaluated = new Set(middleware?.files ?? []);
+  const seenPackagePaths = new Set<string>();
+  const items: ArtifactPlanItem[] = [];
+  for (const [name, sourceAbsPath] of Object.entries(output.assets)) {
+    const target = adapterAssetPackageTarget(model, name, sourceAbsPath);
+    if (!target) continue;
+    const distRel = isInsideDir(sourceAbsPath, model.distDir)
+      ? path.relative(model.distDir, sourceAbsPath).split(path.sep).join("/")
+      : null;
+    if (distRel && evaluated.has(distRel)) continue;
+    if (seenPackagePaths.has(target.packagePath)) continue;
+    seenPackagePaths.add(target.packagePath);
+    items.push(artifactItem(model, {
+      id: `middleware-asset:${sanitizeId(target.mountPath)}`,
+      kind: "runtime-file",
+      sourceAbsPath,
+      packagePath: target.packagePath,
+      mountPath: target.mountPath,
+      required: true,
+      reason: "Next Adapter API proxy/middleware runtime asset",
+    }));
+  }
+  return items;
+}
+
+function nodeMiddlewareNextServerRuntimeArtifacts(
+  model: NextBuildModel,
+  middleware: BrrrdMiddleware | undefined,
+): ArtifactPlanItem[] {
+  if (middleware?.moduleFormat !== "node") return [];
+
+  const projectRequire = createRequire(path.join(model.projectDir, "package.json"));
+  let nextServerDir: string;
+  try {
+    nextServerDir = path.dirname(
+      projectRequire.resolve("next/dist/compiled/next-server/pages.runtime.prod.js"),
+    );
+  } catch {
+    return [];
+  }
+
+  const files = fs.existsSync(nextServerDir)
+    ? fs.readdirSync(nextServerDir, { withFileTypes: true })
+    : [];
+
+  const runtimeFiles = files
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".runtime.prod.js"))
+    .map((entry) => path.join(nextServerDir, entry.name));
+
+  const runtimeItems = runtimeFiles
+    .map((sourceAbsPath) => {
+      const nodeRel = nodeModulePackageRel(sourceAbsPath);
+      if (!nodeRel) return null;
+      return artifactItem(model, {
+        id: `middleware-next-server-runtime:${sanitizeId(nodeRel)}`,
+        kind: "runtime-file",
+        sourceAbsPath,
+        packagePath: packageJoin("runtime/node_modules", nodeRel),
+        mountPath: packageJoin("node_modules", nodeRel),
+        required: true,
+        reason: "Next node proxy/middleware compiled next-server runtime dependency",
+      });
+    })
+    .filter((item): item is ArtifactPlanItem => item !== null);
+
+  return [
+    ...runtimeItems,
+    ...nodeMiddlewareNextSupportDependencyArtifacts(model, projectRequire, runtimeFiles),
+  ];
+}
+
+function commonJsRequireSpecifiers(sourceAbsPath: string): string[] {
+  let source: string;
+  try {
+    source = fs.readFileSync(sourceAbsPath, "utf8");
+  } catch {
+    return [];
+  }
+
+  const out: string[] = [];
+  const pattern = /\brequire\(\s*["']([^"']+)["']\s*\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) out.push(match[1]);
+  return uniqueStrings(out);
+}
+
+function resolveCommonJsFileFrom(base: string): string | null {
+  const candidates = [
+    base,
+    `${base}.js`,
+    `${base}.cjs`,
+    `${base}.mjs`,
+    `${base}.json`,
+    path.join(base, "index.js"),
+  ];
+  const found = candidates.find((candidate) => isRegularFile(candidate));
+  if (found) return found;
+
+  const packageJson = path.join(base, "package.json");
+  const pkg = readJsonIfExists(packageJson);
+  if (typeof pkg?.main !== "string" || pkg.main.length === 0) return null;
+  return resolveCommonJsFileFrom(path.resolve(base, pkg.main));
+}
+
+function nextCompiledPackageRoot(
+  projectRequire: NodeRequire,
+  specifier: string,
+): string | null {
+  if (!specifier.startsWith("next/dist/compiled/")) return null;
+
+  let nextRoot: string;
+  try {
+    nextRoot = path.dirname(projectRequire.resolve("next/package.json"));
+  } catch {
+    return null;
+  }
+
+  const rel = specifier.slice("next/dist/compiled/".length);
+  const parts = rel.split("/");
+  const packageName = parts[0]?.startsWith("@")
+    ? parts.slice(0, 2).join("/")
+    : parts[0];
+  if (!packageName) return null;
+
+  const packageRoot = path.join(nextRoot, "dist", "compiled", packageName);
+  if (fs.existsSync(packageRoot)) return packageRoot;
+
+  try {
+    const resolved = projectRequire.resolve(specifier);
+    return isRegularFile(resolved) ? path.dirname(resolved) : resolved;
+  } catch {
+    return null;
+  }
+}
+
+function nextPackageFileForSpecifier(
+  projectRequire: NodeRequire,
+  fromFile: string,
+  specifier: string,
+): string | null {
+  if (specifier.startsWith(".")) {
+    return resolveCommonJsFileFrom(path.resolve(path.dirname(fromFile), specifier));
+  }
+  if (!specifier.startsWith("next/")) return null;
+  try {
+    const resolved = projectRequire.resolve(specifier);
+    return isRegularFile(resolved) ? resolved : null;
+  } catch {
+    return null;
+  }
+}
+
+function nodeMiddlewareNextSupportDependencyArtifacts(
+  model: NextBuildModel,
+  projectRequire: NodeRequire,
+  roots: string[],
+): ArtifactPlanItem[] {
+  const seenRoots = new Set<string>();
+  const seenPackagePaths = new Set<string>();
+  const scannedFiles = new Set<string>();
+  const queue = [...roots];
+  const items: ArtifactPlanItem[] = [];
+
+  for (let index = 0; index < queue.length; index++) {
+    const current = queue[index];
+    if (scannedFiles.has(current) || !isRegularFile(current)) continue;
+    scannedFiles.add(current);
+
+    for (const specifier of commonJsRequireSpecifiers(current)) {
+      const packageRoot = nextCompiledPackageRoot(projectRequire, specifier);
+      const dependencyFiles = packageRoot
+        ? walkFiles(packageRoot)
+        : (() => {
+            const file = nextPackageFileForSpecifier(projectRequire, current, specifier);
+            return file ? [file] : [];
+          })();
+
+      if (packageRoot) {
+        if (seenRoots.has(packageRoot)) continue;
+        seenRoots.add(packageRoot);
+      }
+
+      for (const sourceAbsPath of dependencyFiles) {
+        queue.push(sourceAbsPath);
+        const nodeRel = nodeModulePackageRel(sourceAbsPath);
+        if (!nodeRel) continue;
+        const packagePath = packageJoin("runtime/node_modules", nodeRel);
+        if (seenPackagePaths.has(packagePath)) continue;
+        seenPackagePaths.add(packagePath);
+        items.push(artifactItem(model, {
+          id: `middleware-next-support:${sanitizeId(nodeRel)}`,
+          kind: "runtime-file",
+          sourceAbsPath,
+          packagePath,
+          mountPath: packageJoin("node_modules", nodeRel),
+          required: true,
+          reason: packageRoot
+            ? "Next node proxy/middleware compiled package dependency"
+            : "Next node proxy/middleware server runtime dependency",
+        }));
+      }
+    }
+  }
+
+  return items;
 }
 
 function edgeFunctionArtifacts(
@@ -585,15 +1008,25 @@ export function createArtifactPlan(
   supplement: ManifestSupplement,
   edgeFunctions: Map<string, BrrrdEdgeFunction>,
   outDir: string,
-  options: { hasAppBundle: boolean },
+  options: { hasAppBundle: boolean; middleware?: BrrrdMiddleware },
 ): ArtifactPlan {
   const allPublicPathnames = publicArtifactPathnames(model);
+  const staticMeta = staticResponseMetaByPathname(supplement.staticResponseMeta);
   return {
     items: dedupePlanItems([
       ...(options.hasAppBundle ? [appBundleArtifact(model, outDir)] : []),
-      ...model.outputs.staticFiles.map((output) => (
-        staticArtifact(model, output, allPublicPathnames)
-      )),
+      ...model.outputs.staticFiles
+        .filter((output) => !isPagesRscFallbackOutput(output))
+        .map((output) => (
+          staticArtifact(
+            model,
+            output,
+            allPublicPathnames,
+            staticMeta.get(output.urlPath) ?? staticMeta.get(output.pathname),
+          )
+        )),
+      ...pagesStaticDataArtifacts(model),
+      ...pagesDynamicFallbackArtifacts(model, supplement),
       ...prerenderArtifacts(model),
       ...appPrerenderDataArtifacts(model, supplement),
       ...pprSegmentPrefetchArtifacts(model, supplement),
@@ -603,7 +1036,9 @@ export function createArtifactPlan(
       ...routeRuntimeDependencyArtifacts(model),
       ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),
-      ...middlewareArtifacts(model, supplement),
+      ...middlewareAdapterAssetArtifacts(model, options.middleware),
+      ...middlewareArtifacts(model, options.middleware),
+      ...nodeMiddlewareNextServerRuntimeArtifacts(model, options.middleware),
       ...edgeFunctionArtifacts(model, edgeFunctions),
     ]),
   };
@@ -675,11 +1110,14 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
       } else if (item.required && !fs.existsSync(dest)) {
         throw new Error(`${item.reason} does not exist: ${dest}`);
       }
+    } else if (item.generatedContent !== undefined) {
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, item.generatedContent);
     } else if (item.required && !fs.existsSync(dest)) {
       throw new Error(`${item.reason} does not exist: ${dest}`);
     }
 
-    if (item.precompress && item.sourceAbsPath) {
+    if (item.precompress && (item.sourceAbsPath || item.generatedContent !== undefined)) {
       const before = hasPrecompressedVariant(dest);
       if (maybePrecompress(dest) && !before) summary.compressedCount++;
     }

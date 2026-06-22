@@ -26,6 +26,16 @@ function runtimeFile(files: string[], entry: string): string {
   return files.find((file) => file !== entry) ?? entry;
 }
 
+function isExecutableEdgeFile(filePath: string): boolean {
+  return filePath.endsWith(".js")
+    || filePath.endsWith(".mjs")
+    || filePath.endsWith(".cjs");
+}
+
+function isWasmFile(filePath: string): boolean {
+  return filePath.endsWith(".wasm");
+}
+
 function nameFromEntryKey(entryKey: string, fallback: string): string {
   if (entryKey.startsWith("middleware_")) return entryKey.slice("middleware_".length);
   return fallback;
@@ -48,6 +58,36 @@ function middlewareFileRefs(
   return out;
 }
 
+function adapterEdgeAssetRefs(
+  distDir: string,
+  assets: Record<string, string> | undefined,
+  entry: string,
+): {
+  executableFiles: string[];
+  wasm: BrrrdMiddlewareFile[];
+  assets: BrrrdMiddlewareFile[];
+} {
+  const executableFiles: string[] = [];
+  const wasm: BrrrdMiddlewareFile[] = [];
+  const supportAssets: BrrrdMiddlewareFile[] = [];
+
+  for (const [name, absPath] of Object.entries(assets ?? {})) {
+    const filePath = relativeToDist(distDir, absPath);
+    if (!filePath) continue;
+    if (filePath === entry || isExecutableEdgeFile(filePath)) {
+      executableFiles.push(filePath);
+      continue;
+    }
+    if (isWasmFile(filePath)) {
+      wasm.push({ name, filePath });
+      continue;
+    }
+    supportAssets.push({ name, filePath });
+  }
+
+  return { executableFiles, wasm, assets: supportAssets };
+}
+
 function edgeFunctionFromAdapterOutput(
   model: NextBuildModel,
   output: NormalizedOutput,
@@ -58,10 +98,9 @@ function edgeFunctionFromAdapterOutput(
     ?? (output.filePath ? relativeToDist(model.distDir, output.filePath) : null);
   if (!entry) return null;
 
+  const adapterAssets = adapterEdgeAssetRefs(model.distDir, output.assets, entry);
   const files = uniqueStrings([
-    ...Object.values(output.assets)
-      .map((asset) => relativeToDist(model.distDir, asset))
-      .filter((asset): asset is string => !!asset),
+    ...adapterAssets.executableFiles,
     entry,
   ]);
   if (files.length === 0 || files.some((file) => !fs.existsSync(path.join(model.distDir, file)))) {
@@ -78,8 +117,11 @@ function edgeFunctionFromAdapterOutput(
     name: nameFromEntryKey(output.edgeRuntime.entryKey, output.id),
     page: output.sourcePage || output.pathname,
     handlerExport: handlerExport(output.edgeRuntime.handlerExport),
-    wasm: middlewareFileRefs(model.distDir, output.wasmAssets),
-    assets: [],
+    wasm: [
+      ...middlewareFileRefs(model.distDir, output.wasmAssets),
+      ...adapterAssets.wasm,
+    ],
+    assets: adapterAssets.assets,
     env: Object.fromEntries(
       Object.entries(output.config.env ?? {})
         .filter((entry): entry is [string, string] => typeof entry[1] === "string"),
@@ -107,4 +149,3 @@ export function compileEdgeFunctions(
   }
   return out;
 }
-

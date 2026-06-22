@@ -79,43 +79,121 @@ test("dynamic route table uses ctx.routing sourceRegex instead of deriving from 
     type: "page",
     runtime: "nodejs",
     params: ["id"],
+    paramTypes: { id: "single" },
   });
 });
 
-test("fallback false Pages SSG dynamic routes are not emitted as executable handlers", () => {
+test("Pages Router dynamic data outputs keep the public page handler pattern", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    pages: [
+      {
+        id: "blog-[slug]",
+        pathname: "/blog/[slug]",
+        runtime: "nodejs",
+        filePath: `${distDir}/server/pages/blog/[slug].js`,
+      },
+      {
+        id: "/_next/data/test-build/blog/[slug].json",
+        pathname: "/_next/data/test-build/blog/[slug].json",
+        runtime: "nodejs",
+        filePath: `${distDir}/server/pages/blog/[slug].js`,
+      },
+    ],
+    dynamicRoutes: [
+      {
+        source: "/blog/[slug]",
+        sourceRegex: "^/_next/data/test\\-build[/]?/blog/(?<nxtPslug>[^/]+?)\\.json(?:/)?$",
+        destination: "/_next/data/test-build/blog/[slug].json?nxtPslug=$nxtPslug",
+      },
+      {
+        source: "/blog/[slug]",
+        sourceRegex: "^/blog/(?<nxtPslug>[^/]+?)(?:/)?$",
+        destination: "/blog/[slug]?nxtPslug=$nxtPslug",
+      },
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "blog-_slug_"),
+    {
+      id: "blog-_slug_",
+      pattern: "^/blog/(?<nxtPslug>[^/]+?)(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["slug"],
+      paramTypes: { slug: "single" },
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "_next-data-test-build-blog-_slug__json"),
+    {
+      id: "_next-data-test-build-blog-_slug__json",
+      pattern: "^/_next/data/test\\-build[/]?/blog/(?<nxtPslug>[^/]+?)\\.json(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["slug"],
+      paramTypes: { slug: "single" },
+    },
+  );
+});
+
+test("Pages Router RSC fallback static outputs are not published as RSC data routes", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    staticFiles: [
+      staticFile("/pages-dir", `${distDir}/server/pages/pages-dir.html`),
+      staticFile("/pages-dir.rsc", `${distDir}/server/rsc-fallback.json`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-pages-dir"),
+    {
+      id: "static-pages-dir",
+      pattern: "^/pages-dir$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/pages-dir",
+      immutable: false,
+    },
+  );
+  assert.equal(
+    routes.some((route) => route.id === "static-pages-dir_rsc"),
+    false,
+  );
+});
+
+test("fallback false Pages SSG dynamic routes keep handler candidates for preview requests", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(
     context({
       pages: [
-        appPage("/[first]"),
-        appPage("/en/[first]"),
-        appPage("/[first]/[second]"),
-      ],
-      dynamicRoutes: [
         {
-          source: "/[first]",
-          sourceRegex: "^[/]?(?<nextLocale>[^/]{1,})/(?<nxtPfirst>[^/]+?)(?:/)?$",
-          destination: "/[first]",
+          id: "/no-fallback/[post]",
+          pathname: "/no-fallback/[post]",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/pages/no-fallback/[post].js`,
         },
       ],
-      config: {
-        i18n: {
-          locales: ["en", "es"],
-          defaultLocale: "en",
+      prerenders: [
+        {
+          id: "/no-fallback/first",
+          pathname: "/no-fallback/first",
+          urlPath: "/no-fallback/first",
+          filePath: `${distDir}/server/pages/no-fallback/first.html`,
         },
-      },
+      ],
     }),
     {
       staticRoutes: [],
       dynamicPrerenderRoutes: [
         {
-          page: "/[first]",
-          routeRegex: "^/([^/]+?)(?:/)?$",
+          page: "/no-fallback/[post]",
+          routeRegex: "^/no\\-fallback/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/_next/data/test-build/no\\-fallback/([^/]+?)\\.json$",
           fallback: false,
-        },
-        {
-          page: "/[first]/[second]",
-          routeRegex: "^/([^/]+?)/([^/]+?)(?:/)?$",
-          fallback: null,
         },
       ],
       appPrerenderDataRoutes: [],
@@ -124,17 +202,226 @@ test("fallback false Pages SSG dynamic routes are not emitted as executable hand
     },
   );
 
-  assert.equal(routes.some((route) => route.id === "_first_"), false);
-  assert.equal(routes.some((route) => route.id === "en-_first_"), false);
   assert.deepEqual(
-    routes.find((route) => route.id === "_first_-_second_"),
+    routes.find((route) => route.id === "prerender-no-fallback-first"),
     {
-      id: "_first_-_second_",
-      pattern: "^/([^/]+?)/([^/]+?)(?:/)?$",
-      type: "page",
+      id: "prerender-no-fallback-first",
+      pattern: "^/no-fallback/first$",
+      type: "prerender",
       runtime: "nodejs",
-      params: ["first", "second"],
-      localeHandling: "unprefixed",
+      bundle: "",
+      file: "/no-fallback/first",
+    },
+  );
+  assert.deepEqual(
+    routes.filter((route) => route.id === "no-fallback-_post_"),
+    [
+      {
+        id: "no-fallback-_post_",
+        pattern: "^/_next/data/test-build/no\\-fallback/([^/]+?)\\.json$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["post"],
+        paramTypes: { post: "single" },
+        previewOnly: true,
+      },
+      {
+        id: "no-fallback-_post_",
+        pattern: "^/no\\-fallback/([^/]+?)(?:/)?$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["post"],
+        paramTypes: { post: "single" },
+        previewOnly: true,
+      },
+    ],
+  );
+});
+
+test("fallback false App SSG dynamic routes are static-path-only with bypass conditions", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        {
+          id: "/[locale].rsc",
+          pathname: "/[locale].rsc",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/app/[locale]/page.js`,
+        },
+        {
+          id: "/[locale]",
+          pathname: "/[locale]",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/app/[locale]/page.js`,
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/[locale]",
+          routeRegex: "^/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/([^/]+?)\\.rsc$",
+          fallback: false,
+          bypass: [
+            { type: "header", key: "next-action" },
+            { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+          ],
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  assert.deepEqual(
+    routes.filter((route) => route.id === "_locale__rsc" || route.id === "_locale_"),
+    [
+      {
+        id: "_locale__rsc",
+        pattern: "^\\/([^/]+?)\\.rsc(?:\\/)?$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["locale"],
+        paramTypes: { locale: "single" },
+        staticPathsOnly: true,
+        prerenderBypass: [
+          { type: "header", key: "next-action" },
+          { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+        ],
+      },
+      {
+        id: "_locale_",
+        pattern: "^/([^/]+?)(?:/)?$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["locale"],
+        paramTypes: { locale: "single" },
+        staticPathsOnly: true,
+        prerenderBypass: [
+          { type: "header", key: "next-action" },
+          { type: "header", key: "content-type", value: "multipart/form-data;.*" },
+        ],
+      },
+    ],
+  );
+});
+
+test("fallback-capable Pages SSG dynamic routes expose _next/data through the page handler", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(
+    context({
+      pages: [
+        {
+          id: "/[slug]",
+          pathname: "/[slug]",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/pages/[slug].js`,
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/[slug]",
+          routeRegex: "^/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/_next/data/test-build/([^/]+?)\\.json$",
+          fallback: "/[slug].html",
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  const firstHtmlRoute = routes.find((route) => new RegExp(route.pattern).test("/first"));
+  assert.deepEqual(firstHtmlRoute, {
+    id: "prerender-fallback-_slug_",
+    pattern: "^/([^/]+?)(?:/)?$",
+    type: "prerender",
+    runtime: "nodejs",
+    bundle: "",
+    file: "/[slug]",
+    headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
+    pagesFallbackShell: true,
+  });
+
+  assert.deepEqual(
+    routes.filter((route) => route.id === "_slug_"),
+    [
+      {
+        id: "_slug_",
+        pattern: "^/_next/data/test-build/([^/]+?)\\.json$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["slug"],
+        paramTypes: { slug: "single" },
+      },
+      {
+        id: "_slug_",
+        pattern: "^/([^/]+?)(?:/)?$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["slug"],
+        paramTypes: { slug: "single" },
+      },
+    ],
+  );
+});
+
+test("Pages SSG dynamic fallback shells use index storage when public children exist", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(
+    context({
+      pages: [
+        {
+          id: "/blog/[post]",
+          pathname: "/blog/[post]",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/pages/blog/[post].js`,
+        },
+      ],
+      staticFiles: [
+        {
+          id: "/blog/[post]/comments",
+          pathname: "/blog/[post]/comments",
+          urlPath: "/blog/[post]/comments",
+          filePath: `${distDir}/static/blog-comment.html`,
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/blog/[post]",
+          routeRegex: "^/blog/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/_next/data/test-build/blog/([^/]+?)\\.json$",
+          fallback: "/blog/[post].html",
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-fallback-blog-_post_"),
+    {
+      id: "prerender-fallback-blog-_post_",
+      pattern: "^/blog/([^/]+?)(?:/)?$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/blog/[post]/index",
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
+      pagesFallbackShell: true,
     },
   );
 });
@@ -170,6 +457,75 @@ test("static Pages Router index HTML is exposed at the public root path", () => 
       bundle: "",
       file: "/nested/index",
       immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "pages-static-data-index"),
+    {
+      id: "pages-static-data-index",
+      pattern: "^/_next/data/test-build/index\\.json$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/_next/data/test-build/index.json",
+    },
+  );
+});
+
+test("static Pages Router index HTML preserves basePath on the public root path", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    config: { basePath: "/docs" },
+    staticFiles: [
+      staticFile("/docs/index", `${distDir}/server/pages/index.html`),
+      staticFile("/docs/nested/index", `${distDir}/server/pages/nested/index.html`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-docs"),
+    {
+      id: "static-docs",
+      pattern: "^/docs$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/docs/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-docs-nested"),
+    {
+      id: "static-docs-nested",
+      pattern: "^/docs/nested$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/docs/nested/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "pages-static-data-docs"),
+    {
+      id: "pages-static-data-docs",
+      pattern: "^/docs/_next/data/test-build/index\\.json$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/docs/_next/data/test-build/index.json",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "pages-static-data-docs-nested"),
+    {
+      id: "pages-static-data-docs-nested",
+      pattern: "^/docs/_next/data/test-build/nested\\.json$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/docs/_next/data/test-build/nested.json",
     },
   );
 });
@@ -242,6 +598,36 @@ test("executable Pages Router index handlers are exposed at public index paths",
   );
 });
 
+test("executable Pages Router index handlers preserve basePath on public index paths", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    config: { basePath: "/docs" },
+    pages: [
+      appPage("/docs/index", `${distDir}/server/pages/index.js`),
+      appPage("/docs/nested/index", `${distDir}/server/pages/nested/index.js`),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "docs-index"),
+    {
+      id: "docs-index",
+      pattern: "^/docs$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "docs-nested-index"),
+    {
+      id: "docs-nested-index",
+      pattern: "^/docs/nested$",
+      type: "page",
+      runtime: "nodejs",
+    },
+  );
+});
+
 test("literal Pages Router index routes are not collapsed to their parent path", () => {
   const distDir = "/tmp/brrrd-routing-test/.next";
   const routes = compileRouteTable(context({
@@ -299,6 +685,42 @@ test("static prerender routes are exposed before matching page handlers", () => 
       runtime: "nodejs",
       bundle: "",
       file: "/server-action-inline",
+    },
+  );
+});
+
+test("PPR app prerenders are marked so runtime can apply document routing policy", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [appPage("/")],
+      prerenders: [
+        {
+          id: "/",
+          pathname: "/",
+          parentOutputId: "/",
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+      pprPages: ["/"],
+    },
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "prerender-index"),
+    {
+      id: "prerender-index",
+      pattern: "^/$",
+      type: "prerender",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/",
+      ppr: true,
     },
   );
 });
@@ -393,6 +815,7 @@ test("dynamic route table derives a Next-compatible regex when Adapter API sourc
     appPages: [
       appPage("/posts/[id]"),
       appPage("/en/posts/[...slug]"),
+      appPage("/edge/[[...slug]]"),
     ],
   }));
 
@@ -404,6 +827,7 @@ test("dynamic route table derives a Next-compatible regex when Adapter API sourc
       type: "page",
       runtime: "nodejs",
       params: ["id"],
+      paramTypes: { id: "single" },
     },
   );
   assert.deepEqual(
@@ -414,6 +838,18 @@ test("dynamic route table derives a Next-compatible regex when Adapter API sourc
       type: "page",
       runtime: "nodejs",
       params: ["slug"],
+      paramTypes: { slug: "catchAll" },
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "edge-_____slug__"),
+    {
+      id: "edge-_____slug__",
+      pattern: "^\\/edge(?:\\/(.+?))?(?:\\/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["slug"],
+      paramTypes: { slug: "optionalCatchAll" },
     },
   );
 });
@@ -437,7 +873,9 @@ test("public static file storage avoids parent file and child directory collisio
       bundle: "",
       file: "/[post]/index",
       immutable: false,
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
       params: ["post"],
+      paramTypes: { post: "single" },
     },
   );
   assert.deepEqual(
@@ -450,7 +888,9 @@ test("public static file storage avoids parent file and child directory collisio
       bundle: "",
       file: "/[post]/comments",
       immutable: false,
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
       params: ["post"],
+      paramTypes: { post: "single" },
     },
   );
 });
@@ -549,6 +989,63 @@ test("i18n default-locale prerenders are exposed at public unprefixed paths", ()
   );
 });
 
+test("i18n default-locale static routes preserve basePath on public aliases", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    config: {
+      basePath: "/basepath",
+      i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+    },
+    staticFiles: [
+      staticFile("/basepath/en", `${distDir}/server/pages/en.html`),
+      staticFile("/basepath/en/newpage", `${distDir}/server/pages/en/newpage.html`),
+      staticFile(
+        "/basepath/_next/data/test-build/en/newpage.json",
+        `${distDir}/server/pages/en/newpage.json`,
+      ),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-basepath-en-default-locale-alias"),
+    {
+      id: "static-basepath-en-default-locale-alias",
+      pattern: "^/basepath$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/basepath/en/index",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-basepath-en-newpage-default-locale-alias"),
+    {
+      id: "static-basepath-en-newpage-default-locale-alias",
+      pattern: "^/basepath/newpage$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/basepath/en/newpage",
+      immutable: false,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "static-basepath-_next-data-test-build-en-newpage_json-default-locale-alias"
+    )),
+    {
+      id: "static-basepath-_next-data-test-build-en-newpage_json-default-locale-alias",
+      pattern: "^/basepath/_next/data/test-build/newpage\\.json$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/basepath/_next/data/test-build/en/newpage.json",
+      immutable: false,
+    },
+  );
+});
+
 test("i18n default-locale page handlers are exposed at public unprefixed paths", () => {
   const routes = compileRouteTable(context({
     config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
@@ -587,6 +1084,49 @@ test("i18n default-locale page handlers are exposed at public unprefixed paths",
   );
 });
 
+test("i18n default-locale dynamic page handlers are exposed at public unprefixed paths", () => {
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
+    pages: [
+      appPage("/dynamic/[slug]"),
+      appPage("/en/dynamic/[slug]"),
+      appPage("/fr/dynamic/[slug]"),
+    ],
+    dynamicRoutes: [
+      {
+        source: "/dynamic/[slug]",
+        sourceRegex: "^[/]?(?<nextLocale>[^/]{1,})/dynamic/(?<nxtPslug>[^/]+?)(?:/)?$",
+        destination: "/:nextInternalLocale/dynamic/[slug]",
+      },
+    ],
+  }));
+
+  const localized = routes.find((route) => route.id === "dynamic-_slug_");
+  assert.deepEqual(localized, {
+    id: "dynamic-_slug_",
+    pattern: "^[/]?(?<nextLocale>[^/]{1,})/dynamic/(?<nxtPslug>[^/]+?)(?:/)?$",
+    type: "page",
+    runtime: "nodejs",
+    params: ["slug"],
+    paramTypes: { slug: "single" },
+  });
+
+  const defaultAlias = routes.find((route) => (
+    route.id === "en-dynamic-_slug_"
+    && new RegExp(route.pattern).test("/dynamic/new")
+  ));
+  assert.ok(defaultAlias);
+  assert.deepEqual(defaultAlias, {
+    id: "en-dynamic-_slug_",
+    pattern: defaultAlias.pattern,
+    type: "page",
+    runtime: "nodejs",
+    params: ["slug"],
+    paramTypes: { slug: "single" },
+    localeHandling: "unprefixed",
+  });
+});
+
 test("internal intercepting route outputs are bundled but not exposed without a public sourceRegex", () => {
   const routes = compileRouteTable(context({
     appPages: [
@@ -605,6 +1145,53 @@ test("internal intercepting route outputs are bundled but not exposed without a 
   const ids = routes.map((route) => route.id);
   assert.ok(ids.includes("posts-_id_"));
   assert.ok(!ids.includes("(_)posts-_id_"));
+});
+
+test("public intercepting route handlers carry route metadata", () => {
+  const routes = compileRouteTable(context({
+    appPages: [
+      appPage("/post/[id]"),
+      appPage("/foo/(...)post/[id]"),
+      appPage("/foo/(...)post/[id].rsc"),
+    ],
+    dynamicRoutes: [
+      {
+        source: "/foo/(...)post/[id]",
+        sourceRegex: "^/foo/\\(\\.\\.\\.\\)post/(?<nxtPid>[^/]+?)(?:/)?$",
+        destination: "/foo/(...)post/[id]?nxtPid=$nxtPid",
+      },
+      {
+        source: "/foo/(...)post/[id].rsc",
+        sourceRegex: "^/foo/\\(\\.\\.\\.\\)post/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+        destination: "/foo/(...)post/[id]$rscSuffix?nxtPid=$nxtPid",
+      },
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "foo-(___)post-_id_"),
+    {
+      id: "foo-(___)post-_id_",
+      pattern: "^/foo/\\(\\.\\.\\.\\)post/(?<nxtPid>[^/]+?)(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["id"],
+      paramTypes: { id: "single" },
+      intercepted: true,
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => route.id === "foo-(___)post-_id__rsc"),
+    {
+      id: "foo-(___)post-_id__rsc",
+      pattern: "^/foo/\\(\\.\\.\\.\\)post/(?<nxtPid>[^/]+?)(?<rscSuffix>\\.rsc|\\.segments/.+\\.segment\\.rsc)(?:/)?$",
+      type: "page",
+      runtime: "nodejs",
+      params: ["id"],
+      paramTypes: { id: "single" },
+      intercepted: true,
+    },
+  );
 });
 
 test("dynamic routes are ordered by Next-style specificity after sourceRegex lookup", () => {
@@ -733,7 +1320,7 @@ test("PPR segment prefetch routes are filesystem static routes before dynamic RS
     type: "static",
     runtime: "nodejs",
     bundle: "",
-    file: "/",
+    file: "/[slug].segments/$d$slug$segment",
     params: ["path"],
   });
 
@@ -746,6 +1333,46 @@ test("PPR segment prefetch routes are filesystem static routes before dynamic RS
     new RegExp(route.pattern).test("/alpha.segments/$d$slug/__PAGE__.segment.rsc")
   ));
   assert.equal(firstSegmentMatch.id, "ppr-segment-_slug_-0");
+});
+
+test("PPR RSC prerenders attach resume metadata to the handler route", () => {
+  const routes = compileRouteTable(
+    context({
+      appPages: [
+        appPage("/dynamic.rsc"),
+      ],
+      prerenders: [
+        {
+          id: "/dynamic.rsc",
+          pathname: "/dynamic.rsc",
+          pprChain: {
+            headers: {
+              "next-resume": "1",
+            },
+          },
+          fallback: {
+            postponedState: "postponed-state",
+          },
+        },
+      ],
+    }),
+  );
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "dynamic_rsc"),
+    {
+      id: "dynamic_rsc",
+      pattern: "^/dynamic\\.rsc$",
+      type: "page",
+      runtime: "nodejs",
+      pprResume: {
+        headers: {
+          "next-resume": "1",
+        },
+        postponedState: "postponed-state",
+      },
+    },
+  );
 });
 
 test("App prerender RSC data artifacts are exact static routes before dynamic RSC handlers", () => {

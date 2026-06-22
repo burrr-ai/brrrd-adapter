@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { basePath } from "./next-config.js";
+
 type RawAdapterOutput = {
   id: string;
   pathname: string;
@@ -17,7 +19,12 @@ type RawAdapterOutput = {
   };
   config?: Record<string, unknown>;
   immutableHash?: string;
-  fallback?: { filePath?: string };
+  fallback?: {
+    filePath?: string;
+    initialStatus?: number;
+    initialHeaders?: Record<string, string | string[]>;
+    postponedState?: string;
+  };
   parentOutputId?: string;
   groupId?: number;
   pprChain?: { headers: Record<string, string> };
@@ -33,6 +40,7 @@ export type AdapterRouteEntry = {
   missing?: AdapterRouteCondition[];
   status?: number;
   priority?: boolean;
+  internal?: boolean;
 };
 
 export type AdapterRouteCondition = {
@@ -89,12 +97,13 @@ export type NormalizedOutput = {
   routeKind: "page" | "route" | "static" | "prerender" | "middleware";
   appPath?: string;
   urlPath: string;
+  pagesRoutePath?: string;
   assets: Record<string, string>;
   wasmAssets: Record<string, string>;
   edgeRuntime?: RawAdapterOutput["edgeRuntime"];
   config: Record<string, unknown>;
   immutableHash?: string;
-  fallback?: { filePath?: string };
+  fallback?: RawAdapterOutput["fallback"];
   parentOutputId?: string;
   groupId?: number;
   pprChain?: { headers: Record<string, string> };
@@ -142,38 +151,61 @@ function normalizeIndexUrlPath(pathname: string): string {
   return pathname;
 }
 
-function outputMatchesPagesFile(raw: RawAdapterOutput, pagesDir: string): boolean {
-  if (!raw.filePath) return false;
+function withoutBasePath(pathname: string, config: unknown): string {
+  const configured = basePath(config);
+  if (!configured) return pathname;
+  if (pathname === configured) return "/";
+  const prefix = `${configured}/`;
+  return pathname.startsWith(prefix) ? `/${pathname.slice(prefix.length)}` : pathname;
+}
+
+function withBasePath(pathname: string, config: unknown): string {
+  const configured = basePath(config);
+  if (!configured) return pathname;
+  return pathname === "/" ? configured : `${configured}${pathname}`;
+}
+
+function pagesFileRoutePath(
+  raw: RawAdapterOutput,
+  pagesDir: string,
+  config: unknown,
+): string | null {
+  if (!raw.filePath) return null;
   const relative = path.relative(pagesDir, raw.filePath);
-  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return false;
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return null;
   const routePath = "/" + relative
     .split(path.sep)
     .join("/")
     .replace(/\.[^/.]+$/, "");
-  return routePath === raw.pathname;
+  if (routePath === withoutBasePath(raw.pathname, config)) return routePath;
+  if (raw.pathname.startsWith("/_next/data/") && routePath.includes("[")) {
+    return routePath;
+  }
+  return null;
 }
 
 function outputUrlPath(
   raw: RawAdapterOutput,
   kind: NormalizedOutputKind,
-  distDir?: string,
+  options: { distDir?: string; config?: unknown } = {},
+  pagesRoutePath?: string | null,
 ): string {
+  const { distDir, config } = options;
   if (!raw.filePath || !distDir) return raw.pathname;
-  const pagesDir = path.join(distDir, "server", "pages");
   const ext = path.extname(raw.filePath).toLowerCase();
   if (
     kind === "static"
     && ext === ".html"
-    && outputMatchesPagesFile(raw, pagesDir)
+    && pagesRoutePath
   ) {
-    return normalizeIndexUrlPath(raw.pathname);
+    return withBasePath(normalizeIndexUrlPath(pagesRoutePath), config);
   }
   if (
     kind === "page"
     && !raw.pathname.startsWith("/_next/data/")
-    && outputMatchesPagesFile(raw, pagesDir)
+    && pagesRoutePath
   ) {
-    return normalizeIndexUrlPath(raw.pathname);
+    return withBasePath(normalizeIndexUrlPath(pagesRoutePath), config);
   }
   return raw.pathname;
 }
@@ -181,8 +213,14 @@ function outputUrlPath(
 function normalizeOutput(
   raw: RawAdapterOutput,
   kind: NormalizedOutputKind,
-  options: { distDir?: string } = {},
+  options: { distDir?: string; config?: unknown } = {},
 ): NormalizedOutput {
+  const pagesDir = options.distDir
+    ? path.join(options.distDir, "server", "pages")
+    : undefined;
+  const pagesRoutePath = pagesDir
+    ? pagesFileRoutePath(raw, pagesDir, options.config)
+    : null;
   const routeKind = kind === "app-route" || kind === "pages-api"
     ? "route"
     : kind === "static" || kind === "public"
@@ -201,7 +239,8 @@ function normalizeOutput(
     sourcePage: raw.sourcePage,
     routeKind,
     appPath: raw.sourcePage,
-    urlPath: outputUrlPath(raw, kind, options.distDir),
+    urlPath: outputUrlPath(raw, kind, options, pagesRoutePath),
+    ...(pagesRoutePath ? { pagesRoutePath } : {}),
     assets: raw.assets ?? {},
     wasmAssets: raw.wasmAssets ?? {},
     edgeRuntime: raw.edgeRuntime,
@@ -264,7 +303,7 @@ function collectPublicOutputs(projectDir: string): NormalizedOutput[] {
 
 function mergePublicStaticFiles(ctx: AdapterBuildContext): NormalizedOutput[] {
   const staticFiles = ctx.outputs.staticFiles.map((output) => (
-    normalizeOutput(output, "static", { distDir: ctx.distDir })
+    normalizeOutput(output, "static", { distDir: ctx.distDir, config: ctx.config })
   ));
   const takenPaths = new Set<string>([
     ...staticFiles.map((output) => output.pathname),
@@ -291,7 +330,10 @@ export function createNextBuildModel(ctx: AdapterBuildContext): NextBuildModel {
     buildId: ctx.buildId,
     routing: normalizeRouting(ctx.routing),
     outputs: {
-      pages: ctx.outputs.pages.map((output) => normalizeOutput(output, "page", { distDir: ctx.distDir })),
+      pages: ctx.outputs.pages.map((output) => normalizeOutput(output, "page", {
+        distDir: ctx.distDir,
+        config: ctx.config,
+      })),
       appPages: ctx.outputs.appPages.map((output) => normalizeOutput(output, "app-page")),
       appRoutes: ctx.outputs.appRoutes.map((output) => normalizeOutput(output, "app-route")),
       pagesApi: ctx.outputs.pagesApi.map((output) => normalizeOutput(output, "pages-api")),

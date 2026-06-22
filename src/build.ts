@@ -8,9 +8,14 @@ import {
 } from "./artifact-planner.js";
 import { bundleAppHandler } from "./bundler.js";
 import { validateCompatibility } from "./compatibility-validator.js";
+import {
+  adapterContextSnapshotEnabled,
+  writeAdapterContextSnapshot,
+} from "./diagnostics.js";
 import { compileEdgeFunctions } from "./edge-function-compiler.js";
 import { writeManifest } from "./manifest-emitter.js";
-import { createManifestSupplement, type ManifestSupplement } from "./manifest-supplement.js";
+import { createManifestSupplement } from "./manifest-supplement.js";
+import { compileMiddleware } from "./middleware-compiler.js";
 import {
   allOutputs,
   createNextBuildModel,
@@ -28,24 +33,6 @@ function proxySourceFor(middleware: BrrrdMiddleware): "middleware" | "proxy" {
     middleware.entry,
   ].join("\n").toLowerCase();
   return probe.includes("proxy") ? "proxy" : "middleware";
-}
-
-function middlewareFromSupplement(
-  supplement: ManifestSupplement,
-): BrrrdMiddleware | undefined {
-  const middleware = supplement.middleware;
-  if (!middleware) return undefined;
-  return {
-    files: middleware.files,
-    runtime: middleware.runtimeRel,
-    entry: middleware.entryRel,
-    name: middleware.name,
-    page: middleware.page,
-    matchers: middleware.matchers,
-    wasm: middleware.wasm,
-    assets: middleware.assets,
-    env: middleware.env,
-  };
 }
 
 function edgeFunctionsToManifestRecord(
@@ -102,6 +89,10 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   console.log(`  Project: ${model.projectDir}`);
   console.log(`  Next.js: ${model.nextVersion}`);
   console.log(`  Build ID: ${model.buildId}`);
+  if (adapterContextSnapshotEnabled()) {
+    const snapshotFile = writeAdapterContextSnapshot(outDir, ctx, model);
+    console.log(`  Adapter context snapshot: ${snapshotFile}`);
+  }
 
   const nodeOutputs = requestOutputList
     .filter((output): output is typeof output & { filePath: string } => (
@@ -119,8 +110,10 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     console.log("  Wrote fallback dispatcher for edge-only app");
   }
 
+  const middleware = compileMiddleware(model, supplement);
   const artifactPlan = createArtifactPlan(model, supplement, compiledEdgeFunctions, outDir, {
     hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
+    middleware,
   });
   const copySummary = executeArtifactPlan(artifactPlan, outDir);
   console.log(
@@ -137,7 +130,6 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const routes = compileRouteTable(model, supplement);
   const routing = compileRouting(model, supplement);
-  const middleware = middlewareFromSupplement(supplement);
   const edgeFunctions = edgeFunctionsToManifestRecord(compiledEdgeFunctions);
   if (middleware) {
     routing.proxy = {
@@ -168,6 +160,8 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   const env: Record<string, string> = {
     NODE_ENV: "production",
     NEXT_RUNTIME: "nodejs",
+    __NEXT_RELATIVE_PROJECT_DIR: ".",
+    __NEXT_RELATIVE_DIST_DIR: ".next",
     __NEXT_PRIVATE_PREBUNDLED_REACT: "next",
   };
 
@@ -183,6 +177,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     middleware,
     edgeFunctions,
     supplement.pprPages,
+    supplement.preview,
   );
   console.log(`  Manifest written to ${path.join(outDir, "manifest.json")}`);
   console.log(`[@brrrd/adapter] Done!`);

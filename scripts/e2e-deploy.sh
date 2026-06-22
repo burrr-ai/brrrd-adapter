@@ -160,12 +160,16 @@ resolve_brrrd_bin() {
 
 start_brrrd() {
   local rust_log="${BRRRD_RUST_LOG:-${RUST_LOG:-info}}"
+  local env_args=("RUST_LOG=$rust_log")
+  while IFS= read -r -d '' assignment; do
+    env_args+=("$assignment")
+  done < <(node "$ADAPTER_DIR/scripts/runtime-env.mjs")
   if command -v setsid >/dev/null 2>&1; then
-    env RUST_LOG="$rust_log" \
+    env "${env_args[@]}" \
       setsid "$BRRRD_BIN" "$PACKAGE_DIR" --listen "127.0.0.1:$PORT" \
       </dev/null >>"$SERVER_LOG" 2>&1 &
   else
-    env RUST_LOG="$rust_log" \
+    env "${env_args[@]}" \
       nohup "$BRRRD_BIN" "$PACKAGE_DIR" --listen "127.0.0.1:$PORT" \
       </dev/null >>"$SERVER_LOG" 2>&1 &
   fi
@@ -272,6 +276,8 @@ pm_install
 NEXT_ADAPTER_PATH="${NEXT_ADAPTER_PATH:-$(resolve_adapter_entry)}"
 export NEXT_ADAPTER_PATH
 export NEXT_TELEMETRY_DISABLED="${NEXT_TELEMETRY_DISABLED:-1}"
+export NEXT_PRIVATE_TEST_MODE="${NEXT_PRIVATE_TEST_MODE:-e2e}"
+export VERCEL_NEXT_BUNDLED_SERVER="${VERCEL_NEXT_BUNDLED_SERVER:-1}"
 DEPLOYMENT_ID="${BRRRD_DEPLOYMENT_ID:-${NEXT_DEPLOYMENT_ID:-brrrd-local-$(date +%s)-$$}}"
 export NEXT_DEPLOYMENT_ID="$DEPLOYMENT_ID"
 

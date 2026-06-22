@@ -1,5 +1,5 @@
 export interface BrrrdManifest {
-  schemaVersion: 5;
+  schemaVersion: 6;
   build: BrrrdBuildInfo;
   /** Kept as a top-level convenience for artifact stores and fleet pointers. */
   buildId: string;
@@ -9,6 +9,9 @@ export interface BrrrdManifest {
   prerendersDir: string;
   runtimeDir: string;
   env: Record<string, string>;
+  images: BrrrdImagesConfig;
+  /** Next preview/draft-mode cookie metadata from prerender-manifest.json. */
+  preview?: BrrrdPreviewConfig;
   artifacts: BrrrdArtifact[];
   compatibility: BrrrdCompatibilityReport;
   routing: BrrrdRouting;
@@ -22,9 +25,39 @@ export interface BrrrdManifest {
 
 export interface BrrrdBuildInfo {
   buildId: string;
+  deploymentId?: string;
   nextVersion: string;
   adapterVersion?: string;
   createdAt: string;
+}
+
+export interface BrrrdImagesConfig {
+  deviceSizes: number[];
+  imageSizes: number[];
+  domains: string[];
+  remotePatterns: BrrrdRemoteImagePattern[];
+  localPatterns?: BrrrdLocalImagePattern[];
+  qualities?: number[];
+  minimumCacheTTL: number;
+}
+
+export interface BrrrdPreviewConfig {
+  previewModeId: string;
+  previewModeSigningKey?: string;
+  previewModeEncryptionKey?: string;
+}
+
+export interface BrrrdRemoteImagePattern {
+  protocol?: string;
+  hostname: string;
+  port?: string;
+  pathname?: string;
+  search?: string;
+}
+
+export interface BrrrdLocalImagePattern {
+  pathname?: string;
+  search?: string;
 }
 
 export interface BrrrdArtifact {
@@ -71,6 +104,7 @@ export interface BrrrdRoutingI18n {
   locales: string[];
   defaultLocale: string;
   basePath?: string;
+  localeDetection?: false;
 }
 
 export interface BrrrdRewritePhases {
@@ -84,6 +118,8 @@ export interface BrrrdProxySpec {
 }
 
 export interface BrrrdMiddleware {
+  /** How the copied Next proxy/middleware chunks should be loaded by the runtime bridge. */
+  moduleFormat: "edge" | "node";
   /** Next proxy/middleware chunk files, in manifest evaluation order. */
   files: string[];
   /** Legacy single runtime chunk path retained for diagnostics and older webpack-shaped output. */
@@ -190,10 +226,29 @@ export interface BrrrdRoute {
   runtime: "nodejs" | "edge";
   edgeFunction?: string;
   bundle?: string;
+  /** Static store key or Next static lookup template for captured filesystem routes. */
   file?: string;
   params?: string[];
+  paramTypes?: Record<string, "single" | "catchAll" | "optionalCatchAll">;
   localeHandling?: "unprefixed";
   immutable?: boolean;
+  /** PPR app-page document requests must go through the Next handler so it can resume/inject client bootstrap. */
+  ppr?: boolean;
+  /** PPR RSC resume metadata from the Next Adapter API prerender output. */
+  pprResume?: {
+    headers: Record<string, string>;
+    postponedState: string;
+  };
+  /** Route was generated from a Next intercepting route segment such as (.) or (...). */
+  intercepted?: boolean;
+  /** Next preview/draft requests may activate this fallback:false dynamic SSG handler. */
+  previewOnly?: boolean;
+  /** Next dynamicParams=false/fallback=false route: regular requests may only hit concrete prerenders. */
+  staticPathsOnly?: boolean;
+  /** Request conditions that may bypass staticPathsOnly and invoke the dynamic handler. */
+  prerenderBypass?: BrrrdMiddlewareCondition[];
+  /** Pages Router fallback:true shell; crawler requests must skip it and block on the handler. */
+  pagesFallbackShell?: boolean;
   status?: number;
   headers?: BrrrdHeaderPair[];
 }
