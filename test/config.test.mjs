@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { test } from "node:test";
 
 import { detectBuildBundler, modifyConfig } from "../dist/config.js";
+import { nextServerDefineEnv, nextServerRuntimeEnv } from "../dist/next-config.js";
 
 function testContext(nextVersion = "16.3.0-canary.59") {
   return {
@@ -81,6 +82,41 @@ test("modifyConfig does not downgrade Next image rendering semantics", () => {
 
   assert.equal(out.images.unoptimized, undefined);
   assert.deepEqual(out.images.deviceSizes, [1234]);
+});
+
+test("next server env helpers preserve Next build-time feature flags", () => {
+  const config = {
+    cacheComponents: true,
+    cacheLife: { seconds: { stale: 30, revalidate: 1, expire: 60 } },
+    experimental: {
+      appShells: true,
+      cachedNavigations: true,
+      ppr: "incremental",
+      reactDebugChannel: true,
+      useCache: true,
+      varyParams: true,
+    },
+  };
+
+  const defineEnv = nextServerDefineEnv(config);
+  assert.equal(defineEnv["process.env.NODE_ENV"], "\"production\"");
+  assert.equal(defineEnv["process.env.NEXT_RUNTIME"], "\"nodejs\"");
+  assert.equal(defineEnv["process.env.__NEXT_PPR"], "true");
+  assert.equal(defineEnv["process.env.__NEXT_CACHE_COMPONENTS"], "true");
+  assert.equal(defineEnv["process.env.__NEXT_APP_SHELLS"], "true");
+  assert.equal(defineEnv["process.env.__NEXT_VARY_PARAMS"], "true");
+  assert.equal(
+    defineEnv["process.env.__NEXT_CACHE_LIFE"],
+    JSON.stringify(config.cacheLife),
+  );
+
+  const runtimeEnv = nextServerRuntimeEnv({
+    experimental: { appShells: false },
+  });
+  assert.equal(runtimeEnv.NODE_ENV, "production");
+  assert.equal(runtimeEnv.NEXT_RUNTIME, "nodejs");
+  assert.equal(runtimeEnv.__NEXT_APP_SHELLS, "");
+  assert.equal(runtimeEnv.__NEXT_USE_NODE_STREAMS, "true");
 });
 
 test("modifyConfig registers modern and legacy cache handlers for webpack builds", () => {

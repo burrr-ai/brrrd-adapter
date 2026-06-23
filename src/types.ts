@@ -94,6 +94,7 @@ export interface BrrrdCompatibilityPolicy {
 
 export interface BrrrdRouting {
   basePath?: string;
+  trailingSlash?: true;
   i18n?: BrrrdRoutingI18n;
   headers: BrrrdHeaderRule[];
   redirects: BrrrdRedirect[];
@@ -271,6 +272,8 @@ export interface BrrrdRoute {
     bypassToken?: string;
     allowHeader?: string[];
   };
+  /** This handler response represents a deploy prerender data fallback and uses Next deploy cache policy. */
+  deployPrerenderCacheControl?: boolean;
   status?: number;
   headers?: BrrrdHeaderPair[];
 }
@@ -280,4 +283,5 @@ export interface BuildContext {
   distDir: string;
   outDir: string;
   buildId: string;
+  config?: unknown;
 }

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { createNextBuildModel } from "../dist/model.js";
@@ -13,7 +16,9 @@ function context({
   staticFiles = [],
   dynamicRoutes = [],
   config = {},
+  projectDir = "/tmp/brrrd-routing-test",
 }) {
+  const distDir = path.join(projectDir, ".next");
   return createNextBuildModel({
     routing: {
       beforeMiddleware: [],
@@ -34,13 +39,22 @@ function context({
       pagesApi,
       staticFiles,
     },
-    projectDir: "/tmp/brrrd-routing-test",
-    repoRoot: "/tmp/brrrd-routing-test",
-    distDir: "/tmp/brrrd-routing-test/.next",
+    projectDir,
+    repoRoot: projectDir,
+    distDir,
     config,
     nextVersion: "16.2.0",
     buildId: "test-build",
   });
+}
+
+function tempRoutingRoot(name) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-routing-${name}-`));
+}
+
+function writeFile(filePath, content = "") {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, "utf8");
 }
 
 function appPage(pathname, filePath) {
@@ -345,9 +359,12 @@ test("fallback false App SSG dynamic routes are static-path-only with bypass con
 });
 
 test("fallback-capable Pages SSG dynamic routes expose _next/data through the page handler", () => {
-  const distDir = "/tmp/brrrd-routing-test/.next";
+  const root = tempRoutingRoot("fallback-shell");
+  const distDir = path.join(root, ".next");
+  writeFile(path.join(distDir, "server", "pages", "[slug].html"));
   const routes = compileRouteTable(
     context({
+      projectDir: root,
       pages: [
         {
           id: "/[slug]",
@@ -376,7 +393,7 @@ test("fallback-capable Pages SSG dynamic routes expose _next/data through the pa
   const firstHtmlRoute = routes.find((route) => new RegExp(route.pattern).test("/first"));
   assert.deepEqual(firstHtmlRoute, {
     id: "prerender-fallback-_slug_",
-    pattern: "^/([^/]+?)(?:/)?$",
+    pattern: "^\\/([^/]+?)(?:\\/)?$",
     type: "prerender",
     runtime: "nodejs",
     bundle: "",
@@ -395,6 +412,66 @@ test("fallback-capable Pages SSG dynamic routes expose _next/data through the pa
         runtime: "nodejs",
         params: ["slug"],
         paramTypes: { slug: "single" },
+        deployPrerenderCacheControl: true,
+      },
+      {
+        id: "_slug_",
+        pattern: "^/([^/]+?)(?:/)?$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["slug"],
+        paramTypes: { slug: "single" },
+      },
+    ],
+  );
+});
+
+test("Pages SSG dynamic routes stay handler-only when the fallback shell artifact is absent", () => {
+  const root = tempRoutingRoot("missing-fallback-shell");
+  const distDir = path.join(root, ".next");
+  const routes = compileRouteTable(
+    context({
+      projectDir: root,
+      pages: [
+        {
+          id: "/[slug]",
+          pathname: "/[slug]",
+          runtime: "nodejs",
+          filePath: `${distDir}/server/pages/[slug].js`,
+        },
+      ],
+    }),
+    {
+      staticRoutes: [],
+      dynamicPrerenderRoutes: [
+        {
+          page: "/[slug]",
+          routeRegex: "^/([^/]+?)(?:/)?$",
+          dataRouteRegex: "^/_next/data/test-build/([^/]+?)\\.json$",
+          fallback: "/[slug].html",
+        },
+      ],
+      appPrerenderDataRoutes: [],
+      pprSegmentPrefetchRoutes: [],
+      prerenderResponseMeta: [],
+    },
+  );
+
+  assert.equal(
+    routes.some((route) => route.id === "prerender-fallback-_slug_"),
+    false,
+  );
+  assert.deepEqual(
+    routes.filter((route) => route.id === "_slug_"),
+    [
+      {
+        id: "_slug_",
+        pattern: "^/_next/data/test-build/([^/]+?)\\.json$",
+        type: "page",
+        runtime: "nodejs",
+        params: ["slug"],
+        paramTypes: { slug: "single" },
+        deployPrerenderCacheControl: true,
       },
       {
         id: "_slug_",
@@ -544,9 +621,12 @@ test("pagesApi outputs outside the /api boundary are normalized as Pages routes"
 });
 
 test("Pages SSG dynamic fallback shells use index storage when public children exist", () => {
-  const distDir = "/tmp/brrrd-routing-test/.next";
+  const root = tempRoutingRoot("fallback-shell-child");
+  const distDir = path.join(root, ".next");
+  writeFile(path.join(distDir, "server", "pages", "blog", "[post].html"));
   const routes = compileRouteTable(
     context({
+      projectDir: root,
       pages: [
         {
           id: "/blog/[post]",
@@ -584,7 +664,7 @@ test("Pages SSG dynamic fallback shells use index storage when public children e
     routes.find((route) => route.id === "prerender-fallback-blog-_post_"),
     {
       id: "prerender-fallback-blog-_post_",
-      pattern: "^/blog/([^/]+?)(?:/)?$",
+      pattern: "^\\/blog\\/([^/]+?)(?:\\/)?$",
       type: "prerender",
       runtime: "nodejs",
       bundle: "",
@@ -745,6 +825,14 @@ test("routing manifest carries basePath independently from i18n", () => {
 
   assert.equal(routing.basePath, "/docs");
   assert.equal(routing.i18n, undefined);
+});
+
+test("routing manifest carries trailingSlash for middleware data URL normalization", () => {
+  const routing = compileRouting(context({
+    config: { trailingSlash: true },
+  }));
+
+  assert.equal(routing.trailingSlash, true);
 });
 
 test("executable Pages Router index handlers are exposed at public index paths", () => {
@@ -1266,6 +1354,54 @@ test("i18n default-locale static routes preserve basePath on public aliases", ()
       bundle: "",
       file: "/basepath/_next/data/test-build/en/newpage.json",
       immutable: false,
+    },
+  );
+});
+
+test("i18n default-locale dynamic static aliases preserve route params", () => {
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "fr"], defaultLocale: "en" } },
+    staticFiles: [
+      staticFile("/en/detail/[...slug]", `${distDir}/server/pages/en/detail/[...slug].html`),
+      staticFile(
+        "/_next/data/test-build/en/detail/[...slug].json",
+        `${distDir}/server/pages/en/detail/[...slug].json`,
+      ),
+    ],
+  }));
+
+  assert.deepEqual(
+    routes.find((route) => route.id === "static-en-detail-____slug_-default-locale-alias"),
+    {
+      id: "static-en-detail-____slug_-default-locale-alias",
+      pattern: "^\\/detail\\/(.+?)(?:\\/)?$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/en/detail/[...slug]",
+      immutable: false,
+      headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
+      params: ["slug"],
+      paramTypes: { slug: "catchAll" },
+      localeHandling: "unprefixed",
+    },
+  );
+  assert.deepEqual(
+    routes.find((route) => (
+      route.id === "static-_next-data-test-build-en-detail-____slug__json-default-locale-alias"
+    )),
+    {
+      id: "static-_next-data-test-build-en-detail-____slug__json-default-locale-alias",
+      pattern: "^\\/_next\\/data\\/test\\-build\\/detail\\/(.+?)\\.json(?:\\/)?$",
+      type: "static",
+      runtime: "nodejs",
+      bundle: "",
+      file: "/_next/data/test-build/en/detail/[...slug].json",
+      immutable: false,
+      params: ["slug"],
+      paramTypes: { slug: "catchAll" },
+      localeHandling: "unprefixed",
     },
   );
 });

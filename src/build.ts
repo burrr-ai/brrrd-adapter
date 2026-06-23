@@ -22,6 +22,7 @@ import {
   requestOutputs,
   type AdapterBuildContext,
 } from "./model.js";
+import { nextServerRuntimeEnv } from "./next-config.js";
 import { compileRouteTable, compileRouting } from "./routing-compiler.js";
 import { sanitizeId } from "./routing.js";
 import type { BuildContext, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
@@ -83,6 +84,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     distDir: model.distDir,
     outDir,
     buildId: model.buildId,
+    config: model.config,
   };
 
   console.log(`[@brrrd/adapter] Building for brrrd runtime...`);
@@ -158,8 +160,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   }
 
   const env: Record<string, string> = {
-    NODE_ENV: "production",
-    NEXT_RUNTIME: "nodejs",
+    ...nextServerRuntimeEnv(model.config),
     __NEXT_RELATIVE_PROJECT_DIR: ".",
     __NEXT_RELATIVE_DIST_DIR: ".next",
     __NEXT_PRIVATE_PREBUNDLED_REACT: "next",

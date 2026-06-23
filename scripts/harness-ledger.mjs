@@ -123,6 +123,21 @@ function testNamePatternFromLocalHarness(local) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+export function validateCompletedLocalHarnessResult(local, resultFile) {
+  const hasFinishedAt =
+    typeof local.finishedAt === "string" && Number.isFinite(Date.parse(local.finishedAt));
+  const hasExit = Number.isInteger(local.status) || typeof local.signal === "string";
+  if (hasFinishedAt && hasExit) return;
+
+  const basename = path.basename(resultFile);
+  const expected = basename === "local-harness.json"
+    ? "local-harness-result.json"
+    : "a completed local harness result file";
+  throw new Error(
+    `import-local-harness requires ${expected}; ${resultFile} only contains start metadata`,
+  );
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
@@ -155,6 +170,7 @@ async function main() {
   if (options.command === "import-local-harness") {
     const resultFile = path.resolve(options.result);
     const local = loadJson(resultFile);
+    validateCompletedLocalHarnessResult(local, resultFile);
     const harvestDir = path.resolve(options.harvestDir ?? local.artifactsDir ?? path.dirname(resultFile));
     const testNamePattern = testNamePatternFromLocalHarness(local);
     const result = {

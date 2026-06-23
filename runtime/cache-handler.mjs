@@ -3,7 +3,7 @@
 // be a handler object and must not touch runtime-only Deno ops at module load.
 
 const memoryEntries = new Map();
-const memoryTagTimestamps = new Map();
+const memoryTagStates = new Map();
 const pendingSets = new Map();
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -33,6 +33,15 @@ function hasBrrrdCacheOps() {
     && typeof ops.op_brrrd_cache_set === "function"
     && typeof ops.op_brrrd_cache_revalidate_tag === "function"
     && typeof ops.op_brrrd_cache_tag_expiration === "function"
+  );
+}
+
+function hasBrrrdCacheTagStateOps() {
+  const ops = brrrdOps();
+  return !!(
+    hasBrrrdCacheOps()
+    && typeof ops.op_brrrd_cache_update_tag === "function"
+    && typeof ops.op_brrrd_cache_tag_state === "function"
   );
 }
 
@@ -128,12 +137,51 @@ async function bytesFromStream(stream) {
   return merged;
 }
 
-function maxTagTimestamp(tags) {
-  let max = 0;
-  for (const tag of tags || []) {
-    max = Math.max(max, memoryTagTimestamps.get(tag) || 0);
+function tagStateFromDurations(durations, now) {
+  if (durations) {
+    return {
+      staleAtMs: now,
+      expiredAtMs: durations.expire !== undefined
+        ? now + durations.expire * 1000
+        : 0,
+    };
   }
-  return max;
+  return { staleAtMs: 0, expiredAtMs: now };
+}
+
+function mergeTagState(current, next) {
+  return {
+    staleAtMs: Math.max(current?.staleAtMs || current?.stale_at_ms || 0, next.staleAtMs || 0),
+    expiredAtMs: Math.max(current?.expiredAtMs || current?.expired_at_ms || 0, next.expiredAtMs || 0),
+  };
+}
+
+function maxMemoryTagState(tags) {
+  const out = { staleAtMs: 0, expiredAtMs: 0 };
+  for (const tag of tags || []) {
+    const state = memoryTagStates.get(tag);
+    out.staleAtMs = Math.max(out.staleAtMs, state?.staleAtMs || 0);
+    out.expiredAtMs = Math.max(out.expiredAtMs, state?.expiredAtMs || 0);
+  }
+  return out;
+}
+
+async function maxRuntimeTagState(tags) {
+  const ops = brrrdOps();
+  const out = { staleAtMs: 0, expiredAtMs: 0 };
+  const seen = new Set();
+  for (const tag of tags || []) {
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    if (hasBrrrdCacheTagStateOps()) {
+      const state = await ops.op_brrrd_cache_tag_state(tag);
+      out.staleAtMs = Math.max(out.staleAtMs, state?.staleAtMs || state?.stale_at_ms || 0);
+      out.expiredAtMs = Math.max(out.expiredAtMs, state?.expiredAtMs || state?.expired_at_ms || 0);
+    } else {
+      out.expiredAtMs = Math.max(out.expiredAtMs, await ops.op_brrrd_cache_tag_expiration(tag));
+    }
+  }
+  return out;
 }
 
 function updateNextTagsManifest(tags, durations) {
@@ -156,27 +204,29 @@ function updateNextTagsManifest(tags, durations) {
   }
 }
 
-async function maxRuntimeTagExpiration(tags) {
-  const ops = brrrdOps();
-  let max = 0;
-  const seen = new Set();
-  for (const tag of tags || []) {
-    if (seen.has(tag)) continue;
-    seen.add(tag);
-    max = Math.max(max, await ops.op_brrrd_cache_tag_expiration(tag));
+function cacheEntryWithTagState(entry, tagState) {
+  if (tagState.staleAtMs > entry.timestamp) {
+    return {
+      ...cacheEntryFromStored(entry),
+      revalidate: -1,
+    };
   }
-  return max;
+  return cacheEntryFromStored(entry);
+}
+
+function memoryTagStateForEntry(entry, softTags) {
+  return maxMemoryTagState([
+    ...(entry.tags || []),
+    ...(softTags || []),
+  ]);
 }
 
 function isMemoryEntryExpired(entry, softTags) {
   const now = nowMs();
   if (entry.expire > 0 && now > entry.timestamp + entry.expire * 1000) return true;
   if (entry.revalidate > 0 && now > entry.timestamp + entry.revalidate * 1000) return true;
-  const invalidatedAt = Math.max(
-    maxTagTimestamp(entry.tags),
-    maxTagTimestamp(softTags),
-  );
-  return invalidatedAt > 0 && entry.timestamp <= invalidatedAt;
+  const tagState = memoryTagStateForEntry(entry, softTags);
+  return tagState.expiredAtMs <= now && tagState.expiredAtMs > entry.timestamp;
 }
 
 function cacheEntryFromStored(stored) {
@@ -205,7 +255,7 @@ class BrrrdCacheHandler {
     if (!hasBrrrdCacheOps()) {
       const entry = memoryEntries.get(cacheKey);
       if (!entry || isMemoryEntryExpired(entry, softTags)) return undefined;
-      return cacheEntryFromStored(entry);
+      return cacheEntryWithTagState(entry, memoryTagStateForEntry(entry, softTags));
     }
 
     const res = await ops.op_brrrd_cache_get(cacheKey);
@@ -214,11 +264,12 @@ class BrrrdCacheHandler {
 
     const timestamp = nowMs() - Math.floor((res.age_secs || 0) * 1000);
     const stored = decodeStoredEntry(res.value, res.tags || [], timestamp);
-    const invalidatedAt = await maxRuntimeTagExpiration([
+    const tagState = await maxRuntimeTagState([
       ...(stored.tags || []),
       ...(softTags || []),
     ]);
-    if (invalidatedAt > 0 && stored.timestamp <= invalidatedAt) {
+    const now = nowMs();
+    if (tagState.expiredAtMs <= now && tagState.expiredAtMs > stored.timestamp) {
       return undefined;
     }
     return {
@@ -227,7 +278,9 @@ class BrrrdCacheHandler {
       stale: stored.stale,
       timestamp: stored.timestamp,
       expire: stored.expire,
-      revalidate: stored.revalidate,
+      revalidate: tagState.staleAtMs > stored.timestamp
+        ? -1
+        : stored.revalidate,
     };
   }
 
@@ -271,18 +324,21 @@ class BrrrdCacheHandler {
 
   async getExpiration(tags) {
     if (hasBrrrdCacheOps()) {
-      return maxRuntimeTagExpiration(tags);
+      return (await maxRuntimeTagState(tags)).expiredAtMs;
     }
-    return maxTagTimestamp(tags);
+    return maxMemoryTagState(tags).expiredAtMs;
   }
 
   async updateTags(tags, durations) {
     updateNextTagsManifest(tags, durations);
     const now = nowMs();
+    const state = tagStateFromDurations(durations, now);
     for (const tag of tags) {
-      memoryTagTimestamps.set(tag, now);
+      memoryTagStates.set(tag, mergeTagState(memoryTagStates.get(tag), state));
       const ops = brrrdOps();
-      if (hasBrrrdCacheOps()) {
+      if (hasBrrrdCacheTagStateOps()) {
+        await ops.op_brrrd_cache_update_tag(tag, state.staleAtMs, state.expiredAtMs);
+      } else if (hasBrrrdCacheOps() && state.expiredAtMs > 0) {
         await ops.op_brrrd_cache_revalidate_tag(tag);
       }
     }

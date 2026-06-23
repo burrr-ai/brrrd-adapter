@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "node:test";
 import * as esbuild from "esbuild";
 
@@ -50,6 +51,23 @@ function entry(bytes, tags = []) {
 
 function tempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-${prefix}-`));
+}
+
+function cacheFs() {
+  return {
+    existsSync: fs.existsSync,
+    readFile: fs.promises.readFile,
+    readFileSync: fs.readFileSync,
+    writeFile: (file, data) => fs.promises.writeFile(file, data),
+    mkdir: (dir) => fs.promises.mkdir(dir, { recursive: true }),
+    stat: fs.promises.stat,
+  };
+}
+
+async function freshLegacyCacheHandlerClass() {
+  const url = pathToFileURL(path.join(repoRoot, "runtime/cache-handler-legacy.mjs"));
+  url.search = `fresh=${Date.now()}-${Math.random()}`;
+  return (await import(url.href)).BrrrdLegacyCacheHandler;
 }
 
 test("modern cache handler default export is the CacheHandler object", () => {
@@ -119,6 +137,130 @@ test("modern cache handler delegates tag expiration to brrrd ops", async () => {
 
     await cacheHandler.updateTags(["tag:runtime"]);
     assert.equal(await cacheHandler.getExpiration(["tag:runtime"]), 12345);
+  } finally {
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
+});
+
+test("modern cache handler treats duration tag updates as stale before hard expiration", async () => {
+  const previousDeno = globalThis.Deno;
+  const tagStates = new Map();
+  const stored = new Map();
+  try {
+    globalThis.Deno = {
+      core: {
+        ops: {
+          async op_brrrd_cache_get(key) {
+            return stored.get(key);
+          },
+          async op_brrrd_cache_set(key, value, tags) {
+            stored.set(key, {
+              value,
+              tags,
+              is_expired: false,
+              age_secs: 0,
+            });
+          },
+          async op_brrrd_cache_update_tag(tag, staleAtMs, expiredAtMs) {
+            const existing = tagStates.get(tag) ?? { staleAtMs: 0, expiredAtMs: 0 };
+            tagStates.set(tag, {
+              staleAtMs: Math.max(existing.staleAtMs, staleAtMs),
+              expiredAtMs: Math.max(existing.expiredAtMs, expiredAtMs),
+            });
+            return 0;
+          },
+          async op_brrrd_cache_revalidate_tag() {
+            throw new Error("duration tag updates should use tag state, not hard expiration");
+          },
+          async op_brrrd_cache_tag_state(tag) {
+            return tagStates.get(tag) ?? { staleAtMs: 0, expiredAtMs: 0 };
+          },
+          async op_brrrd_cache_tag_expiration(tag) {
+            return tagStates.get(tag)?.expiredAtMs ?? 0;
+          },
+        },
+      },
+    };
+
+    const bytes = new TextEncoder().encode("duration-stale payload");
+    const sourceEntry = {
+      ...entry(bytes, ["tag:max"]),
+      timestamp: Date.now() - 1000,
+      revalidate: 3600,
+    };
+    await cacheHandler.set("runtime-duration-tag-key", Promise.resolve(sourceEntry));
+    assert.ok(await cacheHandler.get("runtime-duration-tag-key", []));
+
+    await cacheHandler.updateTags(["tag:max"], { expire: 60 });
+    const staleHit = await cacheHandler.get("runtime-duration-tag-key", []);
+
+    assert.ok(staleHit);
+    assert.equal(staleHit.revalidate, -1);
+    assert.deepEqual(await bytesFromStream(staleHit.value), bytes);
+  } finally {
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
+});
+
+test("modern cache handler treats duration-free tag updates as immediate hard expiration", async () => {
+  const previousDeno = globalThis.Deno;
+  const tagStates = new Map();
+  const stored = new Map();
+  try {
+    globalThis.Deno = {
+      core: {
+        ops: {
+          async op_brrrd_cache_get(key) {
+            return stored.get(key);
+          },
+          async op_brrrd_cache_set(key, value, tags) {
+            stored.set(key, {
+              value,
+              tags,
+              is_expired: false,
+              age_secs: 0,
+            });
+          },
+          async op_brrrd_cache_update_tag(tag, staleAtMs, expiredAtMs) {
+            const existing = tagStates.get(tag) ?? { staleAtMs: 0, expiredAtMs: 0 };
+            tagStates.set(tag, {
+              staleAtMs: Math.max(existing.staleAtMs, staleAtMs),
+              expiredAtMs: Math.max(existing.expiredAtMs, expiredAtMs),
+            });
+            return 0;
+          },
+          async op_brrrd_cache_revalidate_tag() {
+            throw new Error("tag-state ops should handle immediate hard expiration");
+          },
+          async op_brrrd_cache_tag_state(tag) {
+            return tagStates.get(tag) ?? { staleAtMs: 0, expiredAtMs: 0 };
+          },
+          async op_brrrd_cache_tag_expiration(tag) {
+            return tagStates.get(tag)?.expiredAtMs ?? 0;
+          },
+        },
+      },
+    };
+
+    const bytes = new TextEncoder().encode("duration-free payload");
+    const sourceEntry = {
+      ...entry(bytes, ["tag:immediate"]),
+      timestamp: Date.now() - 1000,
+      revalidate: 3600,
+    };
+    await cacheHandler.set("runtime-immediate-tag-key", Promise.resolve(sourceEntry));
+    assert.ok(await cacheHandler.get("runtime-immediate-tag-key", []));
+
+    await cacheHandler.updateTags(["tag:immediate"]);
+    assert.equal(await cacheHandler.get("runtime-immediate-tag-key", []), undefined);
   } finally {
     if (previousDeno === undefined) {
       delete globalThis.Deno;
@@ -344,6 +486,101 @@ test("legacy cache handler does not read Date.now during get/set/revalidate", as
   }
 });
 
+test("legacy cache handler persists build-time fetch cache entries to disk", async () => {
+  const tmp = tempDir("legacy-build-fetch-");
+  const serverDistDir = path.join(tmp, ".next", "server");
+  const FirstHandler = await freshLegacyCacheHandlerClass();
+  const first = new FirstHandler({
+    fs: cacheFs(),
+    flushToDisk: true,
+    serverDistDir,
+  });
+
+  await first.set(
+    "fetch-key",
+    {
+      kind: "FETCH",
+      data: {
+        headers: {},
+        body: "cached fetch payload",
+        status: 200,
+        url: "https://example.test/data",
+      },
+      revalidate: 900,
+    },
+    {
+      fetchCache: true,
+      tags: ["tag:fetch"],
+      revalidate: 900,
+    },
+  );
+
+  const SecondHandler = await freshLegacyCacheHandlerClass();
+  const second = new SecondHandler({
+    fs: cacheFs(),
+    flushToDisk: true,
+    serverDistDir,
+  });
+  const hit = await second.get("fetch-key", {
+    kind: "FETCH",
+    tags: ["tag:fetch"],
+    softTags: [],
+  });
+
+  assert.ok(hit);
+  assert.equal(hit.value.kind, "FETCH");
+  assert.equal(hit.value.data.body, "cached fetch payload");
+  assert.deepEqual(hit.value.tags, ["tag:fetch"]);
+});
+
+test("legacy cache handler persists build-time app page entries to disk", async () => {
+  const tmp = tempDir("legacy-build-app-page-");
+  const serverDistDir = path.join(tmp, ".next", "server");
+  const FirstHandler = await freshLegacyCacheHandlerClass();
+  const first = new FirstHandler({
+    fs: cacheFs(),
+    flushToDisk: true,
+    serverDistDir,
+  });
+
+  await first.set(
+    "/",
+    {
+      kind: "APP_PAGE",
+      html: "<html><body>shell</body></html>",
+      rscData: Buffer.from("full-rsc"),
+      postponed: "postponed-state",
+      headers: { "x-next-cache-tags": "tag:page" },
+      status: 200,
+      segmentData: new Map([
+        ["/__PAGE__", Buffer.from("segment-rsc")],
+      ]),
+    },
+    {
+      isRoutePPREnabled: true,
+      isFallback: false,
+    },
+  );
+
+  const SecondHandler = await freshLegacyCacheHandlerClass();
+  const second = new SecondHandler({
+    fs: cacheFs(),
+    flushToDisk: true,
+    serverDistDir,
+  });
+  const hit = await second.get("/", {
+    kind: "APP_PAGE",
+    isRoutePPREnabled: true,
+    isFallback: false,
+  });
+
+  assert.ok(hit);
+  assert.equal(hit.value.kind, "APP_PAGE");
+  assert.equal(hit.value.html, "<html><body>shell</body></html>");
+  assert.equal(hit.value.postponed, "postponed-state");
+  assert.equal(hit.value.segmentData.get("/__PAGE__").toString(), "segment-rsc");
+});
+
 test("legacy cache handler stores response cache tags from Next headers", async () => {
   const previousDeno = globalThis.Deno;
   const capturedSets = [];
@@ -502,6 +739,54 @@ test("legacy cache handler discards runtime entries invalidated by stored or sof
   }
 });
 
+test("legacy cache handler adds newly requested tags to FETCH entries", async () => {
+  const previousDeno = globalThis.Deno;
+  const stored = new Map();
+  try {
+    globalThis.Deno = {
+      core: {
+        ops: {
+          async op_brrrd_cache_get(key) {
+            return stored.get(key);
+          },
+          async op_brrrd_cache_set(key, value, tags, ttl) {
+            stored.set(key, {
+              value,
+              tags,
+              ttl,
+              is_expired: false,
+              age_secs: 0,
+            });
+          },
+          async op_brrrd_cache_revalidate_tag() {
+            return 0;
+          },
+          async op_brrrd_cache_tag_expiration() {
+            return 0;
+          },
+        },
+      },
+    };
+
+    const legacy = new LegacyCacheHandler();
+    await legacy.set(
+      "legacy-new-tags-key",
+      { kind: "FETCH", data: "payload", revalidate: false },
+      { tags: ["tag:a"], revalidate: 900 },
+    );
+
+    assert.ok(await legacy.get("legacy-new-tags-key", { tags: ["tag:a"] }));
+    assert.ok(await legacy.get("legacy-new-tags-key", { tags: ["tag:a", "tag:b"] }));
+    assert.deepEqual(stored.get("legacy-new-tags-key").tags, ["tag:a", "tag:b"]);
+  } finally {
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
+});
+
 test("legacy cache handler reads build-time PPR APP_PAGE entries from serverDistDir", async () => {
   const previousDeno = globalThis.Deno;
   const root = tempDir("legacy-app-page");
@@ -566,6 +851,87 @@ test("legacy cache handler reads build-time PPR APP_PAGE entries from serverDist
     assert.deepEqual(Array.from(hit.value.segmentData.keys()), ["/_tree", "/$d$slug/__PAGE__"]);
     assert.equal(hit.value.segmentData.get("/_tree").toString(), "tree");
     assert.equal(hit.value.segmentData.get("/$d$slug/__PAGE__").toString(), "page");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
+});
+
+test("legacy cache handler resolves dynamic build-time PPR APP_PAGE templates for concrete params", async () => {
+  const previousDeno = globalThis.Deno;
+  const root = tempDir("legacy-dynamic-app-page");
+  try {
+    const serverDistDir = path.join(root, ".next", "server");
+    const appDir = path.join(serverDistDir, "app");
+    fs.mkdirSync(path.join(appDir, "[teamSlug]", "[project].segments", "$d$teamSlug", "$d$project"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(appDir, "[teamSlug]", "[project].html"),
+      "<main>team project shell</main>",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(appDir, "[teamSlug]", "[project].meta"),
+      JSON.stringify({
+        status: 200,
+        headers: {
+          "x-next-cache-tags": "_N_T_/[teamSlug]/[project],tag:page",
+        },
+        postponed: "postponed-state",
+        segmentPaths: ["/$d$teamSlug/$d$project/__PAGE__"],
+      }),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(
+        appDir,
+        "[teamSlug]",
+        "[project].segments",
+        "$d$teamSlug",
+        "$d$project",
+        "__PAGE__.segment.rsc",
+      ),
+      "dynamic-page-segment",
+    );
+
+    globalThis.Deno = {
+      core: {
+        ops: {
+          async op_brrrd_cache_get() {
+            return null;
+          },
+          async op_brrrd_cache_set() {},
+          async op_brrrd_cache_revalidate_tag() {
+            return 0;
+          },
+          async op_brrrd_cache_tag_expiration() {
+            return 0;
+          },
+        },
+      },
+    };
+
+    const legacy = new LegacyCacheHandler({ serverDistDir });
+    const hit = await legacy.get("/acme/dashboard", {
+      kind: "APP_PAGE",
+      isRoutePPREnabled: true,
+      isFallback: false,
+    });
+
+    assert.ok(hit);
+    assert.equal(hit.value.kind, "APP_PAGE");
+    assert.equal(hit.value.html, "<main>team project shell</main>");
+    assert.equal(hit.value.postponed, "postponed-state");
+    assert.equal(hit.value.status, 200);
+    assert.equal(
+      hit.value.segmentData.get("/$d$teamSlug/$d$project/__PAGE__").toString(),
+      "dynamic-page-segment",
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
     if (previousDeno === undefined) {
@@ -759,12 +1125,18 @@ test("modern cache handler discards runtime entries invalidated by entry or soft
     };
 
     const bytes = new TextEncoder().encode("stale runtime payload");
-    await cacheHandler.set("runtime-explicit-tag-key", Promise.resolve(entry(bytes, ["tag:explicit"])));
+    await cacheHandler.set("runtime-explicit-tag-key", Promise.resolve({
+      ...entry(bytes, ["tag:explicit"]),
+      timestamp: Date.now() - 1000,
+    }));
     assert.ok(await cacheHandler.get("runtime-explicit-tag-key", []));
     await cacheHandler.updateTags(["tag:explicit"]);
     assert.equal(await cacheHandler.get("runtime-explicit-tag-key", []), undefined);
 
-    await cacheHandler.set("runtime-soft-tag-key", Promise.resolve(entry(bytes, [])));
+    await cacheHandler.set("runtime-soft-tag-key", Promise.resolve({
+      ...entry(bytes, []),
+      timestamp: Date.now() - 1000,
+    }));
     assert.ok(await cacheHandler.get("runtime-soft-tag-key", ["tag:soft"]));
     await cacheHandler.updateTags(["tag:soft"]);
     assert.equal(await cacheHandler.get("runtime-soft-tag-key", ["tag:soft"]), undefined);

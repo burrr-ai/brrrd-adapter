@@ -28,9 +28,8 @@ import {
   pagesStaticDataPathname,
 } from "./pages-static-data.js";
 import {
-  pagesDynamicFallbackPublicPathname,
   pagesDynamicFallbackPublicPathnames,
-  pagesDynamicFallbackSourcePath,
+  pagesDynamicFallbackShell,
 } from "./pages-dynamic-prerender.js";
 import { basePath } from "./next-config.js";
 
@@ -297,7 +296,7 @@ function prerenderPublicArtifact(
   responseMeta?: SupplementStaticResponseMeta,
 ): PrerenderPublicArtifact | null {
   if (isAuxiliaryPrerenderPath(prerender.pathname)) return null;
-  if (isDynamicPrerenderTemplatePath(prerender.pathname, dynamicPrerenderRoutes)) return null;
+  if (isDynamicPrerenderTemplatePath(model, prerender.pathname, dynamicPrerenderRoutes)) return null;
 
   const dataRel = nextDataRoutePathname(model, prerender.pathname);
   if (dataRel) return prerenderDataArtifact(model, prerender, dataRel);
@@ -349,19 +348,18 @@ function pagesDynamicFallbackArtifacts(
     ...pagesDynamicFallbackPublicPathnames(model, supplement.dynamicPrerenderRoutes),
   ]);
   for (const route of supplement.dynamicPrerenderRoutes) {
-    const pathname = pagesDynamicFallbackPublicPathname(model, route);
-    const sourceAbsPath = pagesDynamicFallbackSourcePath(model, route);
-    if (!pathname || !sourceAbsPath) continue;
+    const shell = pagesDynamicFallbackShell(model, route);
+    if (!shell) continue;
     items.push(artifactItem(model, {
       id: `prerender-fallback:${sanitizeId(route.page)}`,
       kind: "prerender",
       ownerRouteId: `prerender-fallback-${sanitizeId(route.page)}`,
-      sourceAbsPath,
+      sourceAbsPath: shell.sourceAbsPath,
       packagePath: packageJoin(
         "static",
-        publicStoragePackagePath(pathname, allPublicPathnames),
+        publicStoragePackagePath(shell.publicPathname, allPublicPathnames),
       ),
-      mountPath: pathname,
+      mountPath: shell.publicPathname,
       contentType: "text/html; charset=utf-8",
       required: true,
       reason: "Pages Router dynamic SSG fallback shell served before invoking the handler",

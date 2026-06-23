@@ -38,8 +38,8 @@ import {
 import { sanitizeId } from "./routing.js";
 import { basePath } from "./next-config.js";
 import {
-  pagesDynamicFallbackPublicPathname,
   pagesDynamicFallbackPublicPathnames,
+  pagesDynamicFallbackShell,
 } from "./pages-dynamic-prerender.js";
 import { isPagesRscFallbackOutput, pagesStaticDataPathname } from "./pages-static-data.js";
 
@@ -337,6 +337,7 @@ export function compileRouting(
   const configuredBasePath = basePath(model.config);
   return {
     ...(configuredBasePath ? { basePath: configuredBasePath } : {}),
+    ...(trailingSlashEnabled(model.config) ? { trailingSlash: true as const } : {}),
     ...(i18n ? { i18n } : {}),
     headers,
     redirects,
@@ -614,6 +615,16 @@ function publicRouteAlias(
   aliasKind: "default-locale" | "encoded",
 ): BrrrdRoute {
   const { params: _params, paramTypes: _paramTypes, ...rest } = route;
+  if (aliasKind === "default-locale" && aliasPathname.includes("[")) {
+    return {
+      ...rest,
+      id: `${route.id}-${aliasKind}-alias`,
+      pattern: routeRegexFromPathname(aliasPathname),
+      params: segmentParamNames(aliasPathname),
+      paramTypes: segmentParamTypes(aliasPathname),
+      localeHandling: "unprefixed",
+    };
+  }
   return {
     ...rest,
     id: `${route.id}-${aliasKind}-alias`,
@@ -984,6 +995,7 @@ function dynamicRoute(
     prerenderBypass?: BrrrdRoute["prerenderBypass"];
     pprResume?: BrrrdRoute["pprResume"];
     pprFallbackRouteParams?: BrrrdRoute["pprFallbackRouteParams"];
+    deployPrerenderCacheControl?: boolean;
   } = {},
 ): BrrrdRoute {
   const sourcePathname = sourcePagePathname(model, output);
@@ -1011,6 +1023,7 @@ function dynamicRoute(
     ...(options.pprFallbackRouteParams && options.pprFallbackRouteParams.length > 0
       ? { pprFallbackRouteParams: options.pprFallbackRouteParams }
       : {}),
+    ...(options.deployPrerenderCacheControl ? { deployPrerenderCacheControl: true } : {}),
     ...(hasInterceptMarker(output.pathname) ? { intercepted: true } : {}),
   };
 }
@@ -1071,6 +1084,7 @@ function dynamicPrerenderDataRoute(
     previewOnly: route.fallback === false,
     pprResume: pprResumeForOutput(output, pprResumes),
     pprFallbackRouteParams: route.fallbackRouteParams,
+    deployPrerenderCacheControl: route.fallback !== false,
   });
 }
 
@@ -1079,15 +1093,15 @@ function dynamicPrerenderFallbackRoute(
   route: SupplementDynamicPrerenderRoute,
   allPublicPathnames: readonly string[],
 ): BrrrdRoute | null {
-  const pathname = pagesDynamicFallbackPublicPathname(model, route);
-  if (!pathname) return null;
+  const shell = pagesDynamicFallbackShell(model, route);
+  if (!shell) return null;
   return {
     id: `prerender-fallback-${sanitizeId(route.page)}`,
-    pattern: route.routeRegex,
+    pattern: routeRegexFromPathname(shell.publicPathname),
     type: "prerender",
     runtime: "nodejs",
     bundle: "",
-    file: publicStorageFilePath(pathname, allPublicPathnames),
+    file: publicStorageFilePath(shell.publicPathname, allPublicPathnames),
     headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
     pagesFallbackShell: true,
   };
@@ -1207,7 +1221,7 @@ export function compileRouteTable(
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {
     if (isAuxiliaryPrerenderPath(pr.pathname)) continue;
-    if (isDynamicPrerenderTemplatePath(pr.pathname, supplement?.dynamicPrerenderRoutes)) continue;
+    if (isDynamicPrerenderTemplatePath(model, pr.pathname, supplement?.dynamicPrerenderRoutes)) continue;
     if (isRouteHandlerPrerender(model, pr) && !isStaticRouteHandlerPrerender(model, pr, staticMeta)) {
       continue;
     }

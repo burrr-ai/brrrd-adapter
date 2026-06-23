@@ -49,6 +49,16 @@ persist_final_diagnostics() {
       cp "$file" "$dest/$safe_file"
     fi
   done
+
+  if [[ -d ".next/static" ]]; then
+    while IFS= read -r -d '' file; do
+      local safe_file="$file"
+      safe_file="${safe_file#.}"
+      safe_file="${safe_file//\/./\/}"
+      mkdir -p "$dest/$(dirname "$safe_file")"
+      cp "$file" "$dest/$safe_file"
+    done < <(find .next/static -type f \( -name "_buildManifest.js" -o -name "_ssgManifest.js" \) -print0)
+  fi
 }
 
 trap 'persist_final_diagnostics || true' EXIT

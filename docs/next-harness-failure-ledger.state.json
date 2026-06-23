@@ -1,21 +1,17 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-22T17:53:11.830Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+  "updatedAt": "2026-06-23T11:11:06.903Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T10-43-07-418Z-verify-ppr-dynamic-template-cache-hit-rerun",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "fail",
-    "resultCount": 256,
-    "failureCount": 3,
-    "buckets": {
-      "bundler output shape": 1,
-      "unclassified": 1,
-      "segment-cache/PPR prefetch": 1
-    }
+    "status": "pass",
+    "resultCount": 1,
+    "failureCount": 0,
+    "buckets": {}
   },
   "counts": {
-    "closed": 30,
-    "open": 23
+    "closed": 40,
+    "open": 13
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -32,6 +28,7 @@
       "messages": [
         "FAIL webpack test/e2e/app-dir/next-after-app-deploy/index.test.ts "
       ],
+      "targetFixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts",
       "targetName": "cache-revalidate-isr-bucket-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-ee3ac3d1",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-46-45-600Z-cache-revalidate-isr-bucket/target-logs/cache-revalidate-isr-bucket-webpack-fixture-test-e2e-app-dir-next-after-app-deploy-index.test.ts-ee3ac3d1.stdout.log",
@@ -50,7 +47,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-46-45-600Z-cache-revalidate-isr-bucket",
       "closedAt": "2026-06-22T05:57:28.168Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup",
-      "targetFixture": "test/e2e/app-dir/next-after-app-deploy/index.test.ts",
       "lastVerifiedAt": "2026-06-22T05:57:28.168Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-56-15-337Z-next-after-encoded-slash-lookup",
       "closeReason": "fixture passed in later harvest",
@@ -285,6 +281,7 @@
         "- /Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/runs/2026-06-22T17-04-40-228Z-dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70/tmp/next-test-1782147895223-456/node_modules/.pnpm/sqlite3@5.0.2/node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
         "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
+      "targetFixture": "test/e2e/prerender-native-module.test.ts",
       "targetName": "dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-43-64-test-e2e-prerender-native-module.test.ts-82951b70.stdout.log",
@@ -303,8 +300,7 @@
       "lastFailureAt": "2026-06-22T17:16:38.854Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "closedAt": null,
-      "closedByRun": null,
-      "targetFixture": "test/e2e/prerender-native-module.test.ts"
+      "closedByRun": null
     },
     "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-rewrite-detection-regression/optimistic-routing-rewrite-detection-regression.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/optimistic-routing-rewrite-detection-regression/optimistic-routing-rewrite-detection-regression.test.ts",
@@ -382,6 +378,7 @@
         "● prefetch inlining › preserves prefetch hints after on-demand revalidation",
         "Expected: not \"0.7781621762721311\""
       ],
+      "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
       "targetName": "ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b1a2a53d",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume/target-logs/ppr-runtime-prefetch-resume-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-prefetch-inlining.test.ts-b1a2a53d.stdout.log",
@@ -404,7 +401,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-11-06-976Z-ppr-runtime-prefetch-resume",
       "closedAt": "2026-06-22T04:22:40.751Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration",
-      "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-inlining/prefetch-inlining.test.ts",
       "lastVerifiedAt": "2026-06-22T04:22:40.751Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T04-21-56-801Z-ppr-revalidate-tag-expiration",
       "closeReason": "fixture passed in later harvest",
@@ -435,6 +431,7 @@
       "messages": [
         "FAIL webpack test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts "
       ],
+      "targetFixture": "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
       "targetName": "open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-e562e305",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher/target-logs/open-ledger-refresh-after-pages-dispatcher-webpack-fixture-test-e2e-app-dir-use-cache-metadata-route-handler-use-cache-metadata-route-handl-e562e305.stdout.log",
@@ -457,7 +454,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-27-08-539Z-open-ledger-refresh-after-pages-dispatcher",
       "closedAt": "2026-06-22T09:09:11.925Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static",
-      "targetFixture": "test/e2e/app-dir/use-cache-metadata-route-handler/use-cache-metadata-route-handler.test.ts",
       "lastVerifiedAt": "2026-06-22T09:09:11.925Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-08-39-746Z-metadata-route-prerender-body-static",
       "closeReason": "fixture passed in later harvest",
@@ -740,6 +736,7 @@
       "messages": [
         "FAIL webpack test/e2e/twoslash/index.test.ts "
       ],
+      "targetFixture": "test/e2e/twoslash/index.test.ts",
       "targetName": "twoslash-runtime-asset-classification-webpack-fixture-test-e2e-twoslash-index.test.ts-6a6e5ae1",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-54-37-003Z-twoslash-runtime-asset-classification/target-logs/twoslash-runtime-asset-classification-webpack-fixture-test-e2e-twoslash-index.test.ts-6a6e5ae1.stdout.log",
@@ -755,7 +752,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T08-54-37-003Z-twoslash-runtime-asset-classification",
       "closedAt": "2026-06-22T09:03:33.340Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main",
-      "targetFixture": "test/e2e/twoslash/index.test.ts",
       "lastVerifiedAt": "2026-06-22T09:03:33.340Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-02-59-459Z-twoslash-require-resolve-package-main",
       "closeReason": "fixture passed in later harvest",
@@ -786,6 +782,7 @@
       "messages": [
         "target deferred after 300000ms and was stopped so harvest can continue"
       ],
+      "targetFixture": "test/e2e/prerender.test.ts",
       "targetName": "pages-prerender-static-serving-webpack-fixture-test-e2e-prerender.test.ts-0cc8d00c",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-21-02-018Z-pages-prerender-static-serving/target-logs/pages-prerender-static-serving-webpack-fixture-test-e2e-prerender.test.ts-0cc8d00c.stdout.log",
@@ -808,7 +805,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T09-21-02-018Z-pages-prerender-static-serving",
       "closedAt": "2026-06-22T10:21:05.246Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
-      "targetFixture": "test/e2e/prerender.test.ts",
       "lastVerifiedAt": "2026-06-22T10:21:05.246Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T10-19-13-548Z-pages-prerender-deploy-cache-policy",
       "closeReason": "fixture passed in later harvest",
@@ -849,6 +845,7 @@
         "at text (e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts:54:59)",
         "Ran all test suites matching /test\\/e2e\\/app-dir\\/partial-prefetching-config\\/partial-prefetching-config.test.ts/i."
       ],
+      "targetFixture": "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
       "targetName": "ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-3f7187c7",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post/target-logs/ppr-partial-prefetch-after-document-resume-post-webpack-fixture-test-e2e-app-dir-partial-prefetching-config-partial-prefetching-config.test.ts-3f7187c7.stdout.log",
@@ -867,7 +864,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-09-20-165Z-ppr-partial-prefetch-after-document-resume-post",
       "closedAt": "2026-06-22T03:21:01.046Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine",
-      "targetFixture": "test/e2e/app-dir/partial-prefetching-config/partial-prefetching-config.test.ts",
       "lastVerifiedAt": "2026-06-22T03:21:01.046Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T03-20-22-993Z-ppr-partial-prefetch-after-shell-tail-combine",
       "closeReason": "fixture passed in later harvest",
@@ -899,6 +895,7 @@
         "FAIL webpack test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts ",
         "FetchError: invalid json response body at http://127.0.0.1:58322/node reason: Unexpected token 'I', \"Internal S\"... is not valid JSON"
       ],
+      "targetFixture": "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
       "targetName": "cache-entry-metadata-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-9a61504d",
       "logs": {
         "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-20-05-480Z-cache-entry-metadata-use-cache/target-logs/cache-entry-metadata-use-cache-webpack-fixture-test-e2e-app-dir-use-cache-route-handler-only-use-cache-route-handler-only.test.-9a61504d.stdout.log",
@@ -917,7 +914,6 @@
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-20-05-480Z-cache-entry-metadata-use-cache",
       "closedAt": "2026-06-22T05:26:20.119Z",
       "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache",
-      "targetFixture": "test/e2e/app-dir/use-cache-route-handler-only/use-cache-route-handler-only.test.ts",
       "lastVerifiedAt": "2026-06-22T05:26:20.119Z",
       "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T05-25-43-941Z-cache-date-free-use-cache",
       "closeReason": "fixture passed in later harvest",
@@ -1437,31 +1433,31 @@
       "id": "webpack|test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "firstSeenAt": "2026-06-22T01:40:58.708Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T01-03-33-668Z-webpack-49-64-harvest",
-      "failureCount": 33,
+      "failureCount": 35,
       "passCount": 1,
       "bundler": "webpack",
-      "group": "56/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
         "FAIL webpack test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts ",
-        "at collectSegmentPrefetchResponses (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:92:21)",
-        "at collectSegmentPrefetchResponses (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:104:5)",
+        "at collectSegmentPrefetchResponsesFromBackForwardNavigation (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:182:5)",
+        "at collectSegmentPrefetchResponsesFromProductionShapeNavigation (e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts:274:7)",
         "⨯ prefetchInlining",
-        "at __eventLoopTick (ext:core/01_core.js:461:33) Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
         "Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
-        "2026-06-22T17:35:32.085279Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=13 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
-        "2026-06-22T17:35:32.094205Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=14 route=_teamSlug_-_project__rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
-        "2026-06-22T17:35:32.922934Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=16 route=_teamSlug_-_project_-settings_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
-        "2026-06-22T17:35:32.928707Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=17 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
-        "2026-06-22T17:35:33.431975Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=19 route=_teamSlug_-_project_-settings_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic."
+        "2026-06-23T04:52:52.336517Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=191 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "at __eventLoopTick (ext:core/01_core.js:461:33) Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-23T04:52:52.340953Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=192 route=_teamSlug_-_project__rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-23T04:52:52.537425Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=194 route=_teamSlug_-_project_-settings_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-23T04:52:52.733237Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=195 route=_teamSlug_-_project_-settings-domains_rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic.",
+        "2026-06-23T04:52:52.742274Z  WARN brrrd::app_log: brrrd.app.log log_kind=\"app\" service_id=default build_id=build-TfctsWXpff2fKS request_id=196 route=_teamSlug_-_project__rsc trace_id= span_id= level=warn error_class=\"\" error_stack=Error: Unexpected cache miss after cache warming phase during prerendering. This is likely caused by non-deterministic arguments that differ between the cache warming phase and the final prerender phase (e.g. unstable array order). Ensure that arguments passed to cached functions are deterministic."
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/vary-params-base-dynamic/vary-params-base-dynamic.test.ts",
-      "targetName": "dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a",
+      "targetName": "verify-ppr-representatives-after-cache-overlay-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-1bde717b",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64/target-logs/dirty-baseline-webpack-49-64-webpack-56-64-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-0957591a.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T04-46-49-918Z-verify-ppr-representatives-after-cache-overlay/target-logs/verify-ppr-representatives-after-cache-overlay-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-1bde717b.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T04-46-49-918Z-verify-ppr-representatives-after-cache-overlay/target-logs/verify-ppr-representatives-after-cache-overlay-webpack-fixture-test-e2e-app-dir-segment-cache-vary-params-base-dynamic-vary-params-base-dynamic-1bde717b.stderr.log"
       },
       "testTitles": [
         "segment cache - vary params base dynamic",
@@ -1469,10 +1465,10 @@
         "keeps dynamic segment params valid before and after time-based revalidation"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-22T17:53:11.830Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
-      "lastFailureAt": "2026-06-22T17:53:11.830Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "lastSeenAt": "2026-06-23T05:01:14.725Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T04-46-49-918Z-verify-ppr-representatives-after-cache-overlay",
+      "lastFailureAt": "2026-06-23T05:01:14.725Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T04-46-49-918Z-verify-ppr-representatives-after-cache-overlay",
       "closedAt": null,
       "closedByRun": null,
       "lastVerifiedAt": "2026-06-22T13:41:59.829Z",
@@ -1766,65 +1762,81 @@
       "id": "webpack|test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
       "firstSeenAt": "2026-06-22T15:53:31.765Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "7/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
       "bucket": "middleware/proxy",
       "messages": [
         "FAIL webpack test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts ",
-        "Expected: 404",
-        "Received: 200"
+        "[brrrd-harness] build app failed with exit status 1",
+        "Error: Pages Router prerender data JSON served without invoking the handler does not exist: /Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath/runs/2026-06-23T00-11-11-717Z-verify-routing-order-query-basepath-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-7e34/tmp/next-test-1782173485941-174/.next/server/pages/[path]/[[...pages]].json",
+        "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
       "targetFixture": "test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
-      "targetName": "dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c",
+      "targetName": "verify-routing-order-query-basepath-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-7e347f75",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-7-64-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-8f14343c.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath/target-logs/verify-routing-order-query-basepath-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-7e347f75.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath/target-logs/verify-routing-order-query-basepath-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-7e347f75.stderr.log"
       },
       "testTitles": [
         "Middleware custom matchers basePath"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T15:53:31.765Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "lastFailureAt": "2026-06-22T15:53:31.765Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T00:20:11.501Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-19-37-873Z-verify-middleware-basepath-fallback-template",
+      "lastFailureAt": "2026-06-23T00:11:52.885Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath",
+      "closedAt": "2026-06-23T00:20:11.501Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-19-37-873Z-verify-middleware-basepath-fallback-template",
+      "lastVerifiedAt": "2026-06-23T00:20:11.501Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-19-37-873Z-verify-middleware-basepath-fallback-template",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/middleware-dynamic-basepath-matcher/test/index.test.ts",
+        "name": "verify-middleware-basepath-fallback-template-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-80f7b2d6",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-19-37-873Z-verify-middleware-basepath-fallback-template/target-logs/verify-middleware-basepath-fallback-template-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-80f7b2d6.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-19-37-873Z-verify-middleware-basepath-fallback-template/target-logs/verify-middleware-basepath-fallback-template-webpack-fixture-test-e2e-middleware-dynamic-basepath-matcher-test-index.test.ts-80f7b2d6.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts": {
       "id": "webpack|test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
       "firstSeenAt": "2026-06-22T15:53:31.765Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 5,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "9/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
       "bucket": "unclassified",
       "messages": [
         "FAIL webpack test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts ",
-        "[15:35:24.412Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:24.415Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:34.566Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:34.568Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:44.707Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:44.710Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:54.814Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:35:54.815Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:36:04.940Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:36:04.942Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
-        "[15:36:15.138Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')"
+        "[23:40:26.191Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:26.193Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:36.324Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:36.325Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:46.449Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:46.450Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:40:56.585Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:41:06.718Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:41:06.719Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:41:16.856Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')",
+        "[23:41:16.857Z] Browser Log: TypeError: Cannot read properties of undefined (reading 'optionalName')"
       ],
       "targetFixture": "test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
-      "targetName": "dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe",
+      "targetName": "debug-optional-fallback-package-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-1b484a52",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-9-64-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-7aa53efe.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-39-58-667Z-debug-optional-fallback-package/target-logs/debug-optional-fallback-package-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-1b484a52.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-39-58-667Z-debug-optional-fallback-package/target-logs/debug-optional-fallback-package-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-1b484a52.stderr.log"
       },
       "testTitles": [
         "Dynamic Optional Routing Root Fallback",
@@ -1832,44 +1844,48 @@
         "should render optional catch-all top-level route with one segment",
         "should render optional catch-all top-level route with two segments"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T15:53:31.765Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "lastFailureAt": "2026-06-22T15:53:31.765Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T23:51:24.282Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-50-37-926Z-verify-route-params",
+      "lastFailureAt": "2026-06-22T23:41:28.405Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-39-58-667Z-debug-optional-fallback-package",
+      "closedAt": "2026-06-22T23:51:24.282Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-50-37-926Z-verify-route-params",
+      "lastVerifiedAt": "2026-06-22T23:51:24.282Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-50-37-926Z-verify-route-params",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/dynamic-optional-routing-root-fallback/dynamic-optional-routing-root-fallback.test.ts",
+        "name": "verify-route-params-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-e4a40069",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-50-37-926Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-e4a40069.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-50-37-926Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-dynamic-optional-routing-root-fallback-dynamic-optional-routing-root-fa-e4a40069.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/middleware-rewrites/test/index.test.ts": {
       "id": "webpack|test/e2e/middleware-rewrites/test/index.test.ts",
       "firstSeenAt": "2026-06-22T15:53:31.765Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "failureCount": 1,
+      "failureCount": 9,
       "passCount": 0,
       "bundler": "webpack",
-      "group": "16/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/middleware-rewrites/test/index.test.ts",
       "bucket": "middleware/proxy",
       "messages": [
-        "FAIL webpack test/e2e/middleware-rewrites/test/index.test.ts ",
-        "[15:52:07.643Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:07.704Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:08.148Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:08.191Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "page error PlaywrightError: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "[15:52:11.827Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:11.857Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:11.888Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:11.897Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:12.993Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[15:52:24.263Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+        "fixture target exited with status signal signal SIGTERM, but no failed fixture inventory was parsed"
       ],
       "targetFixture": "test/e2e/middleware-rewrites/test/index.test.ts",
-      "targetName": "dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c",
+      "targetName": "verify-middleware-rewrites-fallback-shell-optional-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-c6423ff2",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16/target-logs/dirty-baseline-webpack-01-16-webpack-16-64-test-e2e-middleware-rewrites-test-index.test.ts-af36412c.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional/target-logs/verify-middleware-rewrites-fallback-shell-optional-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-c6423ff2.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional/target-logs/verify-middleware-rewrites-fallback-shell-optional-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-c6423ff2.stderr.log"
       },
       "testTitles": [
         "Middleware Rewrite",
@@ -1882,10 +1898,10 @@
         "should not have un-necessary data request on rewrite"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-22T15:53:31.765Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
-      "lastFailureAt": "2026-06-22T15:53:31.765Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
+      "lastSeenAt": "2026-06-23T00:54:40.469Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional",
+      "lastFailureAt": "2026-06-23T00:54:40.469Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional",
       "closedAt": null,
       "closedByRun": null
     },
@@ -1940,32 +1956,32 @@
       "id": "webpack|test/e2e/middleware-trailing-slash/test/index.test.ts",
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 7,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "21/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/middleware-trailing-slash/test/index.test.ts",
       "bucket": "middleware/proxy",
       "messages": [
         "FAIL webpack test/e2e/middleware-trailing-slash/test/index.test.ts ",
-        "[16:07:29.996Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:30.179Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:30.510Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:30.531Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "page error PlaywrightError: Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "[16:07:30.853Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:30.877Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:31.125Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:31.312Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:31.439Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
-        "[16:07:31.464Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
+        "[00:38:35.986Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.155Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.282Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.405Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.534Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.641Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.678Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:36.681Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:37.804Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:37.899Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[00:38:38.356Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)"
       ],
       "targetFixture": "test/e2e/middleware-trailing-slash/test/index.test.ts",
-      "targetName": "dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2",
+      "targetName": "debug-middleware-trailing-data-routing-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-6ffb8369",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-21-64-test-e2e-middleware-trailing-slash-test-index.test.ts-19161df2.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-38-00-097Z-debug-middleware-trailing-data-routing/target-logs/debug-middleware-trailing-data-routing-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-6ffb8369.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-38-00-097Z-debug-middleware-trailing-data-routing/target-logs/debug-middleware-trailing-data-routing-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-6ffb8369.stderr.log"
       },
       "testTitles": [
         "Middleware Runtime trailing slash",
@@ -1977,20 +1993,35 @@
         "should work when requesting the page directly",
         "should work using browser"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "lastFailureAt": "2026-06-22T16:31:27.725Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T00:41:33.132Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-40-38-850Z-verify-middleware-trailing-slash-route-matches",
+      "lastFailureAt": "2026-06-23T00:38:40.475Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-38-00-097Z-debug-middleware-trailing-data-routing",
+      "closedAt": "2026-06-23T00:41:33.132Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-40-38-850Z-verify-middleware-trailing-slash-route-matches",
+      "lastVerifiedAt": "2026-06-23T00:41:33.132Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-40-38-850Z-verify-middleware-trailing-slash-route-matches",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/middleware-trailing-slash/test/index.test.ts",
+        "name": "verify-middleware-trailing-slash-route-matches-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-ee453373",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-40-38-850Z-verify-middleware-trailing-slash-route-matches/target-logs/verify-middleware-trailing-slash-route-matches-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-ee453373.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-40-38-850Z-verify-middleware-trailing-slash-route-matches/target-logs/verify-middleware-trailing-slash-route-matches-webpack-fixture-test-e2e-middleware-trailing-slash-test-index.test.ts-ee453373.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts": {
       "id": "webpack|test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts",
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "21/64",
       "kind": "fixture",
@@ -2026,39 +2057,51 @@
         "should work for not found pages",
         "should work for route handlers"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T03:13:31.717Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
       "lastFailureAt": "2026-06-22T16:31:27.725Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T03:13:31.717Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "lastVerifiedAt": "2026-06-23T03:13:31.717Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/searchparams-reuse-loading/searchparams-reuse-loading.test.ts",
+        "name": "ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-41020d49",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-41020d49.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-searchparams-reuse-loading-searchparams-reuse-loading.test.ts-41020d49.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts": {
       "id": "webpack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "failureCount": 1,
+      "failureCount": 2,
       "passCount": 0,
       "bundler": "webpack",
-      "group": "22/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
-      "bucket": "App not-found fallback",
+      "bucket": "unclassified",
       "messages": [
         "FAIL webpack test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts ",
-        "Expected substring: \"0.9475336768450741\"",
-        "Received string:    \"1:\\\"$Sreact.fragment\\\"",
-        "0:{\\\"buildId\\\":\\\"\\\",\\\"data\\\":[{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"c\\\",{\\\"children\\\":[[[\\\"$\\\",\\\"p\\\",null,{\\\"id\\\":\\\"random-number\\\",\\\"children\\\":0.49965336212026057}],[\\\"$\\\",\\\"p\\\",null,{\\\"id\\\":\\\"another-random-number\\\",\\\"children\\\":\\\"0.19673626294676938\\\"}],[\\\"$\\\",\\\"$2\\\",null,{\\\"children\\\":\\\"$L3\\\"}]],null,[\\\"$\\\",\\\"$L4\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$2\\\",null,{\\\"name\\\":\\\"Next.MetadataOutlet\\\",\\\"children\\\":\\\"$@5\\\"}]}]]}],\\\"isPartial\\\":true,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$W6\\\"},{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"h\\\",{\\\"children\\\":[null,[\\\"$\\\",\\\"$L7\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"meta\\\",\\\"0\\\",{\\\"charSet\\\":\\\"utf-8\\\"}],[\\\"$\\\",\\\"meta\\\",\\\"1\\\",{\\\"name\\\":\\\"viewport\\\",\\\"content\\\":\\\"width=device-width, initial-scale=1\\\"}]]}],[\\\"$\\\",\\\"div\\\",null,{\\\"hidden\\\":true,\\\"children\\\":[\\\"$\\\",\\\"$L8\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$2\\\",null,{\\\"name\\\":\\\"Next.Metadata\\\",\\\"children\\\":[]}]}]}],null]}],\\\"isPartial\\\":false,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$W9\\\"},{\\\"rsc\\\":[\\\"$\\\",\\\"$1\\\",\\\"c\\\",{\\\"children\\\":[null,[\\\"$\\\",\\\"html\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"body\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$La\\\",null,{\\\"parallelRouterKey\\\":\\\"children\\\",\\\"template\\\":[\\\"$\\\",\\\"$Lb\\\",null,{}],\\\"notFound\\\":[[[\\\"$\\\",\\\"title\\\",null,{\\\"children\\\":\\\"404: This page could not be found.\\\"}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"fontFamily\\\":\\\"system-ui,\\\\\\\"Segoe UI\\\\\\\",Roboto,Helvetica,Arial,sans-serif,\\\\\\\"Apple Color Emoji\\\\\\\",\\\\\\\"Segoe UI Emoji\\\\\\\"\\\",\\\"height\\\":\\\"100vh\\\",\\\"textAlign\\\":\\\"center\\\",\\\"display\\\":\\\"flex\\\",\\\"flexDirection\\\":\\\"column\\\",\\\"alignItems\\\":\\\"center\\\",\\\"justifyContent\\\":\\\"center\\\"},\\\"children\\\":[\\\"$\\\",\\\"div\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"style\\\",null,{\\\"dangerouslySetInnerHTML\\\":{\\\"__html\\\":\\\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\\\"}}],[\\\"$\\\",\\\"h1\\\",null,{\\\"className\\\":\\\"next-error-h1\\\",\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\",\\\"margin\\\":\\\"0 20px 0 0\\\",\\\"padding\\\":\\\"0 23px 0 0\\\",\\\"fontSize\\\":24,\\\"fontWeight\\\":500,\\\"verticalAlign\\\":\\\"top\\\",\\\"lineHeight\\\":\\\"49px\\\"},\\\"children\\\":404}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\"},\\\"children\\\":[\\\"$\\\",\\\"h2\\\",null,{\\\"style\\\":{\\\"fontSize\\\":14,\\\"fontWeight\\\":400,\\\"lineHeight\\\":\\\"49px\\\",\\\"margin\\\":0},\\\"children\\\":\\\"This page could not be found.\\\"}]}]]}]}]],[]]}]}]}]]}],\\\"isPartial\\\":false,\\\"staleTime\\\":300,\\\"varyParams\\\":\\\"$Wc\\\"}]}",
-        "> 50 |         expect(rsc).toContain(first)",
-        "53 |       // Then get the dynamic RSC and validate that it also contains the same",
-        "Expected substring: \"0.6479752771025982\""
+        "[brrrd-harness] build app failed with exit status 1",
+        "Error: Route \"/\": Next.js encountered uncached or runtime data during prerendering.",
+        "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
       ],
       "targetFixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
-      "targetName": "dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549",
+      "targetName": "ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ce2a65bf",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-fd710549.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ce2a65bf.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ce2a65bf.stderr.log"
       },
       "testTitles": [
         "resume-data-cache",
@@ -2068,10 +2111,10 @@
         "should see fresh data after updateTag in server action with fetch cache"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "lastFailureAt": "2026-06-22T16:31:27.725Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "lastSeenAt": "2026-06-23T03:13:31.717Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "lastFailureAt": "2026-06-23T03:13:31.717Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
       "closedAt": null,
       "closedByRun": null
     },
@@ -2080,7 +2123,7 @@
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "22/64",
       "kind": "fixture",
@@ -2116,13 +2159,28 @@
         "should work for catch-all edge page",
         "should return normalized dynamic route params for catch-all edge page"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T03:06:35.508Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation",
       "lastFailureAt": "2026-06-22T16:31:27.725Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T03:06:35.508Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation",
+      "lastVerifiedAt": "2026-06-23T03:06:35.508Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": null,
+        "fixture": "test/e2e/app-dir/app/index.test.ts",
+        "name": "2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation/stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-03-14-314Z-verify-app-index-after-edge-fetch-isolation/stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/app-static/app-static.test.ts": {
       "id": "webpack|test/e2e/app-dir/app-static/app-static.test.ts",
@@ -2177,10 +2235,10 @@
       "id": "webpack|test/e2e/basepath/redirect-and-rewrite.test.ts",
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "23/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/basepath/redirect-and-rewrite.test.ts",
       "bucket": "App not-found fallback",
@@ -2190,10 +2248,10 @@
         "Received string:    \"Not Found\""
       ],
       "targetFixture": "test/e2e/basepath/redirect-and-rewrite.test.ts",
-      "targetName": "dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891",
+      "targetName": "verify-routing-order-remaining-short-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-4575f992",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-23-64-test-e2e-basepath-redirect-and-rewrite.test.ts-aa84d891.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-20-34-751Z-verify-routing-order-remaining-short/target-logs/verify-routing-order-remaining-short-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-4575f992.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-20-34-751Z-verify-routing-order-remaining-short/target-logs/verify-routing-order-remaining-short-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-4575f992.stderr.log"
       },
       "testTitles": [
         "basePath",
@@ -2205,13 +2263,28 @@
         "should not redirect without basePath without disabling",
         "should not redirect with basePath when set to false"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "lastFailureAt": "2026-06-22T16:31:27.725Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T00:32:10.093Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-31-16-109Z-verify-routing-order-case-data-normalization",
+      "lastFailureAt": "2026-06-23T00:21:18.678Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-20-34-751Z-verify-routing-order-remaining-short",
+      "closedAt": "2026-06-23T00:32:10.093Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-31-16-109Z-verify-routing-order-case-data-normalization",
+      "lastVerifiedAt": "2026-06-23T00:32:10.093Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-31-16-109Z-verify-routing-order-case-data-normalization",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/basepath/redirect-and-rewrite.test.ts",
+        "name": "verify-routing-order-case-data-normalization-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-ebd53e2b",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-31-16-109Z-verify-routing-order-case-data-normalization/target-logs/verify-routing-order-case-data-normalization-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-ebd53e2b.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-31-16-109Z-verify-routing-order-case-data-normalization/target-logs/verify-routing-order-case-data-normalization-webpack-fixture-test-e2e-basepath-redirect-and-rewrite.test.ts-ebd53e2b.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts": {
       "id": "webpack|test/e2e/app-dir/turbopack-reports/turbopack-reports.test.ts",
@@ -2291,10 +2364,10 @@
       "id": "webpack|test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "27/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
       "bucket": "unclassified",
@@ -2302,22 +2375,37 @@
         "FAIL webpack test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts "
       ],
       "targetFixture": "test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
-      "targetName": "dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f",
+      "targetName": "routing-order-before-fix-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-6d687a1e",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32/target-logs/dirty-baseline-webpack-17-32-webpack-27-64-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-fda86d6f.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-51-58-807Z-routing-order-before-fix/target-logs/routing-order-before-fix-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-6d687a1e.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-51-58-807Z-routing-order-before-fix/target-logs/routing-order-before-fix-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-6d687a1e.stderr.log"
       },
       "testTitles": [
         "rewrite-with-search-params",
         "should not contain params in search params after rewrite"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "lastFailureAt": "2026-06-22T16:31:27.725Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T00:11:52.885Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath",
+      "lastFailureAt": "2026-06-23T00:07:03.658Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-51-58-807Z-routing-order-before-fix",
+      "closedAt": "2026-06-23T00:11:52.885Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath",
+      "lastVerifiedAt": "2026-06-23T00:11:52.885Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
+        "name": "verify-routing-order-query-basepath-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-734b199d",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath/target-logs/verify-routing-order-query-basepath-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-734b199d.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-11-11-679Z-verify-routing-order-query-basepath/target-logs/verify-routing-order-query-basepath-webpack-fixture-test-e2e-app-dir-rewrite-with-search-params-rewrite-with-search-params.test.ts-734b199d.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts": {
       "id": "webpack|test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts",
@@ -2443,10 +2531,10 @@
       "id": "webpack|test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 3,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "47/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
       "bucket": "unclassified",
@@ -2457,30 +2545,45 @@
         "Expected: \"{\\\"slug\\\":[\\\"one\\\",\\\"two\\\",\\\"three\\\"]}\""
       ],
       "targetFixture": "test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
-      "targetName": "dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec",
+      "targetName": "debug-edge-catchall-package-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-796a5a06",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-47-64-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-234db1ec.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-20-41-919Z-debug-edge-catchall-package/target-logs/debug-edge-catchall-package-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-796a5a06.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-20-41-919Z-debug-edge-catchall-package/target-logs/debug-edge-catchall-package-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-796a5a06.stderr.log"
       },
       "testTitles": [
         "edge-route-catchall",
         "should correctly normalize edge route catch-all with a single param",
         "should correctly normalize edge route catch-all with multiple params"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "lastFailureAt": "2026-06-22T17:16:38.854Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T23:28:52.463Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "lastFailureAt": "2026-06-22T23:21:14.598Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-20-41-919Z-debug-edge-catchall-package",
+      "closedAt": "2026-06-22T23:28:52.463Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "lastVerifiedAt": "2026-06-22T23:28:52.463Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",
+        "name": "verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-778faa74",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-778faa74.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-catchall-edge-route-catchall.test.ts-778faa74.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts": {
       "id": "webpack|test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "47/64",
       "kind": "fixture",
@@ -2516,22 +2619,37 @@
         "includes cookies, but not dynamic content",
         "can completely prefetch a page that uses cookies and no uncached IO"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T03:13:31.717Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
       "lastFailureAt": "2026-06-22T17:16:38.854Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T03:13:31.717Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "lastVerifiedAt": "2026-06-23T03:13:31.717Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-runtime/prefetch-runtime.test.ts",
+        "name": "ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-e9796815",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-e9796815.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation/target-logs/ppr-representatives-after-edge-fetch-isolation-webpack-fixture-test-e2e-app-dir-segment-cache-prefetch-runtime-prefetch-runtime.test.ts-e9796815.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts": {
       "id": "webpack|test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "failureCount": 1,
-      "passCount": 0,
+      "failureCount": 2,
+      "passCount": 1,
       "bundler": "webpack",
-      "group": "48/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
       "bucket": "unclassified",
@@ -2541,23 +2659,38 @@
         "Received string:    \"Hello from /app/dynamic/[slug]/route.ts. Slug: undefined\""
       ],
       "targetFixture": "test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
-      "targetName": "dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb",
+      "targetName": "verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48/target-logs/dirty-baseline-webpack-33-48-webpack-48-64-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-d30467fb.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-18-19-479Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-18-19-479Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4.stderr.log"
       },
       "testTitles": [
         "edge-route-rewrite",
         "it should support a rewrite to an edge route",
         "it should support a rewrite to a dynamic edge route"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "lastFailureAt": "2026-06-22T17:16:38.854Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "status": "closed",
+      "lastSeenAt": "2026-06-22T23:28:52.463Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "lastFailureAt": "2026-06-22T23:20:06.141Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-18-19-479Z-verify-route-params",
+      "closedAt": "2026-06-22T23:28:52.463Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "lastVerifiedAt": "2026-06-22T23:28:52.463Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/edge-route-rewrite/edge-route-rewrite.test.ts",
+        "name": "verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T23-27-08-562Z-verify-route-params/target-logs/verify-route-params-webpack-fixture-test-e2e-app-dir-edge-route-rewrite-edge-route-rewrite.test.ts-7b71d9f4.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/expire-time/expire-time.test.ts": {
       "id": "webpack|test/e2e/app-dir/expire-time/expire-time.test.ts",

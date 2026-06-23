@@ -1893,7 +1893,7 @@ test("onBuildComplete packages Pages Router dynamic SSG fallback shells", async 
     manifest.routes.find((route) => route.id === "prerender-fallback-_slug_"),
     {
       id: "prerender-fallback-_slug_",
-      pattern: "^/([^/]+?)(?:/)?$",
+      pattern: "^\\/([^/]+?)(?:\\/)?$",
       type: "prerender",
       runtime: "nodejs",
       bundle: "",
@@ -1916,6 +1916,243 @@ test("onBuildComplete packages Pages Router dynamic SSG fallback shells", async 
       reason: "Pages Router dynamic SSG fallback shell served before invoking the handler",
     },
   );
+});
+
+test("onBuildComplete resolves i18n default-locale Pages fallback shell sources", async () => {
+  const root = tempDir("pages-dynamic-fallback-html-i18n");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const fallbackHtml = path.join(distDir, "server", "pages", "en", "fallback-true-blog", "[slug].html");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(fallbackHtml), { recursive: true });
+  fs.writeFileSync(fallbackHtml, "<!doctype html><main>i18n fallback shell</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/fallback-true-blog/[slug]": {
+        routeRegex: "^/fallback\\-true\\-blog/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/test\\-build/fallback\\-true\\-blog/([^/]+?)\\.json$",
+        fallback: "/fallback-true-blog/[slug].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.config = {
+    i18n: {
+      locales: ["en", "fr"],
+      defaultLocale: "en",
+    },
+  };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/fallback-true-blog/[slug]",
+      pathname: "/fallback-true-blog/[slug]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  assert.equal(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "static", "fallback-true-blog", "[slug]"), "utf8"),
+    "<!doctype html><main>i18n fallback shell</main>",
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.id === "prerender-fallback:fallback-true-blog-_slug_").sourcePath,
+    ".next/server/pages/en/fallback-true-blog/[slug].html",
+  );
+});
+
+test("onBuildComplete keeps Pages dynamic fallback routes handler-only when no fallback shell exists", async () => {
+  const root = tempDir("pages-dynamic-fallback-html-missing");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/fallback-true-blog/[slug]": {
+        routeRegex: "^/fallback\\-true\\-blog/([^/]+?)(?:/)?$",
+        dataRouteRegex: "^/_next/data/test\\-build/fallback\\-true\\-blog/([^/]+?)\\.json$",
+        fallback: "/fallback-true-blog/[slug].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/fallback-true-blog/[slug]",
+      pathname: "/fallback-true-blog/[slug]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.routes.some((route) => route.id === "prerender-fallback-fallback-true-blog-_slug_"),
+    false,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => artifact.id === "prerender-fallback:fallback-true-blog-_slug_"),
+    false,
+  );
+  assert.equal(
+    manifest.routes.some((route) =>
+      route.id === "fallback-true-blog-_slug_"
+      && route.type === "page"
+      && route.pattern === "^/fallback\\-true\\-blog/([^/]+?)(?:/)?$"
+    ),
+    true,
+  );
+});
+
+test("onBuildComplete skips i18n locale-prefixed dynamic prerender templates", async () => {
+  const root = tempDir("pages-dynamic-template-i18n");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic template'); }\n",
+    "utf8",
+  );
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/country/[country]": {
+        routeRegex: "^/country/([^/]+?)(?:/)?$",
+        dataRoute: "/_next/data/test-build/country/[country].json",
+        dataRouteRegex: "^/_next/data/test\\-build/country/([^/]+?)\\.json$",
+        fallback: null,
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.config = {
+    i18n: {
+      locales: ["en", "fr"],
+      defaultLocale: "en",
+    },
+  };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/country/[country]",
+      pathname: "/country/[country]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/en/country/[country]",
+      pathname: "/en/country/[country]",
+    },
+    {
+      id: "/_next/data/test-build/en/country/[country].json",
+      pathname: "/_next/data/test-build/en/country/[country].json",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => artifact.id === "prerender:en-country-_country_"),
+    false,
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => artifact.id === "prerender:_next-data-test-build-en-country-_country__json"),
+    false,
+  );
+});
+
+test("onBuildComplete exposes Pages Router dynamic fallback shells under basePath only", async () => {
+  const root = tempDir("pages-dynamic-fallback-html-basepath");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  const fallbackHtml = path.join(distDir, "server", "pages", "[path]", "[[...pages]].html");
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(fallbackHtml), { recursive: true });
+  fs.writeFileSync(fallbackHtml, "<!doctype html><main>base fallback shell</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    dynamicRoutes: {
+      "/[path]/[[...pages]]": {
+        routeRegex: "^/([^/]+?)(?:/(.+?))?(?:/)?$",
+        dataRouteRegex: "^/_next/data/test\\-build/([^/]+?)(?:/(.+?))?\\.json$",
+        fallback: "/[path]/[[...pages]].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.config = { basePath: "/base" };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/[path]/[[...pages]]",
+      pathname: "/base/[path]/[[...pages]]",
+      pagesRoutePath: "/[path]/[[...pages]]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  const route = manifest.routes.find((item) =>
+    item.id === "prerender-fallback-_path_-_____pages__"
+  );
+  assert.equal(route.file, "/base/[path]/[[...pages]]");
+  assert.match("/base/default", new RegExp(route.pattern));
+  assert.doesNotMatch("/default", new RegExp(route.pattern));
 });
 
 test("onBuildComplete avoids fallback shell storage collisions with public children", async () => {
@@ -2235,6 +2472,76 @@ test("onBuildComplete skips dynamic prerender template data artifacts", async ()
       artifact.id === "prerender:_next-data-test-build-api-docs-___slug__json"
     )),
     false,
+  );
+});
+
+test("onBuildComplete skips basePath dynamic prerender template data artifacts", async () => {
+  const root = tempDir("pages-basepath-dynamic-prerender-template-data");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "pages", "[path]", "[[...pages]].js");
+  const fallbackHtml = path.join(distDir, "server", "pages", "[path]", "[[...pages]].html");
+  fs.mkdirSync(path.dirname(handler), { recursive: true });
+  fs.writeFileSync(
+    handler,
+    "export function handler(_req, res) { res.end('dynamic fallback'); }\n",
+    "utf8",
+  );
+  fs.mkdirSync(path.dirname(fallbackHtml), { recursive: true });
+  fs.writeFileSync(fallbackHtml, "<!doctype html><main>fallback shell</main>", "utf8");
+  writeJson(path.join(distDir, "prerender-manifest.json"), {
+    version: 4,
+    routes: {},
+    dynamicRoutes: {
+      "/[path]/[[...pages]]": {
+        routeRegex: "^/([^/]+?)(?:/(.+?))?(?:/)?$",
+        dataRoute: "/_next/data/test-build/[path]/[[...pages]].json",
+        dataRouteRegex: "^/_next/data/test\\-build/([^/]+?)(?:/(.+?))?\\.json$",
+        fallback: "/[path]/[[...pages]].html",
+      },
+    },
+  });
+
+  const context = minimalContext(root, distDir, {
+    id: "/",
+    pathname: "/",
+    filePath: path.join(root, "unused.js"),
+    assets: {},
+  });
+  context.config = { basePath: "/base" };
+  context.outputs.appPages = [];
+  context.outputs.pages = [
+    {
+      id: "/[path]/[[...pages]]",
+      pathname: "/base/[path]/[[...pages]]",
+      pagesRoutePath: "/[path]/[[...pages]]",
+      filePath: handler,
+      assets: {},
+    },
+  ];
+  context.outputs.prerenders = [
+    {
+      id: "/base/_next/data/test-build/[path]/[[...pages]].json",
+      pathname: "/base/_next/data/test-build/[path]/[[...pages]].json",
+    },
+  ];
+
+  await onBuildComplete(context);
+
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.artifacts.some((artifact) => (
+      artifact.id === "prerender:base-_next-data-test-build-_path_-_____pages___json"
+    )),
+    false,
+  );
+  assert.equal(
+    fs.readFileSync(
+      path.join(root, "dist", "brrrd", "static", "base", "[path]", "[[...pages]]"),
+      "utf8",
+    ),
+    "<!doctype html><main>fallback shell</main>",
   );
 });
 

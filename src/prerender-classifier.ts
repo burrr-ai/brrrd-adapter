@@ -1,5 +1,6 @@
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import type { SupplementDynamicPrerenderRoute } from "./manifest-supplement.js";
+import { basePath, locales } from "./next-config.js";
 
 export type PrerenderOwnerKind =
   | "app-page"
@@ -88,13 +89,50 @@ export function isAuxiliaryPrerenderPath(pathname: string): boolean {
     || pathname.includes(".segment");
 }
 
+function withoutBasePath(model: NextBuildModel, pathname: string): string {
+  const configured = basePath(model.config);
+  if (!configured) return pathname;
+  if (pathname === configured) return "/";
+  const prefix = `${configured}/`;
+  return pathname.startsWith(prefix) ? `/${pathname.slice(prefix.length)}` : pathname;
+}
+
+function withoutLocale(model: NextBuildModel, pathname: string): string {
+  const dataPrefix = `/_next/data/${model.buildId}/`;
+  if (pathname.startsWith(dataPrefix)) {
+    const rest = pathname.slice(dataPrefix.length);
+    for (const locale of locales(model.config)) {
+      if (rest === `${locale}.json`) return `${dataPrefix}index.json`;
+      const localePrefix = `${locale}/`;
+      if (rest.startsWith(localePrefix)) {
+        return `${dataPrefix}${rest.slice(localePrefix.length)}`;
+      }
+    }
+    return pathname;
+  }
+
+  for (const locale of locales(model.config)) {
+    if (pathname === `/${locale}`) return "/";
+    const prefix = `/${locale}/`;
+    if (pathname.startsWith(prefix)) return `/${pathname.slice(prefix.length)}`;
+  }
+  return pathname;
+}
+
 export function isDynamicPrerenderTemplatePath(
+  model: NextBuildModel,
   pathname: string,
   routes: readonly SupplementDynamicPrerenderRoute[] | undefined,
 ): boolean {
   if (!pathname.includes("[")) return false;
+  const sourcePathname = withoutLocale(model, withoutBasePath(model, pathname));
   for (const route of routes ?? []) {
-    if (pathname === route.page || pathname === route.dataRoute) return true;
+    if (
+      pathname === route.page
+      || pathname === route.dataRoute
+      || sourcePathname === route.page
+      || sourcePathname === route.dataRoute
+    ) return true;
   }
   return false;
 }

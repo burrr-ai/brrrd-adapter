@@ -6,6 +6,7 @@ import {
   createCompatibilityPlugins,
   runCompatibilityAfterBundle,
 } from "./compatibility/index.js";
+import { nextServerDefineEnv } from "./next-config.js";
 import {
   createRuntimeDependencyPlugin,
   runtimeDependencyExternals,
@@ -145,36 +146,6 @@ async function ensureBrrrdCacheHandlers() {
   return brrrdCacheHandlersReady;
 }
 
-const fallbackRouteParamTypeMap = {
-  catchall: 'c',
-  'catchall-intercepted-(..)(..)': 'ci(..)(..)',
-  'catchall-intercepted-(.)': 'ci(.)',
-  'catchall-intercepted-(..)': 'ci(..)',
-  'catchall-intercepted-(...)': 'ci(...)',
-  'optional-catchall': 'oc',
-  dynamic: 'd',
-  'dynamic-intercepted-(..)(..)': 'di(..)(..)',
-  'dynamic-intercepted-(.)': 'di(.)',
-  'dynamic-intercepted-(..)': 'di(..)',
-  'dynamic-intercepted-(...)': 'di(...)',
-};
-
-function createBrrrdOpaqueFallbackRouteParams(fallbackRouteParams) {
-  if (!Array.isArray(fallbackRouteParams) || fallbackRouteParams.length === 0) return null;
-  const uniqueID = Math.random().toString(16).slice(2);
-  const out = new Map();
-  for (const param of fallbackRouteParams) {
-    const paramName = typeof param?.paramName === 'string' ? param.paramName : '';
-    const paramType = typeof param?.paramType === 'string' ? param.paramType : '';
-    const shortType = fallbackRouteParamTypeMap[paramType];
-    if (!paramName || !shortType) {
-      throw new Error('Unsupported Next fallback route param: ' + JSON.stringify(param));
-    }
-    out.set(paramName, ['%%drp:' + paramName + ':' + uniqueID + '%%', shortType]);
-  }
-  return out.size > 0 ? out : null;
-}
-
 export default async function dispatch(routeId, req, res) {
   await ensureBrrrdCacheHandlers();
   const h = await resolveHandler(routeId);
@@ -195,12 +166,7 @@ export default async function dispatch(routeId, req, res) {
       hostname: req.headers?.host || 'localhost',
       minimalMode: brrrdRequestMeta.minimalMode === true,
     };
-    const pprFallbackRouteParams = requestMeta.pprFallbackRouteParams;
     delete requestMeta.pprFallbackRouteParams;
-    if (!requestMeta.fallbackParams) {
-      const fallbackParams = createBrrrdOpaqueFallbackRouteParams(pprFallbackRouteParams);
-      if (fallbackParams) requestMeta.fallbackParams = fallbackParams;
-    }
     requestMeta.render404 = async (renderReq = req, renderRes = res) => {
       const errorHandler = await resolveHandler('_error');
       renderRes.statusCode = 404;
@@ -292,10 +258,7 @@ export default async function dispatch(routeId, req, res) {
         createRuntimeDependencyPlugin(ctx),
         ...createCompatibilityPlugins(ctx),
       ],
-      define: {
-        "process.env.NODE_ENV": '"production"',
-        "process.env.NEXT_RUNTIME": '"nodejs"',
-      },
+      define: nextServerDefineEnv(ctx.config),
       logLevel: "warning",
       mainFields: ["main", "module"],
       conditions: ["node"],

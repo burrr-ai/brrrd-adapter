@@ -107,6 +107,79 @@ test("dispatcher loads only the requested route module", async () => {
   );
 });
 
+test("dispatcher inlines Next server build-time env from resolved config", async () => {
+  const root = tempDir("dispatcher-next-server-env");
+  const route = path.join(root, "route.mjs");
+
+  fs.writeFileSync(
+    route,
+    [
+      "export function handler(_req, res) {",
+      "  res.end(JSON.stringify({",
+      "    nodeEnv: process.env.NODE_ENV,",
+      "    runtime: process.env.NEXT_RUNTIME,",
+      "    ppr: process.env.__NEXT_PPR,",
+      "    cacheComponents: process.env.__NEXT_CACHE_COMPONENTS,",
+      "    cachedNavigations: process.env.__NEXT_EXPERIMENTAL_CACHED_NAVIGATIONS,",
+      "    instantNav: process.env.__NEXT_INSTANT_NAV_TOGGLE,",
+      "    useCache: process.env.__NEXT_USE_CACHE,",
+      "    nodeStreams: process.env.__NEXT_USE_NODE_STREAMS,",
+      "    appShells: process.env.__NEXT_APP_SHELLS,",
+      "    varyParams: process.env.__NEXT_VARY_PARAMS,",
+      "    cacheLife: process.env.__NEXT_CACHE_LIFE,",
+      "  }));",
+      "}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const bundlePath = await bundleAppHandler(
+    [{ id: "env", filePath: route }],
+    {
+      projectDir: root,
+      distDir: path.join(root, ".next"),
+      outDir: path.join(root, "out"),
+      buildId: "test-build",
+      config: {
+        cacheComponents: true,
+        cacheLife: { seconds: { stale: 30, revalidate: 1, expire: 60 } },
+        experimental: {
+          appShells: true,
+          cachedNavigations: true,
+          optimisticRouting: true,
+          ppr: true,
+          useCache: true,
+          varyParams: true,
+        },
+      },
+    },
+  );
+
+  const bundle = fs.readFileSync(bundlePath, "utf8");
+  assert.equal(bundle.includes("process.env.__NEXT_CACHE_COMPONENTS"), false);
+  assert.equal(bundle.includes("process.env.__NEXT_APP_SHELLS"), false);
+  assert.equal(bundle.includes("process.env.__NEXT_VARY_PARAMS"), false);
+
+  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const envRes = res();
+  await dispatch("env", { headers: { host: "example.test" } }, envRes);
+
+  assert.deepEqual(JSON.parse(envRes.body), {
+    nodeEnv: "production",
+    runtime: "nodejs",
+    ppr: true,
+    cacheComponents: true,
+    cachedNavigations: true,
+    instantNav: true,
+    useCache: true,
+    nodeStreams: true,
+    appShells: true,
+    varyParams: true,
+    cacheLife: { seconds: { stale: 30, revalidate: 1, expire: 60 } },
+  });
+});
+
 test("dispatcher provides Next virtual project and dist request metadata", async () => {
   const root = tempDir("dispatcher-next-request-meta");
   const route = path.join(root, "route.mjs");
@@ -192,17 +265,19 @@ test("dispatcher preserves brrrd PPR resume metadata for Next route modules", as
   });
 });
 
-test("dispatcher converts brrrd PPR fallback route params into Next fallbackParams request meta", async () => {
-  const root = tempDir("dispatcher-ppr-fallback-params");
+test("dispatcher keeps brrrd PPR fallback route params out of Next request metadata", async () => {
+  const root = tempDir("dispatcher-ppr-fallback-wire");
   const route = path.join(root, "route.mjs");
 
   fs.writeFileSync(
     route,
     `export function handler(_req, res, ctx) {
-      const entries = Array.from(ctx.requestMeta.fallbackParams.entries()).map(([key, value]) => [key, value]);
+      const fallbackParams = ctx.requestMeta.fallbackParams;
       res.end(JSON.stringify({
         hasCompilerWireField: Object.prototype.hasOwnProperty.call(ctx.requestMeta, 'pprFallbackRouteParams'),
-        entries,
+        hasFallbackParams: Object.prototype.hasOwnProperty.call(ctx.requestMeta, 'fallbackParams'),
+        isMap: fallbackParams instanceof Map,
+        entries: fallbackParams ? Array.from(fallbackParams.entries()) : [],
       }));
     }\n`,
     "utf8",
@@ -237,13 +312,9 @@ test("dispatcher converts brrrd PPR fallback route params into Next fallbackPara
 
   const body = JSON.parse(metaRes.body);
   assert.equal(body.hasCompilerWireField, false);
-  assert.equal(body.entries.length, 2);
-  assert.equal(body.entries[0][0], "teamSlug");
-  assert.match(body.entries[0][1][0], /^%%drp:teamSlug:[a-f0-9]+%%$/);
-  assert.equal(body.entries[0][1][1], "d");
-  assert.equal(body.entries[1][0], "rest");
-  assert.match(body.entries[1][1][0], /^%%drp:rest:[a-f0-9]+%%$/);
-  assert.equal(body.entries[1][1][1], "c");
+  assert.equal(body.hasFallbackParams, false);
+  assert.equal(body.isMap, false);
+  assert.deepEqual(body.entries, []);
 });
 
 test("dispatcher provides render404 request metadata for Next Pages notFound handling", async () => {

@@ -19,11 +19,13 @@
 const BUF = globalThis.Buffer;
 const NEXT_CACHE_TAGS_HEADER = "x-next-cache-tags";
 const NEXT_META_SUFFIX = ".meta";
+const NEXT_DATA_SUFFIX = ".json";
 const RSC_SEGMENT_SUFFIX = ".segment.rsc";
 const RSC_SEGMENTS_DIR_SUFFIX = ".segments";
 const RSC_SUFFIX = ".rsc";
 const memoryEntries = new Map();
 const memoryTagTimestamps = new Map();
+const appPageTemplateCache = new Map();
 
 function nodeBuiltin(name) {
   const getBuiltinModule = globalThis.process?.getBuiltinModule;
@@ -128,6 +130,23 @@ function requestTags(ctx) {
   ];
 }
 
+function explicitRequestTags(ctx) {
+  return (ctx && Array.isArray(ctx.tags)) ? ctx.tags : [];
+}
+
+function includesAllTags(storedTags, requestedTags) {
+  if (!requestedTags || requestedTags.length === 0) return true;
+  const stored = new Set(storedTags || []);
+  for (const tag of requestedTags) {
+    if (!stored.has(tag)) return false;
+  }
+  return true;
+}
+
+function uniqueTags(tags) {
+  return Array.from(new Set((tags || []).filter((tag) => typeof tag === "string" && tag.length > 0)));
+}
+
 function addDelimitedTags(out, value) {
   if (value === undefined || value === null) return;
   const values = Array.isArray(value) ? value : [value];
@@ -166,9 +185,45 @@ function cacheValueTags(data, ctx) {
   return Array.from(tags);
 }
 
+function cacheValueStoredTags(data) {
+  const tags = new Set();
+  for (const headers of cacheValueHeaders(data)) {
+    addDelimitedTags(tags, getHeader(headers, NEXT_CACHE_TAGS_HEADER));
+  }
+  return Array.from(tags);
+}
+
+function fetchValueTags(data) {
+  return data?.kind === "FETCH" && Array.isArray(data.tags) ? data.tags : [];
+}
+
+function parsedStoredTags(parsed, backendTags = []) {
+  return uniqueTags([
+    ...backendTags,
+    ...fetchValueTags(parsed?.value),
+    ...cacheValueStoredTags(parsed?.value),
+  ]);
+}
+
+function reconcileFetchTags(parsed, storedTags, ctx) {
+  if (!shouldFilterEntryByTags(parsed)) {
+    return { changed: false, tags: uniqueTags(storedTags) };
+  }
+
+  const requested = explicitRequestTags(ctx);
+  const tags = uniqueTags([...storedTags, ...requested]);
+  if (includesAllTags(storedTags, requested)) {
+    return { changed: false, tags };
+  }
+
+  parsed.value.tags = uniqueTags([...fetchValueTags(parsed.value), ...requested]);
+  return { changed: true, tags };
+}
+
 function tagsForInvalidation(parsed, backendTags, ctx) {
   const tags = new Set();
   for (const tag of backendTags || []) tags.add(tag);
+  for (const tag of fetchValueTags(parsed?.value)) tags.add(tag);
   for (const tag of requestTags(ctx)) tags.add(tag);
   for (const tag of cacheValueTags(parsed?.value, ctx)) tags.add(tag);
   return Array.from(tags);
@@ -244,6 +299,51 @@ function appCachePath(serverDistDir, cacheKey, suffix = "") {
   return nodePath().join(serverDistDir, "app", `${cacheKey}${suffix}`);
 }
 
+function diskPath(pathModule, serverDistDir, cacheKey, kind, suffix = "") {
+  switch (kind) {
+    case "FETCH":
+      return pathModule.join(serverDistDir, "..", "cache", "fetch-cache", String(cacheKey));
+    case "APP_ROUTE":
+      return pathModule.join(serverDistDir, "app", `${cacheKey}${suffix}`);
+    case "APP_PAGE":
+      return pathModule.join(serverDistDir, "app", `${cacheKey}${suffix}`);
+    case "PAGES":
+      return pathModule.join(serverDistDir, "pages", `${cacheKey}${suffix}`);
+    default:
+      return null;
+  }
+}
+
+async function readText(cacheFs, filePath) {
+  const data = await cacheFs.readFile(filePath, "utf8");
+  return typeof data === "string" ? data : BUF.from(data).toString("utf8");
+}
+
+async function readJson(cacheFs, filePath) {
+  return JSON.parse(await readText(cacheFs, filePath));
+}
+
+async function readJsonIfExistsAsync(cacheFs, filePath) {
+  try {
+    return await readJson(cacheFs, filePath);
+  } catch {
+    return undefined;
+  }
+}
+
+async function readBufferIfExistsAsync(cacheFs, filePath) {
+  try {
+    return await cacheFs.readFile(filePath);
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeFileEnsuringDir(cacheFs, pathModule, filePath, data) {
+  await cacheFs.mkdir(pathModule.dirname(filePath));
+  await cacheFs.writeFile(filePath, data);
+}
+
 function decodedCacheKeyCandidate(cacheKey) {
   try {
     const decoded = decodeURIComponent(cacheKey);
@@ -260,10 +360,113 @@ function appPageCacheKeyCandidates(cacheKey) {
   return candidates;
 }
 
+function normalizeAppPageKey(cacheKey) {
+  let key = String(cacheKey || "");
+  const queryIndex = key.indexOf("?");
+  if (queryIndex !== -1) key = key.slice(0, queryIndex);
+  try {
+    key = decodeURIComponent(key);
+  } catch {
+    // Keep the original byte-safe key when it is not a valid URI component.
+  }
+  key = key.replace(/^\/+/, "").replace(/\/+$/, "");
+  return key || "index";
+}
+
+function appPageSegmentMatch(templateSegment, concreteSegment) {
+  if (/^\[\[\.\.\.[^\]]+\]\]$/.test(templateSegment)) return true;
+  if (/^\[\.\.\.[^\]]+\]$/.test(templateSegment)) return true;
+  if (/^\[[^\]]+\]$/.test(templateSegment)) return true;
+  return templateSegment === concreteSegment;
+}
+
+function appPageTemplateMatches(templateKey, concreteKey) {
+  const templateSegments = templateKey.split("/").filter(Boolean);
+  const concreteSegments = concreteKey.split("/").filter(Boolean);
+  let concreteIndex = 0;
+
+  for (let templateIndex = 0; templateIndex < templateSegments.length; templateIndex += 1) {
+    const templateSegment = templateSegments[templateIndex];
+    if (/^\[\[\.\.\.[^\]]+\]\]$/.test(templateSegment)) {
+      return true;
+    }
+    if (/^\[\.\.\.[^\]]+\]$/.test(templateSegment)) {
+      return concreteIndex < concreteSegments.length;
+    }
+    const concreteSegment = concreteSegments[concreteIndex];
+    if (concreteSegment === undefined || !appPageSegmentMatch(templateSegment, concreteSegment)) {
+      return false;
+    }
+    concreteIndex += 1;
+  }
+
+  return concreteIndex === concreteSegments.length;
+}
+
+function appPageTemplateSpecificity(templateKey) {
+  return templateKey.split("/").reduce((score, segment) => {
+    if (/^\[\[\.\.\.[^\]]+\]\]$/.test(segment)) return score;
+    if (/^\[\.\.\.[^\]]+\]$/.test(segment)) return score + 1;
+    if (/^\[[^\]]+\]$/.test(segment)) return score + 2;
+    return score + 10 + segment.length;
+  }, 0);
+}
+
+function appPageTemplateKeys(serverDistDir) {
+  if (appPageTemplateCache.has(serverDistDir)) {
+    return appPageTemplateCache.get(serverDistDir);
+  }
+
+  const fs = nodeFs();
+  const path = nodePath();
+  const appDir = path.join(serverDistDir, "app");
+  const templates = [];
+  const stack = [appDir];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let entries;
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (!entry.name.endsWith(RSC_SEGMENTS_DIR_SUFFIX)) stack.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".html")) continue;
+
+      const rel = path.relative(appDir, fullPath).split(path.sep).join("/");
+      const key = rel.slice(0, -".html".length);
+      if (key.includes("[") && key.includes("]")) templates.push(key);
+    }
+  }
+
+  templates.sort((a, b) => appPageTemplateSpecificity(b) - appPageTemplateSpecificity(a));
+  appPageTemplateCache.set(serverDistDir, templates);
+  return templates;
+}
+
+function dynamicAppPageCacheKeyCandidates(serverDistDir, cacheKey) {
+  const concreteKey = normalizeAppPageKey(cacheKey);
+  return appPageTemplateKeys(serverDistDir).filter((templateKey) => (
+    appPageTemplateMatches(templateKey, concreteKey)
+  ));
+}
+
 function readDiskAppPageEntry(serverDistDir, cacheKey, ctx) {
   if (!serverDistDir || ctx?.kind !== "APP_PAGE") return null;
 
-  for (const candidate of appPageCacheKeyCandidates(cacheKey)) {
+  const candidates = [
+    ...appPageCacheKeyCandidates(cacheKey),
+    ...dynamicAppPageCacheKeyCandidates(serverDistDir, cacheKey),
+  ];
+
+  for (const candidate of candidates) {
     const htmlPath = appCachePath(serverDistDir, candidate, ".html");
     let html;
     let stat;
@@ -313,8 +516,194 @@ function readDiskAppPageEntry(serverDistDir, cacheKey, ctx) {
   return null;
 }
 
+async function readBuildDiskEntry(cacheFs, pathModule, serverDistDir, cacheKey, ctx, flushToDisk) {
+  if (!cacheFs || !pathModule || !serverDistDir || !ctx?.kind) return null;
+
+  try {
+    if (ctx.kind === "FETCH") {
+      if (!flushToDisk) return null;
+      const filePath = diskPath(pathModule, serverDistDir, cacheKey, "FETCH");
+      const text = await readText(cacheFs, filePath);
+      const stat = await cacheFs.stat(filePath);
+      return {
+        lastModified: stat.mtime.getTime(),
+        value: JSON.parse(text, decodeReviver),
+      };
+    }
+
+    if (ctx.kind === "APP_ROUTE") {
+      const filePath = diskPath(pathModule, serverDistDir, cacheKey, "APP_ROUTE", ".body");
+      const body = await cacheFs.readFile(filePath);
+      const stat = await cacheFs.stat(filePath);
+      const meta = await readJson(cacheFs, filePath.replace(/\.body$/, NEXT_META_SUFFIX));
+      return {
+        lastModified: stat.mtime.getTime(),
+        value: {
+          kind: "APP_ROUTE",
+          body,
+          headers: meta.headers,
+          status: meta.status,
+        },
+      };
+    }
+
+    if (ctx.kind === "APP_PAGE") {
+      const htmlPath = diskPath(pathModule, serverDistDir, cacheKey, "APP_PAGE", ".html");
+      const html = await readText(cacheFs, htmlPath);
+      const stat = await cacheFs.stat(htmlPath);
+      const meta = await readJsonIfExistsAsync(cacheFs, htmlPath.replace(/\.html$/, NEXT_META_SUFFIX));
+      let segmentData;
+      if (Array.isArray(meta?.segmentPaths)) {
+        segmentData = new Map();
+        const segmentsDir = htmlPath.replace(/\.html$/, RSC_SEGMENTS_DIR_SUFFIX);
+        for (const segmentPath of meta.segmentPaths) {
+          const data = await readBufferIfExistsAsync(
+            cacheFs,
+            `${segmentsDir}${segmentPath}${RSC_SEGMENT_SUFFIX}`,
+          );
+          if (data) segmentData.set(segmentPath, data);
+        }
+      }
+
+      let rscData;
+      if (!ctx.isFallback && (!ctx.isRoutePPREnabled || meta?.postponed == null)) {
+        rscData = await readBufferIfExistsAsync(
+          cacheFs,
+          diskPath(pathModule, serverDistDir, cacheKey, "APP_PAGE", RSC_SUFFIX),
+        );
+      }
+
+      return {
+        lastModified: stat.mtime.getTime(),
+        value: {
+          kind: "APP_PAGE",
+          html,
+          rscData,
+          postponed: meta?.postponed,
+          headers: meta?.headers,
+          status: meta?.status,
+          segmentData,
+        },
+      };
+    }
+
+    if (ctx.kind === "PAGES") {
+      const htmlPath = diskPath(pathModule, serverDistDir, cacheKey, "PAGES", ".html");
+      const html = await readText(cacheFs, htmlPath);
+      const stat = await cacheFs.stat(htmlPath);
+      const meta = await readJsonIfExistsAsync(cacheFs, htmlPath.replace(/\.html$/, NEXT_META_SUFFIX));
+      let pageData = {};
+      if (!ctx.isFallback) {
+        pageData = await readJson(
+          cacheFs,
+          diskPath(pathModule, serverDistDir, cacheKey, "PAGES", NEXT_DATA_SUFFIX),
+        );
+      }
+      return {
+        lastModified: stat.mtime.getTime(),
+        value: {
+          kind: "PAGES",
+          html,
+          pageData,
+          headers: meta?.headers,
+          status: meta?.status,
+        },
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function writeBuildDiskEntry(cacheFs, pathModule, serverDistDir, cacheKey, data, ctx, flushToDisk) {
+  if (!flushToDisk || !cacheFs || !pathModule || !serverDistDir || !data) return;
+
+  if (data.kind === "FETCH") {
+    const filePath = diskPath(pathModule, serverDistDir, cacheKey, "FETCH");
+    await writeFileEnsuringDir(
+      cacheFs,
+      pathModule,
+      filePath,
+      JSON.stringify({
+        ...data,
+        tags: ctx?.fetchCache ? ctx.tags : [],
+      }, encodeReplacer),
+    );
+    return;
+  }
+
+  if (data.kind === "APP_ROUTE") {
+    const filePath = diskPath(pathModule, serverDistDir, cacheKey, "APP_ROUTE", ".body");
+    await writeFileEnsuringDir(cacheFs, pathModule, filePath, data.body);
+    await writeFileEnsuringDir(
+      cacheFs,
+      pathModule,
+      filePath.replace(/\.body$/, NEXT_META_SUFFIX),
+      JSON.stringify({
+        headers: data.headers,
+        status: data.status,
+        postponed: undefined,
+        segmentPaths: undefined,
+        prefetchHints: undefined,
+      }),
+    );
+    return;
+  }
+
+  if (data.kind !== "APP_PAGE" && data.kind !== "PAGES") return;
+
+  const isAppPath = data.kind === "APP_PAGE";
+  const kind = isAppPath ? "APP_PAGE" : "PAGES";
+  const htmlPath = diskPath(pathModule, serverDistDir, cacheKey, kind, ".html");
+  await writeFileEnsuringDir(cacheFs, pathModule, htmlPath, data.html);
+
+  if (!ctx?.fetchCache && !ctx?.isFallback && !ctx?.isRoutePPREnabled) {
+    await writeFileEnsuringDir(
+      cacheFs,
+      pathModule,
+      diskPath(pathModule, serverDistDir, cacheKey, kind, isAppPath ? RSC_SUFFIX : NEXT_DATA_SUFFIX),
+      isAppPath ? data.rscData : JSON.stringify(data.pageData),
+    );
+  }
+
+  if (isAppPath) {
+    let segmentPaths;
+    if (data.segmentData) {
+      segmentPaths = [];
+      const segmentsDir = htmlPath.replace(/\.html$/, RSC_SEGMENTS_DIR_SUFFIX);
+      for (const [segmentPath, buffer] of data.segmentData) {
+        segmentPaths.push(segmentPath);
+        await writeFileEnsuringDir(
+          cacheFs,
+          pathModule,
+          `${segmentsDir}${segmentPath}${RSC_SEGMENT_SUFFIX}`,
+          buffer,
+        );
+      }
+    }
+
+    await writeFileEnsuringDir(
+      cacheFs,
+      pathModule,
+      htmlPath.replace(/\.html$/, NEXT_META_SUFFIX),
+      JSON.stringify({
+        headers: data.headers,
+        status: data.status,
+        postponed: data.postponed,
+        segmentPaths,
+        prefetchHints: undefined,
+      }),
+    );
+  }
+}
+
 class BrrrdLegacyCacheHandler {
   constructor(ctx = {}) {
+    this.fs = ctx.fs;
+    this.flushToDisk = !!ctx.flushToDisk;
+    this.path = nodePath();
     this.serverDistDir = ctx.serverDistDir;
   }
 
@@ -322,16 +711,53 @@ class BrrrdLegacyCacheHandler {
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       const entry = memoryEntries.get(cacheKey);
-      if (!entry || isExpired(entry)) {
-        if (entry) memoryEntries.delete(cacheKey);
-        return null;
+      if (entry && !isExpired(entry)) {
+        try {
+          const parsed = JSON.parse(entry.text, decodeReviver);
+          const reconciled = reconcileFetchTags(parsed, entry.tags, ctx);
+          if (reconciled.changed) {
+            entry.tags = reconciled.tags;
+            entry.text = JSON.stringify(parsed, encodeReplacer);
+            await writeBuildDiskEntry(
+              this.fs,
+              this.path,
+              this.serverDistDir,
+              cacheKey,
+              parsed.value,
+              { ...ctx, fetchCache: true, tags: reconciled.tags },
+              this.flushToDisk,
+            );
+          }
+          return isInvalidatedByMemoryTags(parsed, entry, ctx) ? null : parsed;
+        } catch {
+          return null;
+        }
       }
-      try {
-        const parsed = JSON.parse(entry.text, decodeReviver);
-        return isInvalidatedByMemoryTags(parsed, entry, ctx) ? null : parsed;
-      } catch {
-        return null;
+      if (entry) {
+        memoryEntries.delete(cacheKey);
       }
+      const diskEntry = await readBuildDiskEntry(
+        this.fs,
+        this.path,
+        this.serverDistDir,
+        cacheKey,
+        ctx,
+        this.flushToDisk,
+      );
+      if (!diskEntry) return null;
+      const reconciled = reconcileFetchTags(diskEntry, parsedStoredTags(diskEntry), ctx);
+      if (reconciled.changed) {
+        await writeBuildDiskEntry(
+          this.fs,
+          this.path,
+          this.serverDistDir,
+          cacheKey,
+          diskEntry.value,
+          { ...ctx, fetchCache: true, tags: reconciled.tags },
+          this.flushToDisk,
+        );
+      }
+      return diskEntry;
     }
 
     const res = await ops.op_brrrd_cache_get(cacheKey);
@@ -346,8 +772,22 @@ class BrrrdLegacyCacheHandler {
       const text = new TextDecoder().decode(valueBuf);
       const parsed = JSON.parse(text, decodeReviver);
       if (shouldFilterEntryByTags(parsed)) {
+        const reconciled = reconcileFetchTags(
+          parsed,
+          parsedStoredTags(parsed, res.tags || []),
+          ctx,
+        );
+        if (reconciled.changed) {
+          const nextText = JSON.stringify(parsed, encodeReplacer);
+          await ops.op_brrrd_cache_set(
+            cacheKey,
+            new TextEncoder().encode(nextText),
+            reconciled.tags,
+            parsed.value?.revalidate || 0,
+          );
+        }
         const invalidatedAt = await maxRuntimeTagExpiration(
-          tagsForInvalidation(parsed, res.tags || [], ctx),
+          tagsForInvalidation(parsed, reconciled.tags, ctx),
         );
         if (invalidatedAt > 0 && entryLastModified(parsed) <= invalidatedAt) {
           return null;
@@ -375,6 +815,15 @@ class BrrrdLegacyCacheHandler {
         tags,
         expiresAt: ttl > 0 ? nowMs() + ttl * 1000 : 0,
       });
+      await writeBuildDiskEntry(
+        this.fs,
+        this.path,
+        this.serverDistDir,
+        cacheKey,
+        data,
+        ctx,
+        this.flushToDisk,
+      );
       return;
     }
     await ops.op_brrrd_cache_set(cacheKey, bytes, tags, ttl);
@@ -388,9 +837,6 @@ class BrrrdLegacyCacheHandler {
     const ops = brrrdOps();
     for (const tag of arr) {
       if (!hasBrrrdCacheOps()) {
-        for (const [key, entry] of memoryEntries) {
-          if (entry.tags.includes(tag)) memoryEntries.delete(key);
-        }
         continue;
       }
       await ops.op_brrrd_cache_revalidate_tag(tag);
