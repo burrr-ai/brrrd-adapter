@@ -2,6 +2,8 @@
 
 This file records the current pass/defer/exclude state for the Next official deploy adapter suite.
 
+**2026-06-23 — `test/e2e/middleware-rewrites` closed (webpack).** 9 failing assertions → 0 (57 pass / 1 skip). Fixes: i18n dynamic page/data route locale-prefixing and auto-static dynamic `_next/data` route emission (adapter routing-compiler/pages-static-data/artifact-planner); Set-Cookie dedup + drift-guard oracle realign, middleware rewrite locale propagation onto the visible URL, and `x-nextjs-matched-path` on static `_next/data` responses (brrrd runtime). Verified via `harness:harvest --fixtures test/e2e/middleware-rewrites/test/index.test.ts --bundlers webpack --name close-middleware-rewrites`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or

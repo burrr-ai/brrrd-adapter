@@ -26,6 +26,7 @@ import {
   isPagesRscFallbackOutput,
   pagesStaticDataJson,
   pagesStaticDataPathname,
+  pagesStaticDynamicDataMountPath,
 } from "./pages-static-data.js";
 import {
   pagesDynamicFallbackPublicPathnames,
@@ -373,19 +374,35 @@ function pagesStaticDataArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   for (const output of model.outputs.staticFiles) {
     const pathname = pagesStaticDataPathname(model, output);
-    if (!pathname) continue;
-    items.push(artifactItem(model, {
-      id: `static-data:${sanitizeId(output.urlPath)}`,
-      kind: "static",
-      ownerRouteId: `pages-static-data-${sanitizeId(output.urlPath)}`,
-      generatedContent: pagesStaticDataJson(),
-      packagePath: packageJoin("static", pathname),
-      mountPath: pathname,
-      contentType: "application/json",
-      required: true,
-      reason: "Pages Router auto-export data JSON generated for client navigation",
-      precompress: true,
-    }));
+    if (pathname) {
+      items.push(artifactItem(model, {
+        id: `static-data:${sanitizeId(output.urlPath)}`,
+        kind: "static",
+        ownerRouteId: `pages-static-data-${sanitizeId(output.urlPath)}`,
+        generatedContent: pagesStaticDataJson(),
+        packagePath: packageJoin("static", pathname),
+        mountPath: pathname,
+        contentType: "application/json",
+        required: true,
+        reason: "Pages Router auto-export data JSON generated for client navigation",
+        precompress: true,
+      }));
+    }
+    const dynamicMount = pagesStaticDynamicDataMountPath(model, output);
+    if (dynamicMount) {
+      items.push(artifactItem(model, {
+        id: `static-dynamic-data:${sanitizeId(output.urlPath)}`,
+        kind: "static",
+        ownerRouteId: `pages-static-dynamic-data-${sanitizeId(output.urlPath)}`,
+        generatedContent: pagesStaticDataJson(),
+        packagePath: packageJoin("static", dynamicMount),
+        mountPath: dynamicMount,
+        contentType: "application/json",
+        required: true,
+        reason: "Pages Router auto-static dynamic data JSON generated for client navigation",
+        precompress: true,
+      }));
+    }
   }
   return items;
 }

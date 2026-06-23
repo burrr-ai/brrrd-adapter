@@ -41,7 +41,12 @@ import {
   pagesDynamicFallbackPublicPathnames,
   pagesDynamicFallbackShell,
 } from "./pages-dynamic-prerender.js";
-import { isPagesRscFallbackOutput, pagesStaticDataPathname } from "./pages-static-data.js";
+import {
+  isPagesRscFallbackOutput,
+  isPagesStaticDynamicHtmlOutput,
+  pagesStaticDataPathname,
+  pagesStaticDynamicDataMountPath,
+} from "./pages-static-data.js";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -859,6 +864,52 @@ function pagesStaticDataRoute(
   };
 }
 
+// _next/data routes for auto-static DYNAMIC Pages (e.g. /detail/[...slug],
+// /dynamic-fallback/[...parts]) which have no getStaticProps, so Next emits no
+// prerendered data file and no manifest data route. The client still issues a
+// /_next/data/<id>/<locale>/<page>.json request after a rewrite; without these routes
+// it 404s. One locale-prefixed route per locale plus the default-locale unprefixed
+// alias, all serving the shared `{ pageProps: {} }` artifact and carrying params so the
+// runtime patches the route params into the JSON query.
+function pagesStaticDynamicDataRoutes(
+  model: NextBuildModel,
+  output: NormalizedOutput,
+  dynamicPrerenders: Map<string, SupplementDynamicPrerenderRoute>,
+): BrrrdRoute[] {
+  if (!isPagesStaticDynamicHtmlOutput(output)) return [];
+  // SSG/prerender dynamic pages get their data route via dynamicPrerenderDataRoute.
+  if (dynamicPrerenders.has(sourcePagePathname(model, output))) return [];
+  const file = pagesStaticDynamicDataMountPath(model, output);
+  const pattern = localePrefixedDynamicDataRegex(model, output.pathname);
+  if (!file || !pattern) return [];
+  const params = segmentParamNames(output.pathname);
+  const paramTypes = segmentParamTypes(output.pathname);
+  const base: BrrrdRoute = {
+    id: `pages-static-dynamic-data-${sanitizeId(output.urlPath)}`,
+    pattern,
+    type: "static",
+    runtime: "nodejs",
+    bundle: "",
+    file,
+    ...(params.length > 0 ? { params } : {}),
+    ...(paramTypes ? { paramTypes } : {}),
+  };
+  const routes: BrrrdRoute[] = [base];
+  const unprefixed = defaultLocaleAliasPathname(model, output.pathname);
+  if (unprefixed && unprefixed !== output.pathname) {
+    const aliasPattern = localePrefixedDynamicDataRegex(model, unprefixed);
+    if (aliasPattern) {
+      routes.push({
+        ...base,
+        id: `${base.id}-default-locale-alias`,
+        pattern: aliasPattern,
+        localeHandling: "unprefixed",
+      });
+    }
+  }
+  return routes;
+}
+
 function imageOptimizerRoute(model: NextBuildModel): BrrrdRoute {
   const pathname = `${basePath(model.config)}/_next/image`;
   return {
@@ -983,6 +1034,24 @@ function prerenderResponseMetaForOutput(
   return supplementMeta ?? outputFallbackResponseMeta(output);
 }
 
+// The brrrd runtime matches the raw, still locale-prefixed request path with no
+// locale stripping. Static i18n pages already get locale-prefixed patterns (via
+// exactPathPattern(output.urlPath)), but DYNAMIC pages derive their regex from the
+// locale-stripped sourcePagePathname, so every per-locale variant inherits Next's
+// locale-AGNOSTIC regex. That makes /es/country/us and the matching
+// /_next/data/<id>/es/static-ssg/x.json match no route. For a locale-prefixed dynamic
+// output, rebuild the pattern from the locale-prefixed pathname so it matches the
+// locale-prefixed request (the default-locale unprefixed alias is emitted separately).
+function localePrefixedDynamicDataRegex(
+  model: NextBuildModel,
+  pagePathname: string,
+): string | null {
+  const body = stripOptionalTrailingSlashFromRegex(routeRegexFromPathname(pagePathname));
+  if (!body) return null;
+  const dataRoot = `${basePath(model.config)}/_next/data/${model.buildId}`;
+  return `^${escapeRegex(dataRoot)}${body}\\.json$`;
+}
+
 function dynamicRoute(
   model: NextBuildModel,
   output: NormalizedOutput,
@@ -1006,9 +1075,19 @@ function dynamicRoute(
     && i18nLocales(model.config).length > 0
     && sourcePathname === output.pathname
     && !sourceRegex.includes("nextLocale");
+  const localePrefixedI18nPage = type === "page"
+    && i18nLocales(model.config).length > 0
+    && sourcePathname !== output.pathname
+    && !sourceRegex.includes("nextLocale");
+  const isDataRoute = sourceRegex.includes("/_next/data/");
+  const pattern = localePrefixedI18nPage
+    ? (isDataRoute
+      ? localePrefixedDynamicDataRegex(model, output.pathname) ?? sourceRegex
+      : routeRegexFromPathname(output.pathname))
+    : sourceRegex;
   return {
     id: sanitizeId(output.id),
-    pattern: sourceRegex,
+    pattern,
     type,
     ...runtimeTarget(output),
     ...(paramsPathname ? { params: segmentParamNames(paramsPathname) } : {}),
@@ -1217,6 +1296,7 @@ export function compileRouteTable(
     if (encodedAlias) routes.push(publicRouteAlias(model, route, encodedAlias, "encoded"));
     const dataRoute = pagesStaticDataRoute(model, file);
     if (dataRoute) routes.push(dataRoute);
+    routes.push(...pagesStaticDynamicDataRoutes(model, file, dynamicPrerenders));
   }
 
   for (const pr of sortBySpecificity(model.outputs.prerenders)) {

@@ -1533,6 +1533,62 @@ test("i18n default-locale dynamic Pages API handlers are exposed at public unpre
   });
 });
 
+test("i18n dynamic Pages with a locale-agnostic Next regex are emitted locale-prefixed per locale", () => {
+  // Pages-Router dynamic pages whose Next regex has no nextLocale group (e.g. country,
+  // static-ssg) must get a locale-PREFIXED pattern per locale — the brrrd runtime
+  // matches the raw locale-prefixed path with no locale stripping. The bug was every
+  // per-locale variant inheriting the same locale-agnostic pattern.
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "es"], defaultLocale: "en" } },
+    pages: [
+      appPage("/en/country/[country]"),
+      appPage("/es/country/[country]"),
+    ],
+    dynamicRoutes: [
+      {
+        source: "/country/[country]",
+        sourceRegex: "^/country/([^/]+?)(?:/)?$",
+        destination: "/country/[country]",
+      },
+    ],
+  }));
+
+  const en = routes.find((r) => r.id === "en-country-_country_" && r.localeHandling !== "unprefixed");
+  const es = routes.find((r) => r.id === "es-country-_country_");
+  assert.ok(en && es, "per-locale country page routes exist");
+  assert.ok(new RegExp(es.pattern).test("/es/country/us"), "es route matches /es/country/us");
+  assert.ok(new RegExp(en.pattern).test("/en/country/us"), "en route matches /en/country/us");
+  assert.ok(!new RegExp(es.pattern).test("/country/us"), "es route is locale-prefixed, not bare");
+  assert.ok(!new RegExp(es.pattern).test("/en/country/us"), "es route does not match the en path");
+  assert.notEqual(en.pattern, es.pattern, "per-locale patterns must differ");
+  const alias = routes.find((r) => r.localeHandling === "unprefixed" && new RegExp(r.pattern).test("/country/us"));
+  assert.ok(alias, "default-locale unprefixed alias still serves /country/us");
+});
+
+test("auto-static i18n dynamic Pages emit a locale-prefixed _next/data route", () => {
+  // Dynamic Pages with no getStaticProps (absent from prerender-manifest) get a per-locale
+  // .html template but no prerendered data file; the client still issues a _next/data
+  // request after a rewrite, so a generated {pageProps:{}} data route must exist.
+  const distDir = "/tmp/brrrd-routing-test/.next";
+  const routes = compileRouteTable(context({
+    config: { i18n: { locales: ["en", "es"], defaultLocale: "en" } },
+    staticFiles: [
+      staticFile("/en/detail/[...slug]", `${distDir}/server/pages/en/detail/[...slug].html`),
+      staticFile("/es/detail/[...slug]", `${distDir}/server/pages/es/detail/[...slug].html`),
+    ],
+  }));
+
+  const esData = routes.find((r) => new RegExp(r.pattern).test("/_next/data/test-build/es/detail/foo/bar.json"));
+  assert.ok(esData, "es locale-prefixed _next/data route emitted");
+  assert.equal(esData.type, "static");
+  assert.deepEqual(esData.params, ["slug"]);
+  assert.ok(!new RegExp(esData.pattern).test("/_next/data/test-build/detail/foo/bar.json"), "es data route is locale-prefixed");
+  const enUnprefixed = routes.find((r) =>
+    r.localeHandling === "unprefixed"
+    && new RegExp(r.pattern).test("/_next/data/test-build/detail/foo/bar.json"));
+  assert.ok(enUnprefixed, "default-locale unprefixed _next/data alias emitted");
+});
+
 test("internal intercepting route outputs are bundled but not exposed without a public sourceRegex", () => {
   const routes = compileRouteTable(context({
     appPages: [

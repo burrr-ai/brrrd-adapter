@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T11:11:06.903Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T10-43-07-418Z-verify-ppr-dynamic-template-cache-hit-rerun",
+  "updatedAt": "2026-06-23T15:59:11.270Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 40,
-    "open": 13
+    "closed": 41,
+    "open": 12
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -1872,7 +1872,7 @@
       "firstSeenAt": "2026-06-22T15:53:31.765Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-13-59-181Z-dirty-baseline-webpack-01-16",
       "failureCount": 9,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "fixture",
       "kind": "fixture",
@@ -1897,13 +1897,28 @@
         "should handle static rewrite from next.config.js correctly",
         "should not have un-necessary data request on rewrite"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-23T00:54:40.469Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T15:59:11.270Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites",
       "lastFailureAt": "2026-06-23T00:54:40.469Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T00-51-40-194Z-verify-middleware-rewrites-fallback-shell-optional",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T15:59:11.270Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites",
+      "lastVerifiedAt": "2026-06-23T15:59:11.270Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/middleware-rewrites/test/index.test.ts",
+        "name": "close-middleware-rewrites-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-77098d8e",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites/target-logs/close-middleware-rewrites-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-77098d8e.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites/target-logs/close-middleware-rewrites-webpack-fixture-test-e2e-middleware-rewrites-test-index.test.ts-77098d8e.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts": {
       "id": "webpack|test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts",
