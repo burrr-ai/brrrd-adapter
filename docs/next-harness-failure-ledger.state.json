@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T17:52:44.744Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache",
+  "updatedAt": "2026-06-23T17:56:17.637Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 44,
-    "open": 9
+    "closed": 45,
+    "open": 8
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2539,7 +2539,7 @@
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "40/64",
       "kind": "fixture",
@@ -2564,13 +2564,28 @@
         "should refresh the correct page when a server action triggers a redirect",
         "should correctly refresh data for the intercepted route and previously active page slot"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T17:56:17.637Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation",
       "lastFailureAt": "2026-06-22T17:16:38.854Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T17:56:17.637Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation",
+      "lastVerifiedAt": "2026-06-23T17:56:17.637Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts",
+        "name": "close-parallel-routes-revalidation-webpack-fixture-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-007b36d6",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation/target-logs/close-parallel-routes-revalidation-webpack-fixture-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-007b36d6.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation/target-logs/close-parallel-routes-revalidation-webpack-fixture-test-e2e-app-dir-parallel-routes-revalidation-parallel-routes-revalidation.test.-007b36d6.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts": {
       "id": "webpack|test/e2e/app-dir/edge-route-catchall/edge-route-catchall.test.ts",

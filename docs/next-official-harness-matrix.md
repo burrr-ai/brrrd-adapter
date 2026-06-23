@@ -10,6 +10,8 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 **2026-06-23 — `test/e2e/app-dir/resume-data-cache` closed (webpack).** 5 pass / 5 (previously failing on PPR resume-data-cache RSC value consistency). No new change — resolved by earlier routing/PPR fixes. Verified via `harness:harvest --fixtures test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts --bundlers webpack --name close-resume-data-cache`.
 
+**2026-06-23 — `test/e2e/app-dir/parallel-routes-revalidation` closed (webpack).** 16 pass / 1 skip / 17. No new change — resolved by earlier routing/PPR fixes. Verified via `harness:harvest --fixtures test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts --bundlers webpack --name close-parallel-routes-revalidation`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or
