@@ -12,6 +12,8 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 **2026-06-23 — `test/e2e/app-dir/parallel-routes-revalidation` closed (webpack).** 16 pass / 1 skip / 17. No new change — resolved by earlier routing/PPR fixes. Verified via `harness:harvest --fixtures test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts --bundlers webpack --name close-parallel-routes-revalidation`.
 
+**2026-06-23 — `test/e2e/streaming-ssr-edge` closed (webpack).** 5 pass / 5 (was 1 fail). A thrown Pages-Router gIP error now renders the user's custom `pages/500.js`: the adapter mirrors prebuilt `pages/*.html` (incl. 500.html/404.html) into the runtime fs, and the bundler dispatch catch serves the static custom 500 from `pages-manifest` when there is no JS `'500'` handler (brrrd has no base-server `findPageComponents('/500')`). Verified via `harness:harvest --fixtures test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts --bundlers webpack --name close-streaming-ssr-edge`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or

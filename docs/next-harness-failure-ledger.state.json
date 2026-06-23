@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T17:56:17.637Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-54-35-457Z-close-parallel-routes-revalidation",
+  "updatedAt": "2026-06-23T18:26:50.978Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 45,
-    "open": 8
+    "closed": 46,
+    "open": 7
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -1925,7 +1925,7 @@
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "17/64",
       "kind": "fixture",
@@ -1959,13 +1959,28 @@
         "should render 500 error from render function correctly",
         "should render fallback if error raised from suspense during streaming"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T18:26:50.978Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge",
       "lastFailureAt": "2026-06-22T16:31:27.725Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T18:26:50.978Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge",
+      "lastVerifiedAt": "2026-06-23T18:26:50.978Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts",
+        "name": "close-streaming-ssr-edge-webpack-fixture-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-f4b7f0e2",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge/target-logs/close-streaming-ssr-edge-webpack-fixture-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-f4b7f0e2.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge/target-logs/close-streaming-ssr-edge-webpack-fixture-test-e2e-streaming-ssr-edge-streaming-ssr-edge.test.ts-f4b7f0e2.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/middleware-trailing-slash/test/index.test.ts": {
       "id": "webpack|test/e2e/middleware-trailing-slash/test/index.test.ts",
