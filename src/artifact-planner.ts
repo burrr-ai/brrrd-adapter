@@ -529,6 +529,41 @@ function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[]
   return items;
 }
 
+// Mirror prebuilt Pages-Router HTML (prerendered pages + the static-status pages
+// 500.html / 404.html) into the runtime filesystem under `.next/server/pages`, so
+// Next's `requirePage('/500')` / `requirePage('/404')` can `readFile` them during
+// error rendering (the pages-manifest maps `/500` -> `pages/500.html`). The static
+// `/500` HTTP asset is shipped separately for a direct GET; this is the additional
+// runtime-fs copy Next reads when rendering a custom error page.
+function pagesPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const serverDir = path.join(model.distDir, "server");
+  const pagesDir = path.join(serverDir, "pages");
+  if (!fs.existsSync(pagesDir)) return [];
+  const items: ArtifactPlanItem[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const src = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(src);
+        continue;
+      }
+      if (!entry.isFile() || path.extname(src) !== ".html") continue;
+      const rel = path.relative(serverDir, src).split(path.sep).join("/");
+      items.push(artifactItem(model, {
+        id: `pages-prerender:${rel}`,
+        kind: "runtime-file",
+        sourceAbsPath: src,
+        packagePath: packageJoin("runtime/.next/server", rel),
+        mountPath: packageJoin(".next/server", rel),
+        required: true,
+        reason: "Pages Router prerender/static-status runtime artifact for requirePage",
+      }));
+    }
+  };
+  walk(pagesDir);
+  return items;
+}
+
 function pprSegmentPrefetchArtifacts(
   model: NextBuildModel,
   supplement: ManifestSupplement,
@@ -1094,6 +1129,7 @@ export function createArtifactPlan(
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),
       ...appPrerenderRuntimeArtifacts(model),
+      ...pagesPrerenderRuntimeArtifacts(model),
       ...routeRuntimeDependencyArtifacts(model),
       ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),

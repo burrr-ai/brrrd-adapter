@@ -225,6 +225,29 @@ export default async function dispatch(routeId, req, res) {
       return errorHandler(req, res, createContext({ invokeError: err }));
     }
 
+    // No JS '500' handler: a custom 500 page may be a prebuilt STATIC page
+    // (pages/500.html). brrrd invokes page handlers directly and has no
+    // base-server findPageComponents('/500'); serve the static custom 500 from
+    // the runtime fs, mirroring Next's base-server requirePage('/500') path,
+    // before falling back to the default _error page.
+    try {
+      const fs = require('fs');
+      const pagesManifest = JSON.parse(
+        fs.readFileSync('/bundle/.next/server/pages-manifest.json', 'utf8'),
+      );
+      const staticErrorPage = pagesManifest['/500'];
+      if (typeof staticErrorPage === 'string' && staticErrorPage.endsWith('.html')) {
+        const html = fs.readFileSync('/bundle/.next/server/' + staticErrorPage);
+        if (!res.headersSent) {
+          res.setHeader('content-type', 'text/html; charset=utf-8');
+        }
+        res.end(html);
+        return;
+      }
+    } catch (_e) {
+      // Fall through to the default _error page below.
+    }
+
     return genericErrorHandler(req, res, createContext({ invokeError: err }));
   }
 }
