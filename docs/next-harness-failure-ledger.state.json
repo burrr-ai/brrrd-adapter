@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T15:59:11.270Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T15-58-15-165Z-close-middleware-rewrites",
+  "updatedAt": "2026-06-23T16:36:24.850Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 41,
-    "open": 12
+    "closed": 42,
+    "open": 11
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2465,7 +2465,7 @@
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "41/64",
       "kind": "fixture",
@@ -2496,13 +2496,28 @@
         "should prefix redirect() with basePath",
         "should render usePathname without the basePath"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T16:36:24.850Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath",
       "lastFailureAt": "2026-06-22T17:16:38.854Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T16:36:24.850Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath",
+      "lastVerifiedAt": "2026-06-23T16:36:24.850Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/app-basepath/index.test.ts",
+        "name": "close-app-basepath-webpack-fixture-test-e2e-app-dir-app-basepath-index.test.ts-00d561fc",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath/target-logs/close-app-basepath-webpack-fixture-test-e2e-app-dir-app-basepath-index.test.ts-00d561fc.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T16-35-46-834Z-close-app-basepath/target-logs/close-app-basepath-webpack-fixture-test-e2e-app-dir-app-basepath-index.test.ts-00d561fc.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts": {
       "id": "webpack|test/e2e/app-dir/parallel-routes-revalidation/parallel-routes-revalidation.test.ts",
