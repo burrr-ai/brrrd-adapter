@@ -14,6 +14,8 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 **2026-06-23 — `test/e2e/streaming-ssr-edge` closed (webpack).** 5 pass / 5 (was 1 fail). A thrown Pages-Router gIP error now renders the user's custom `pages/500.js`: the adapter mirrors prebuilt `pages/*.html` (incl. 500.html/404.html) into the runtime fs, and the bundler dispatch catch serves the static custom 500 from `pages-manifest` when there is no JS `'500'` handler (brrrd has no base-server `findPageComponents('/500')`). Verified via `harness:harvest --fixtures test/e2e/streaming-ssr-edge/streaming-ssr-edge.test.ts --bundlers webpack --name close-streaming-ssr-edge`.
 
+**2026-06-23 — `test/e2e/app-dir/interception-dynamic-segment` closed (webpack).** 14 pass / 14 (was 2 fail with a segment-prefetch timeout loop). Next's interception/dynamic `beforeFiles` rewrites inject internal route-matcher params (`nxtIusername`, `nxtPid`) into the query when rewriting `/:username/:id` → `/(.)$1/$2`; the prerendered Static segment artifacts carry `allowQuery:[]`, so brrrd previously disqualified them (only `_rsc`/`__nextDataReq` were treated as internal), fell through to a full Node render, and looped the client on the `_tree` segment until timeout. brrrd's `is_next_internal_query_key` now recognises `nxtP*`/`nxtI*` route-matcher params as internal so the prerendered segment/full-route flight artifact is served (brrrd runtime, `routing/plan.rs`). Verified via `harness:harvest --fixtures test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts --bundlers webpack --name close-interception`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or

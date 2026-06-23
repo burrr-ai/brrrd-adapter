@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T18:26:50.978Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T18-26-20-431Z-close-streaming-ssr-edge",
+  "updatedAt": "2026-06-23T19:06:18.263Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 46,
-    "open": 7
+    "closed": 47,
+    "open": 6
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2457,7 +2457,7 @@
       "firstSeenAt": "2026-06-22T17:16:38.854Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "38/64",
       "kind": "fixture",
@@ -2482,13 +2482,28 @@
         "Default.tsx injection validation (no 404s allowed)",
         "should not render a 404 for the intercepted route with dynamic segments"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T17:16:38.854Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T19:06:18.263Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception",
       "lastFailureAt": "2026-06-22T17:16:38.854Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T16-32-27-774Z-dirty-baseline-webpack-33-48",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T19:06:18.263Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception",
+      "lastVerifiedAt": "2026-06-23T19:06:18.263Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/interception-dynamic-segment/interception-dynamic-segment.test.ts",
+        "name": "close-interception-webpack-fixture-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-81609e54",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception/target-logs/close-interception-webpack-fixture-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-81609e54.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception/target-logs/close-interception-webpack-fixture-test-e2e-app-dir-interception-dynamic-segment-interception-dynamic-segment.test.-81609e54.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/app-basepath/index.test.ts": {
       "id": "webpack|test/e2e/app-dir/app-basepath/index.test.ts",
