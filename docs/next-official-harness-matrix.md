@@ -6,6 +6,8 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 **2026-06-23 — `test/e2e/app-dir/app-basepath` closed (webpack).** 3 failing assertions → 0 (13 pass). Server Action `redirect()` on a non-dynamic prerendered App Router page now reaches the co-located Page handler: the brrrd router skips the Prerender artifact for `next-action` POSTs (prerender route_ids aren't registered with the Node bridge) so matching falls through to the registered Page entry, whose handler runs the action and emits 303 + `x-action-redirect` (brrrd runtime). Verified via `harness:harvest --fixtures test/e2e/app-dir/app-basepath/index.test.ts --bundlers webpack --name close-app-basepath`.
 
+**2026-06-23 — `test/e2e/getserversideprops` closed (webpack).** 48 pass / 48 (previously failing with 500s / custom-500 / notFound). No new change — resolved by the earlier i18n dynamic data-route + auto-static dynamic `_next/data` + locale routing fixes propagating to Pages-Router GSSP. Verified via `harness:harvest --fixtures test/e2e/getserversideprops/test/index.test.ts --bundlers webpack --name close-getserversideprops`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or
