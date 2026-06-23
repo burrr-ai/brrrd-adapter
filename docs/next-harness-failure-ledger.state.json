@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T17:50:07.531Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-49-20-841Z-close-getserversideprops",
+  "updatedAt": "2026-06-23T17:52:44.744Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 43,
-    "open": 10
+    "closed": 44,
+    "open": 9
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2100,7 +2100,7 @@
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
       "failureCount": 2,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "fixture",
       "kind": "fixture",
@@ -2125,13 +2125,28 @@
         "should see fresh data after updateTag in server action with use cache",
         "should see fresh data after updateTag in server action with fetch cache"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-23T03:13:31.717Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
+      "status": "closed",
+      "lastSeenAt": "2026-06-23T17:52:44.744Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache",
       "lastFailureAt": "2026-06-23T03:13:31.717Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T03-07-19-067Z-ppr-representatives-after-edge-fetch-isolation",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-23T17:52:44.744Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache",
+      "lastVerifiedAt": "2026-06-23T17:52:44.744Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+        "name": "close-resume-data-cache-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c992c6c0",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache/target-logs/close-resume-data-cache-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c992c6c0.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T17-52-08-149Z-close-resume-data-cache/target-logs/close-resume-data-cache-webpack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c992c6c0.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/app/index.test.ts": {
       "id": "webpack|test/e2e/app-dir/app/index.test.ts",

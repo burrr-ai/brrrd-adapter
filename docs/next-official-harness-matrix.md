@@ -8,6 +8,8 @@ This file records the current pass/defer/exclude state for the Next official dep
 
 **2026-06-23 — `test/e2e/getserversideprops` closed (webpack).** 48 pass / 48 (previously failing with 500s / custom-500 / notFound). No new change — resolved by the earlier i18n dynamic data-route + auto-static dynamic `_next/data` + locale routing fixes propagating to Pages-Router GSSP. Verified via `harness:harvest --fixtures test/e2e/getserversideprops/test/index.test.ts --bundlers webpack --name close-getserversideprops`.
 
+**2026-06-23 — `test/e2e/app-dir/resume-data-cache` closed (webpack).** 5 pass / 5 (previously failing on PPR resume-data-cache RSC value consistency). No new change — resolved by earlier routing/PPR fixes. Verified via `harness:harvest --fixtures test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts --bundlers webpack --name close-resume-data-cache`.
+
 ## Status
 
 Initial local harness integration exists. `scripts/local-harness.mjs` runs a checked-out Next canary test fixture or
