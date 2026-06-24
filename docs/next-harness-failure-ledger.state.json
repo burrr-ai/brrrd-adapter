@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-23T19:06:18.263Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-23T19-05-35-596Z-close-interception",
+  "updatedAt": "2026-06-24T02:02:21.972Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
     "status": "pass",
@@ -10,8 +10,8 @@
     "buckets": {}
   },
   "counts": {
-    "closed": 47,
-    "open": 6
+    "closed": 48,
+    "open": 5
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2372,7 +2372,7 @@
       "firstSeenAt": "2026-06-22T16:31:27.725Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "webpack",
       "group": "23/64",
       "kind": "fixture",
@@ -2397,13 +2397,28 @@
         "should have correct query/params on dynamic rewrite",
         "should respond to _next/data for index correctly"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-22T16:31:27.725Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
+      "status": "closed",
+      "lastSeenAt": "2026-06-24T02:02:21.972Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages",
       "lastFailureAt": "2026-06-22T16:31:27.725Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T15-54-23-314Z-dirty-baseline-webpack-17-32",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-24T02:02:21.972Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages",
+      "lastVerifiedAt": "2026-06-24T02:02:21.972Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "webpack",
+        "group": "fixture",
+        "fixture": "test/e2e/edge-pages-support/index.test.ts",
+        "name": "close-edge-pages-webpack-fixture-test-e2e-edge-pages-support-index.test.ts-b699977f",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages/target-logs/close-edge-pages-webpack-fixture-test-e2e-edge-pages-support-index.test.ts-b699977f.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages/target-logs/close-edge-pages-webpack-fixture-test-e2e-edge-pages-support-index.test.ts-b699977f.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts": {
       "id": "webpack|test/e2e/app-dir/rewrite-with-search-params/rewrite-with-search-params.test.ts",
