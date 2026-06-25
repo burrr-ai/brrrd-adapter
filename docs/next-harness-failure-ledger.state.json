@@ -1,19 +1,17 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-25T16:01:49.209Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw",
+  "updatedAt": "2026-06-25T16:57:25.952Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-55-57-220Z-webpack-regress-T1",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "fail",
+    "status": "pass",
     "resultCount": 2,
-    "failureCount": 1,
-    "buckets": {
-      "middleware/proxy": 1
-    }
+    "failureCount": 0,
+    "buckets": {}
   },
   "counts": {
-    "closed": 51,
-    "open": 14
+    "closed": 53,
+    "open": 12
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2918,32 +2916,32 @@
       "id": "turbopack|test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
       "firstSeenAt": "2026-06-25T14:06:05.703Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
-      "failureCount": 1,
+      "failureCount": 2,
       "passCount": 0,
       "bundler": "turbopack",
-      "group": "43/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
       "bucket": "segment-cache/PPR prefetch",
       "messages": [
         "FAIL Turbopack test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts ",
-        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/runs/2026-06-25T14-02-18-769Z-turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in",
+        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/runs/2026-06-25T16-54-12-426Z-turbo-T123-verify-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7ba",
         "[brrrd-local-harness] $ npx -y node@20 /Users/ggm/work/next.js/node_modules/jest/bin/jest.js --ci --runInBand --forceExit --no-cache --verbose test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
-        "FAIL Turbopack test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts (17.166 s)",
+        "FAIL Turbopack test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts (15.915 s)",
         "prefetch inlining without cacheComponents",
-        "✓ static page is prefetched with inlining (876 ms)",
-        "✓ dynamic page is fully prefetched with prefetch={true} (495 ms)",
-        "✕ dynamic edge page is fully prefetched with prefetch={true} (385 ms)",
+        "✓ static page is prefetched with inlining (1211 ms)",
+        "✓ dynamic page is fully prefetched with prefetch={true} (645 ms)",
+        "✕ dynamic edge page is fully prefetched with prefetch={true} (383 ms)",
         "● prefetch inlining without cacheComponents › dynamic edge page is fully prefetched with prefetch={true}",
-        "URL: http://127.0.0.1:59686/dynamic-edge?_rsc=2aa-iRZMLrKDucFo",
-        "Headers: {\"x-nextjs-deployment-id\":\"brrrd-local-1782396154-97044\",\"vary\":\"rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding\",\"connection\":\"close\",\"date\":\"Thu, 25 Jun 2026 14:02:46 GMT\"}",
+        "URL: http://127.0.0.1:56011/dynamic-edge?_rsc=2aa-iRZMLrKDucFo",
+        "Headers: {\"x-nextjs-deployment-id\":\"brrrd-local-1782406468-23350\",\"vary\":\"rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding\",\"connection\":\"close\",\"date\":\"Thu, 25 Jun 2026 16:54:39 GMT\"}",
         "at Object.act (e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts:87:11)"
       ],
       "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
-      "targetName": "turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38",
+      "targetName": "turbo-T123-verify-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7ba8b7cc",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7ba8b7cc.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7ba8b7cc.stderr.log"
       },
       "testTitles": [
         "prefetch inlining without cacheComponents",
@@ -2953,10 +2951,10 @@
         "dynamic edge page is fully prefetched with prefetch={true}"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-25T14:06:05.703Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
-      "lastFailureAt": "2026-06-25T14:06:05.703Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastSeenAt": "2026-06-25T16:55:56.473Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "lastFailureAt": "2026-06-25T16:55:56.473Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
       "closedAt": null,
       "closedByRun": null
     },
@@ -3102,7 +3100,7 @@
       "firstSeenAt": "2026-06-25T14:39:35.574Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
       "failureCount": 2,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "turbopack",
       "group": "fixture",
       "kind": "fixture",
@@ -3124,13 +3122,28 @@
         "reads the body as text",
         "reads the body from index"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-25T15:58:40.780Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "status": "closed",
+      "lastSeenAt": "2026-06-25T16:55:56.473Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
       "lastFailureAt": "2026-06-25T15:58:40.780Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-25T16:55:56.473Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "lastVerifiedAt": "2026-06-25T16:55:56.473Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/edge-api-endpoints-can-receive-body/index.test.ts",
+        "name": "turbo-T123-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-acdb6515",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-acdb6515.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-acdb6515.stderr.log"
+        }
+      }
     },
     "turbopack|test/e2e/middleware-general/test/index.test.ts": {
       "id": "turbopack|test/e2e/middleware-general/test/index.test.ts",
@@ -3293,7 +3306,7 @@
       "firstSeenAt": "2026-06-25T14:39:35.574Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
       "failureCount": 1,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "turbopack",
       "group": "45/64",
       "kind": "fixture",
@@ -3329,13 +3342,28 @@
         "should SSR blocking path correctly (pre-rendered)",
         "should have gsp in __NEXT_DATA__"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-25T14:39:35.574Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "status": "closed",
+      "lastSeenAt": "2026-06-25T16:55:56.473Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
       "lastFailureAt": "2026-06-25T14:39:35.574Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-25T16:55:56.473Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "lastVerifiedAt": "2026-06-25T16:55:56.473Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/prerender.test.ts",
+        "name": "turbo-T123-verify-turbopack-fixture-test-e2e-prerender.test.ts-bdabf4a8",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-prerender.test.ts-bdabf4a8.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify/target-logs/turbo-T123-verify-turbopack-fixture-test-e2e-prerender.test.ts-bdabf4a8.stderr.log"
+        }
+      }
     },
     "webpack|test/e2e/middleware-general/test/index.test.ts": {
       "id": "webpack|test/e2e/middleware-general/test/index.test.ts",

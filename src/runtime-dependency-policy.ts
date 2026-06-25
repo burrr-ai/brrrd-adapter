@@ -267,6 +267,10 @@ function __brrrd_load_cjs_file(file) {
     return __brrrd_resolve_cjs_file(String(childId), dirname) || String(childId);
   };
   var source = fs.readFileSync(file, "utf8");
+  if (file.slice(-5) === ".json") {
+    module.exports = JSON.parse(source);
+    return module.exports;
+  }
   var fn = new Function("exports", "module", "require", "__filename", "__dirname", source + "\\n//# sourceURL=file://" + file);
   fn(module.exports, module, localRequire, file, dirname);
   return module.exports;

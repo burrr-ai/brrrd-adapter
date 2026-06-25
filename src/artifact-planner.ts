@@ -719,6 +719,53 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
   return items;
 }
 
+// Turbopack externalizes some node_modules packages and materializes a hashed
+// alias under `<distDir>/node_modules/<alias>` (a symlink to the real package);
+// the built server then `require`s the alias name (e.g.
+// `firebase-<hash>/firestore`). Webpack produces no `.next/node_modules`, so
+// this is a no-op there. NFT tracing packages the real package files under their
+// real node_modules paths, but the symlinked alias directory itself is never
+// emitted, so the runtime require of the alias fails. Materialize each alias
+// package's own files under `node_modules/<alias>/...` so the alias resolves
+// (its transitive deps remain under their real node_modules paths via tracing).
+function turbopackExternalAliasArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const aliasRoot = path.join(model.distDir, "node_modules");
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(aliasRoot);
+  } catch {
+    return [];
+  }
+  const items: ArtifactPlanItem[] = [];
+  for (const aliasName of entries) {
+    const aliasPath = path.join(aliasRoot, aliasName);
+    let realPath: string;
+    try {
+      if (!fs.lstatSync(aliasPath).isSymbolicLink()) continue;
+      realPath = fs.realpathSync(aliasPath);
+      if (!fs.statSync(realPath).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    for (const fileAbs of walkFiles(realPath)) {
+      const rel = path.relative(realPath, fileAbs).split(path.sep).join("/");
+      const mountRel = packageJoin("node_modules", `${aliasName}/${rel}`);
+      items.push(
+        artifactItem(model, {
+          id: `turbopack-alias:${sanitizeId(aliasName)}:${sanitizeId(rel)}`,
+          kind: "runtime-file",
+          sourceAbsPath: fileAbs,
+          packagePath: packageJoin("runtime", mountRel),
+          mountPath: mountRel,
+          required: true,
+          reason: `Turbopack externalized package alias ${aliasName}`,
+        }),
+      );
+    }
+  }
+  return items;
+}
+
 function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const chunkRoot = path.join(model.distDir, "server", "chunks");
   const files = walkFiles(chunkRoot);
@@ -1131,6 +1178,7 @@ export function createArtifactPlan(
       ...appPrerenderRuntimeArtifacts(model),
       ...pagesPrerenderRuntimeArtifacts(model),
       ...routeRuntimeDependencyArtifacts(model),
+      ...turbopackExternalAliasArtifacts(model),
       ...serverChunkGraphArtifacts(model),
       ...cacheHandlerArtifacts(model),
       ...middlewareAdapterAssetArtifacts(model, options.middleware),

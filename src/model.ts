@@ -147,7 +147,7 @@ function isInsideDir(filePath: string, dir: string): boolean {
   return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
-function normalizeIndexUrlPath(pathname: string): string {
+export function normalizeIndexUrlPath(pathname: string): string {
   if (pathname === "/index") return "/";
   if (pathname.endsWith("/index")) return pathname.slice(0, -"/index".length) || "/";
   return pathname;

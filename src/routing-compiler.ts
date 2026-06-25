@@ -4,6 +4,7 @@ import type {
   NextBuildModel,
   NormalizedOutput,
 } from "./model.js";
+import { normalizeIndexUrlPath } from "./model.js";
 import type {
   ManifestSupplement,
   SupplementAppPrerenderDataRoute,
@@ -562,6 +563,13 @@ function exactRoute(
     id: sanitizeId(output.id),
     pattern: staticRegexes.get(output.urlPath)
       ?? staticRegexes.get(output.pathname)
+      // Turbopack reports an index pages-API/page output's urlPath as
+      // `/api/index` where webpack reports `/api`; the exact lookups miss but the
+      // routes-manifest has the collapsed `/api`. Fall back to the directory-index
+      // form ONLY after the exact lookups, so a literal `/nested/index` route
+      // (which IS present in the manifest) still matches exactly and is not
+      // collapsed.
+      ?? staticRegexes.get(normalizeIndexUrlPath(output.urlPath))
       ?? exactPathPattern(output.urlPath, model.config),
     type,
     ...runtimeTarget(output),
