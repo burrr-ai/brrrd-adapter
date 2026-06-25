@@ -1,8 +1,15 @@
 {
   "name": "@brrrd/adapter",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Next.js build adapter that packages an app for the brrrd runtime (comwit.io platform).",
-  "keywords": ["nextjs", "next", "brrrd", "adapter", "comwit", "deploy"],
+  "keywords": [
+    "nextjs",
+    "next",
+    "brrrd",
+    "adapter",
+    "comwit",
+    "deploy"
+  ],
   "license": "UNLICENSED",
   "homepage": "https://comwit.io",
   "repository": {
@@ -10,7 +17,11 @@
     "url": "git+https://github.com/burrr-ai/brrrd-adapter.git"
   },
   "type": "module",
-  "files": ["dist", "runtime", "README.md"],
+  "files": [
+    "dist",
+    "runtime",
+    "README.md"
+  ],
   "publishConfig": {
     "access": "public"
   },
