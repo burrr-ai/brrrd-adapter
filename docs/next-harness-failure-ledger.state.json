@@ -1,17 +1,19 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-24T02:02:21.972Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-24T02-01-48-101Z-close-edge-pages",
+  "updatedAt": "2026-06-25T16:01:49.209Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "pass",
-    "resultCount": 1,
-    "failureCount": 0,
-    "buckets": {}
+    "status": "fail",
+    "resultCount": 2,
+    "failureCount": 1,
+    "buckets": {
+      "middleware/proxy": 1
+    }
   },
   "counts": {
-    "closed": 48,
-    "open": 5
+    "closed": 51,
+    "open": 14
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2825,6 +2827,562 @@
       "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
       "lastFailureAt": "2026-06-22T17:53:11.830Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-22T17-19-21-043Z-dirty-baseline-webpack-49-64",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "firstSeenAt": "2026-06-25T13:34:49.413Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-21-16-425Z-turbopack-baseline",
+      "failureCount": 2,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "22/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "bucket": "App not-found fallback",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts ",
+        "Expected substring: not \"0.294600696828794\"",
+        "Received string:        \"5:\\\"$Sreact.fragment\\\"",
+        "1:[\\\"$\\\",\\\"$5\\\",\\\"c\\\",{\\\"children\\\":[[[\\\"$\\\",\\\"script\\\",\\\"script-0\\\",{\\\"src\\\":\\\"/_next/static/chunks/28hegb5idstki.js?dpl=brrrd-local-1782395957-90812\\\",\\\"async\\\":true,\\\"nonce\\\":\\\"$undefined\\\"}]],[\\\"$\\\",\\\"html\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"body\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$L10\\\",null,{\\\"parallelRouterKey\\\":\\\"children\\\",\\\"error\\\":\\\"$undefined\\\",\\\"errorStyles\\\":\\\"$undefined\\\",\\\"errorScripts\\\":\\\"$undefined\\\",\\\"template\\\":[\\\"$\\\",\\\"$L11\\\",null,{}],\\\"templateStyles\\\":\\\"$undefined\\\",\\\"templateScripts\\\":\\\"$undefined\\\",\\\"notFound\\\":[[[\\\"$\\\",\\\"title\\\",null,{\\\"children\\\":\\\"404: This page could not be found.\\\"}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"fontFamily\\\":\\\"system-ui,\\\\\\\"Segoe UI\\\\\\\",Roboto,Helvetica,Arial,sans-serif,\\\\\\\"Apple Color Emoji\\\\\\\",\\\\\\\"Segoe UI Emoji\\\\\\\"\\\",\\\"height\\\":\\\"100vh\\\",\\\"textAlign\\\":\\\"center\\\",\\\"display\\\":\\\"flex\\\",\\\"flexDirection\\\":\\\"column\\\",\\\"alignItems\\\":\\\"center\\\",\\\"justifyContent\\\":\\\"center\\\"},\\\"children\\\":[\\\"$\\\",\\\"div\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"style\\\",null,{\\\"dangerouslySetInnerHTML\\\":{\\\"__html\\\":\\\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\\\"}}],[\\\"$\\\",\\\"h1\\\",null,{\\\"className\\\":\\\"next-error-h1\\\",\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\",\\\"margin\\\":\\\"0 20px 0 0\\\",\\\"padding\\\":\\\"0 23px 0 0\\\",\\\"fontSize\\\":24,\\\"fontWeight\\\":500,\\\"verticalAlign\\\":\\\"top\\\",\\\"lineHeight\\\":\\\"49px\\\"},\\\"children\\\":404}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\"},\\\"children\\\":[\\\"$\\\",\\\"h2\\\",null,{\\\"style\\\":{\\\"fontSize\\\":14,\\\"fontWeight\\\":400,\\\"lineHeight\\\":\\\"49px\\\",\\\"margin\\\":0},\\\"children\\\":\\\"This page could not be found.\\\"}]}]]}]}]],[]],\\\"forbidden\\\":\\\"$undefined\\\",\\\"unauthorized\\\":\\\"$undefined\\\"}]}]}]]}]",
+        "> 94 |         expect(rsc).not.toContain(first)",
+        "97 |       // This proves that the dynamic RSC was able to use the resume data cache",
+        "Expected substring: not \"0.24397562350409197\""
+      ],
+      "targetFixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
+      "targetName": "turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693.stderr.log"
+      },
+      "testTitles": [
+        "resume-data-cache",
+        "is skipped",
+        "should use RDC for server action re-renders",
+        "should see fresh data after updateTag in server action with use cache",
+        "should see fresh data after updateTag in server action with fetch cache"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T14:06:05.703Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastFailureAt": "2026-06-25T14:06:05.703Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/app/index.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/app/index.test.ts",
+      "firstSeenAt": "2026-06-25T13:34:49.413Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-21-16-425Z-turbopack-baseline",
+      "failureCount": 3,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "fixture",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/app/index.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "\u001b[2m2026-06-25T15:00:31.564639Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-slow-page-no-loading-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0oomy2z.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T15:00:31.564668Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-(rootonly)-dashboard-hello-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0b_ysty.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T15:00:31.564700Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-test-page-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0q4xh3u.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T15:00:31.564727Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-dashboard-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_1m2oibl.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T15:00:31.564763Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-catch-all-edge-____slug_-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_00l1ryp.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T15:00:31.564774Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-slow-page-with-loading-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0jrowpu.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler"
+      ],
+      "targetFixture": "test/e2e/app-dir/app/index.test.ts",
+      "targetName": "bundler-speed-compare-turbopack-fixture-test-e2e-app-dir-app-index.test.ts-d43f66d6",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-54-48-889Z-bundler-speed-compare/target-logs/bundler-speed-compare-turbopack-fixture-test-e2e-app-dir-app-index.test.ts-d43f66d6.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-54-48-889Z-bundler-speed-compare/target-logs/bundler-speed-compare-turbopack-fixture-test-e2e-app-dir-app-index.test.ts-d43f66d6.stderr.log"
+      },
+      "testTitles": [
+        "app dir - basic",
+        "should have correct cache-control for SSR routes",
+        "should provide query for getStaticProps page correctly",
+        "should contain framework.json",
+        "outputs correct build-diagnostics.json",
+        "should have correct preferredRegion values in manifest",
+        "should work for catch-all edge page",
+        "should return normalized dynamic route params for catch-all edge page"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T15:09:54.257Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-54-48-889Z-bundler-speed-compare",
+      "lastFailureAt": "2026-06-25T15:09:54.257Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-54-48-889Z-bundler-speed-compare",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+      "firstSeenAt": "2026-06-25T14:06:05.703Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "43/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+      "bucket": "segment-cache/PPR prefetch",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts ",
+        "[brrrd-local-harness] artifacts: /Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/runs/2026-06-25T14-02-18-769Z-turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in",
+        "[brrrd-local-harness] $ npx -y node@20 /Users/ggm/work/next.js/node_modules/jest/bin/jest.js --ci --runInBand --forceExit --no-cache --verbose test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+        "FAIL Turbopack test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts (17.166 s)",
+        "prefetch inlining without cacheComponents",
+        "✓ static page is prefetched with inlining (876 ms)",
+        "✓ dynamic page is fully prefetched with prefetch={true} (495 ms)",
+        "✕ dynamic edge page is fully prefetched with prefetch={true} (385 ms)",
+        "● prefetch inlining without cacheComponents › dynamic edge page is fully prefetched with prefetch={true}",
+        "URL: http://127.0.0.1:59686/dynamic-edge?_rsc=2aa-iRZMLrKDucFo",
+        "Headers: {\"x-nextjs-deployment-id\":\"brrrd-local-1782396154-97044\",\"vary\":\"rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding\",\"connection\":\"close\",\"date\":\"Thu, 25 Jun 2026 14:02:46 GMT\"}",
+        "at Object.act (e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts:87:11)"
+      ],
+      "targetFixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+      "targetName": "turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-7527fe38.stderr.log"
+      },
+      "testTitles": [
+        "prefetch inlining without cacheComponents",
+        "prefetch hints are only computed during build",
+        "static page is prefetched with inlining",
+        "dynamic page is fully prefetched with prefetch={true}",
+        "dynamic edge page is fully prefetched with prefetch={true}"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T14:06:05.703Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastFailureAt": "2026-06-25T14:06:05.703Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/prerender-native-module.test.ts": {
+      "id": "turbopack|test/e2e/prerender-native-module.test.ts",
+      "firstSeenAt": "2026-06-25T14:06:05.703Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "43/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/prerender-native-module.test.ts",
+      "bucket": "Node/runtime API",
+      "messages": [
+        "FAIL Turbopack test/e2e/prerender-native-module.test.ts ",
+        "[brrrd-harness] build app failed with exit status 1",
+        "Error: native Node addons (.node) are not supported in brrrd isolates:",
+        "- /Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/runs/2026-06-25T14-03-07-945Z-turbopack-baseline-wide-turbopack-43-64-test-e2e-prerender-native-module.test.ts-f8dae497/tmp/next-test-1782396200815-423/node_modules/.pnpm/sqlite3@5.0.2/node_modules/sqlite3/lib/binding/napi-v3-darwin-arm64/node_sqlite3.node",
+        "Failed to create next instance Error: Custom deploy script failed:  undefined (1)"
+      ],
+      "targetFixture": "test/e2e/prerender-native-module.test.ts",
+      "targetName": "turbopack-baseline-wide-turbopack-43-64-test-e2e-prerender-native-module.test.ts-f8dae497",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-prerender-native-module.test.ts-f8dae497.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-43-64-test-e2e-prerender-native-module.test.ts-f8dae497.stderr.log"
+      },
+      "testTitles": [
+        "prerender native module",
+        "should render index correctly",
+        "should render /blog/first correctly",
+        "should render /blog/second correctly",
+        "should output traces"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T14:06:05.703Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastFailureAt": "2026-06-25T14:06:05.703Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
+      "firstSeenAt": "2026-06-25T14:06:05.703Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "64/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts ",
+        "page error PlaywrightError: Minified React error #412; visit https://react.dev/errors/412 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+        "Expected: not \"2026-06-25T14:04:32.225Z\"",
+        "Expected: not \"0.042938220080129375\"",
+        "Expected: not \"2026-06-25T14:04:32.222Z\""
+      ],
+      "targetFixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
+      "targetName": "turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b.stderr.log"
+      },
+      "testTitles": [
+        "non-ASCII cache tags",
+        "serves a non-ASCII slug ISR page without ERR_INVALID_CHAR",
+        "invalidates a cached entry via revalidatePath with a non-ASCII path",
+        "invalidates a cached entry via revalidateTag with a non-ASCII tag",
+        "invalidates a fetch entry tagged with a non-ASCII tag via revalidateTag",
+        "invalidates an `unstable_cache` entry tagged with a non-ASCII tag via revalidateTag",
+        "invalidates a cached entry via updateTag with a non-ASCII tag (Server Action)"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T14:06:05.703Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastFailureAt": "2026-06-25T14:06:05.703Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 1,
+      "passCount": 1,
+      "bundler": "turbopack",
+      "group": "10/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts ",
+        "Expected: \"hello world\"",
+        "Received: \"\"",
+        "[brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:21:05.114439Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:21:05.116475Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500",
+        "\u001b[2m2026-06-25T14:21:05.282623Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m2 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:21:05.282855Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/home\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500",
+        "\u001b[2m2026-06-25T14:21:05.294911Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m3 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__1s_ewok._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:21:05.295468Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/home\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500"
+      ],
+      "targetFixture": "test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts",
+      "targetName": "turbopack-baseline-16-turbopack-10-64-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-d3ed0433",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-10-64-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-d3ed0433.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-10-64-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-d3ed0433.stderr.log"
+      },
+      "testTitles": [
+        "proxy-nfc-traced",
+        "should have renamed trace file as middleware instead of proxy",
+        "should successfully build and be redirected from proxy"
+      ],
+      "status": "closed",
+      "lastSeenAt": "2026-06-25T15:58:40.780Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastFailureAt": "2026-06-25T14:39:35.574Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "closedAt": "2026-06-25T15:58:40.780Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastVerifiedAt": "2026-06-25T15:58:40.780Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/proxy-nfc-traced/proxy-nfc-traced.test.ts",
+        "name": "turbo-A-verify-turbopack-fixture-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-9200046f",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-9200046f.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-proxy-nfc-traced-proxy-nfc-traced.test.ts-9200046f.stderr.log"
+        }
+      }
+    },
+    "turbopack|test/e2e/edge-api-endpoints-can-receive-body/index.test.ts": {
+      "id": "turbopack|test/e2e/edge-api-endpoints-can-receive-body/index.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 2,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "fixture",
+      "kind": "fixture",
+      "fixture": "test/e2e/edge-api-endpoints-can-receive-body/index.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "FAIL Turbopack test/e2e/edge-api-endpoints-can-receive-body/index.test.ts ",
+        "Expected: 200",
+        "Received: 404"
+      ],
+      "targetFixture": "test/e2e/edge-api-endpoints-can-receive-body/index.test.ts",
+      "targetName": "turbo-A-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-7b148b6d",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-7b148b6d.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-edge-api-endpoints-can-receive-body-index.test.ts-7b148b6d.stderr.log"
+      },
+      "testTitles": [
+        "Edge API endpoints can receive body",
+        "reads the body as text",
+        "reads the body from index"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T15:58:40.780Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastFailureAt": "2026-06-25T15:58:40.780Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/middleware-general/test/index.test.ts": {
+      "id": "turbopack|test/e2e/middleware-general/test/index.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 2,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "fixture",
+      "kind": "fixture",
+      "fixture": "test/e2e/middleware-general/test/index.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL Turbopack test/e2e/middleware-general/test/index.test.ts ",
+        "[15:56:14.872Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:56:14.890Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:56:14.932Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:57:30.871Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:57:30.885Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:57:30.909Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:58:08.686893Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m106 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:58:08.734729Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m107 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:56:50.141514Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m111 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:56:50.171193Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m112 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error"
+      ],
+      "targetFixture": "test/e2e/middleware-general/test/index.test.ts",
+      "targetName": "turbo-A-verify-turbopack-fixture-test-e2e-middleware-general-test-index.test.ts-fa22ba4e",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-middleware-general-test-index.test.ts-fa22ba4e.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-middleware-general-test-index.test.ts-fa22ba4e.stderr.log"
+      },
+      "testTitles": [
+        "Middleware Runtime",
+        "should not treat as _next/data request with just header",
+        "should be able to use node builtins with node runtime",
+        "should have added middleware in functions manifest",
+        "should handle 404 on fallback: false route correctly",
+        "should work with notFound: true correctly",
+        "should be able to rewrite on _next/static/chunks/pages/ 404",
+        "refreshes the page when middleware changes "
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T15:58:40.780Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastFailureAt": "2026-06-25T15:58:40.780Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "turbopack|test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 1,
+      "passCount": 1,
+      "bundler": "turbopack",
+      "group": "20/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts ",
+        "[brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:24:16.710518Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m1 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:24:16.711729Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/with-action\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500",
+        "\u001b[2m2026-06-25T14:24:21.801261Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m2 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__0-tnfoc._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:24:21.801669Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/with-action\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500"
+      ],
+      "targetFixture": "test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts",
+      "targetName": "turbopack-baseline-16-turbopack-20-64-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-081d82f3",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-20-64-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-081d82f3.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-20-64-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-081d82f3.stderr.log"
+      },
+      "testTitles": [
+        "action forward loop prevention",
+        "renders the action-not-found error when a rewrite sends the action POST to a route that does not bundle it"
+      ],
+      "status": "closed",
+      "lastSeenAt": "2026-06-25T15:58:40.780Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastFailureAt": "2026-06-25T14:39:35.574Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "closedAt": "2026-06-25T15:58:40.780Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastVerifiedAt": "2026-06-25T15:58:40.780Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/action-forward-loop/action-forward-loop.test.ts",
+        "name": "turbo-A-verify-turbopack-fixture-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-798cf228",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-798cf228.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-action-forward-loop-action-forward-loop.test.ts-798cf228.stderr.log"
+        }
+      }
+    },
+    "turbopack|test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts": {
+      "id": "turbopack|test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 1,
+      "passCount": 1,
+      "bundler": "turbopack",
+      "group": "35/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL Turbopack test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts ",
+        "\u001b[2m2026-06-25T14:29:04.715180Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-decode-req-body-edge-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_107awsu.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.715676Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-server-edge-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_1hndije.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.715697Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-client-edge-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_16fbfa-.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.715744Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-header-edge-form-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_1_2pdo8.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.715824Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-dynamic-csr-edge-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0svaztq.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.715848Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mbrrrd::bootstrap\u001b[0m\u001b[2m:\u001b[0m edge function loaded \u001b[3mservice\u001b[0m\u001b[2m=\u001b[0m\"default\" \u001b[3mroute_id\u001b[0m\u001b[2m=\u001b[0mapp-header-edge-page_rsc \u001b[3mentry\u001b[0m\u001b[2m=\u001b[0mserver/edge/chunks/ssr/11o__next_dist_esm_build_templates_edge-wrapper_0k2_lhq.js \u001b[3mhandler_export\u001b[0m\u001b[2m=\u001b[0mhandler",
+        "\u001b[2m2026-06-25T14:29:04.971524Z\u001b[0m \u001b[33m WARN\u001b[0m \u001b[2mbrrrd::pool\u001b[0m\u001b[2m:\u001b[0m runtime host loop error \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mruntime host event loop error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__024wzbv._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:29:34.972994Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase timed out before response head",
+        "[brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__024wzbv._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__024wzbv._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:29:36.332071Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m2 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"exception\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-loop] handler error: ChunkLoadError: Failed to load chunk server/chunks/[externals]__024wzbv._.js from runtime for chunk server/middleware.js ChunkLoadError: Failed to load chunk server/chunks/[externals]__024wzbv._.js from runtime for chunk server/middleware.js",
+        "\u001b[2m2026-06-25T14:29:36.332310Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[1mbrrrd.request\u001b[0m\u001b[1m{\u001b[0m\u001b[3mworker_id\u001b[0m\u001b[2m=\u001b[0m0 \u001b[3mhttp.method\u001b[0m\u001b[2m=\u001b[0mGET \u001b[3mhttp.path\u001b[0m\u001b[2m=\u001b[0m/file\u001b[1m}\u001b[0m\u001b[2m:\u001b[0m \u001b[2mbrrrd::routing\u001b[0m\u001b[2m:\u001b[0m proxy phase failed \u001b[3merror\u001b[0m\u001b[2m=\u001b[0mproxy phase returned unexpected status 500"
+      ],
+      "targetFixture": "test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts",
+      "targetName": "turbopack-baseline-16-turbopack-35-64-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-129eecd0",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-35-64-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-129eecd0.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-35-64-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-129eecd0.stderr.log"
+      },
+      "testTitles": [],
+      "status": "closed",
+      "lastSeenAt": "2026-06-25T15:58:40.780Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastFailureAt": "2026-06-25T14:39:35.574Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "closedAt": "2026-06-25T15:58:40.780Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "lastVerifiedAt": "2026-06-25T15:58:40.780Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/actions/app-action-size-limit-invalid-node-middleware.test.ts",
+        "name": "turbo-A-verify-turbopack-fixture-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-52abe5f1",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-52abe5f1.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-55-17-678Z-turbo-A-verify/target-logs/turbo-A-verify-turbopack-fixture-test-e2e-app-dir-actions-app-action-size-limit-invalid-node-middleware.test.ts-52abe5f1.stderr.log"
+        }
+      }
+    },
+    "turbopack|test/e2e/prerender.test.ts": {
+      "id": "turbopack|test/e2e/prerender.test.ts",
+      "firstSeenAt": "2026-06-25T14:39:35.574Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "turbopack",
+      "group": "45/64",
+      "kind": "fixture",
+      "fixture": "test/e2e/prerender.test.ts",
+      "bucket": "bundler output shape",
+      "messages": [
+        "FAIL Turbopack test/e2e/prerender.test.ts ",
+        "[14:34:12.667Z] Browser Log: Error: Failed to load static props",
+        "[14:34:12.674Z] Browser Log: Error: Failed to load static props",
+        "page error PlaywrightError: Failed to load static props",
+        "[14:34:23.388Z] Browser Log: Error: Failed to load static props",
+        "[14:34:23.397Z] Browser Log: Error: Failed to load static props",
+        "[14:35:18.530Z] Browser Log: Error: Failed to load static props",
+        "[14:35:18.545Z] Browser Log: Error: Failed to load static props",
+        "[14:35:23.236Z] Browser Log: Error: Failed to load static props",
+        "[14:35:23.240Z] Browser Log: Error: Failed to load static props",
+        "SyntaxError: Unexpected token 'I', \"Internal S\"... is not valid JSON",
+        "[brrrd-loop] handler error: Error: Failed to load external module firebase-e459f67bd3efdfaa/firestore: Error: Cannot find module 'firebase-e459f67bd3efdfaa/firestore' ([brrrd] unsupported/unbundled require) Error: Failed to load external module firebase-e459f67bd3efdfaa/firestore: Error: Cannot find module 'firebase-e459f67bd3efdfaa/firestore' ([brrrd] unsupported/unbundled require)"
+      ],
+      "targetFixture": "test/e2e/prerender.test.ts",
+      "targetName": "turbopack-baseline-16-turbopack-45-64-test-e2e-prerender.test.ts-f3297303",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-45-64-test-e2e-prerender.test.ts-f3297303.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16/target-logs/turbopack-baseline-16-turbopack-45-64-test-e2e-prerender.test.ts-f3297303.stderr.log"
+      },
+      "testTitles": [
+        "Prerender",
+        "should navigate between pages successfully",
+        "should respond with 405 for POST to static page",
+        "should SSR normal page correctly",
+        "should SSR incremental page correctly",
+        "should SSR blocking path correctly (blocking)",
+        "should SSR blocking path correctly (pre-rendered)",
+        "should have gsp in __NEXT_DATA__"
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T14:39:35.574Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "lastFailureAt": "2026-06-25T14:39:35.574Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T14-17-19-273Z-turbopack-baseline-16",
+      "closedAt": null,
+      "closedByRun": null
+    },
+    "webpack|test/e2e/middleware-general/test/index.test.ts": {
+      "id": "webpack|test/e2e/middleware-general/test/index.test.ts",
+      "firstSeenAt": "2026-06-25T16:01:49.209Z",
+      "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw",
+      "failureCount": 1,
+      "passCount": 0,
+      "bundler": "webpack",
+      "group": "fixture",
+      "kind": "fixture",
+      "fixture": "test/e2e/middleware-general/test/index.test.ts",
+      "bucket": "middleware/proxy",
+      "messages": [
+        "FAIL webpack test/e2e/middleware-general/test/index.test.ts ",
+        "[15:59:12.919Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:59:12.935Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[15:59:12.965Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:00:42.353Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:00:42.363Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[16:00:42.382Z] Browser Log: Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:59:53.962919Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m96 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T15:59:54.016594Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m97 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T16:01:17.167499Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m91 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error",
+        "\u001b[2m2026-06-25T16:01:17.196168Z\u001b[0m \u001b[31mERROR\u001b[0m \u001b[2mbrrrd::app_log\u001b[0m\u001b[2m:\u001b[0m brrrd.app.log \u001b[3mlog_kind\u001b[0m\u001b[2m=\u001b[0m\"app\" \u001b[3mservice_id\u001b[0m\u001b[2m=\u001b[0mdefault \u001b[3mbuild_id\u001b[0m\u001b[2m=\u001b[0mbuild-TfctsWXpff2fKS \u001b[3mrequest_id\u001b[0m\u001b[2m=\u001b[0m92 \u001b[3mroute\u001b[0m\u001b[2m=\u001b[0mproxy_phase \u001b[3mtrace_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mspan_id\u001b[0m\u001b[2m=\u001b[0m \u001b[3mlevel\u001b[0m\u001b[2m=\u001b[0merror \u001b[3merror_class\u001b[0m\u001b[2m=\u001b[0m\"\" \u001b[3merror_stack\u001b[0m\u001b[2m=\u001b[0m [brrrd-middleware] threw: Error: test error Error: test error"
+      ],
+      "targetFixture": "test/e2e/middleware-general/test/index.test.ts",
+      "targetName": "webpack-regress-mw-webpack-fixture-test-e2e-middleware-general-test-index.test.ts-5758505f",
+      "logs": {
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw/target-logs/webpack-regress-mw-webpack-fixture-test-e2e-middleware-general-test-index.test.ts-5758505f.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw/target-logs/webpack-regress-mw-webpack-fixture-test-e2e-middleware-general-test-index.test.ts-5758505f.stderr.log"
+      },
+      "testTitles": [
+        "Middleware Runtime",
+        "should not treat as _next/data request with just header",
+        "should be able to use node builtins with node runtime",
+        "should have added middleware in functions manifest",
+        "should handle 404 on fallback: false route correctly",
+        "should work with notFound: true correctly",
+        "should be able to rewrite on _next/static/chunks/pages/ 404",
+        "refreshes the page when middleware changes "
+      ],
+      "status": "open",
+      "lastSeenAt": "2026-06-25T16:01:49.209Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw",
+      "lastFailureAt": "2026-06-25T16:01:49.209Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T15-58-40-957Z-webpack-regress-mw",
       "closedAt": null,
       "closedByRun": null
     }
