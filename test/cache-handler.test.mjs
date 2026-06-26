@@ -70,6 +70,26 @@ async function freshLegacyCacheHandlerClass() {
   return (await import(url.href)).BrrrdLegacyCacheHandler;
 }
 
+test("BrrrdLegacyCacheHandler constructs under an Edge Runtime that throws on getBuiltinModule", async () => {
+  const Handler = await freshLegacyCacheHandlerClass();
+  const proc = globalThis.process;
+  const original = proc.getBuiltinModule;
+  // Next's Edge Runtime exposes process.getBuiltinModule but throws "...not
+  // supported in the Edge Runtime" when it is called. Constructing the handler
+  // (e.g. an edge route's IncrementalCache in `next dev`) must not crash.
+  proc.getBuiltinModule = () => {
+    throw new Error(
+      "A Node.js API is used (process.getBuiltinModule) which is not supported in the Edge Runtime.",
+    );
+  };
+  try {
+    assert.doesNotThrow(() => new Handler({ serverDistDir: "/srv/.next" }));
+  } finally {
+    if (original === undefined) delete proc.getBuiltinModule;
+    else proc.getBuiltinModule = original;
+  }
+});
+
 test("modern cache handler default export is the CacheHandler object", () => {
   assert.equal(cacheHandler, namedCacheHandler);
   assert.ok(cacheHandler instanceof BrrrdCacheHandler);

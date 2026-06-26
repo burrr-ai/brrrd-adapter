@@ -30,8 +30,16 @@ const appPageTemplateCache = new Map();
 function nodeBuiltin(name) {
   const getBuiltinModule = globalThis.process?.getBuiltinModule;
   if (typeof getBuiltinModule === "function") {
-    const mod = getBuiltinModule(name);
-    if (mod) return mod;
+    // Next's Edge Runtime exposes `process.getBuiltinModule` but throws
+    // "A Node.js API is used (process.getBuiltinModule) ... not supported in
+    // the Edge Runtime" when it is called. Swallow that and fall through to the
+    // brrrd module registry / explicit error rather than crashing the handler.
+    try {
+      const mod = getBuiltinModule(name);
+      if (mod) return mod;
+    } catch {
+      // Edge Runtime: fall through.
+    }
   }
 
   const modules = globalThis.__brrrd_modules;
@@ -703,8 +711,18 @@ class BrrrdLegacyCacheHandler {
   constructor(ctx = {}) {
     this.fs = ctx.fs;
     this.flushToDisk = !!ctx.flushToDisk;
-    this.path = nodePath();
     this.serverDistDir = ctx.serverDistDir;
+  }
+
+  // `node:path`, resolved lazily. This handler is also constructed inside Next's
+  // Edge Runtime IncrementalCache (e.g. `next dev` edge routes), where resolving
+  // a Node builtin throws; resolving eagerly in the constructor crashed it. The
+  // disk-backed code paths that read `this.path` never run in the edge handler
+  // (it falls back to brrrd ops / in-memory), so deferring the resolution keeps
+  // construction edge-safe while node deployments are unchanged.
+  get path() {
+    if (this._path === undefined) this._path = nodePath();
+    return this._path;
   }
 
   async get(cacheKey, ctx) {
