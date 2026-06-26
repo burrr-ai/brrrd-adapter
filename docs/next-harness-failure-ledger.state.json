@@ -1,17 +1,20 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-25T16:57:25.952Z",
-  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-55-57-220Z-webpack-regress-T1",
+  "updatedAt": "2026-06-26T00:26:27.289Z",
+  "harvestDir": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo",
   "ledgerFile": "/Users/ggm/work/brrrd-adapter/docs/next-harness-failure-ledger.jsonl",
   "summary": {
-    "status": "pass",
+    "status": "fail",
     "resultCount": 2,
-    "failureCount": 0,
-    "buckets": {}
+    "failureCount": 2,
+    "buckets": {
+      "App not-found fallback": 1,
+      "bundler output shape": 1
+    }
   },
   "counts": {
-    "closed": 53,
-    "open": 12
+    "closed": 54,
+    "open": 11
   },
   "entries": {
     "webpack|test/e2e/app-dir/next-after-app-deploy/index.test.ts": {
@@ -2832,27 +2835,27 @@
       "id": "turbopack|test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
       "firstSeenAt": "2026-06-25T13:34:49.413Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-21-16-425Z-turbopack-baseline",
-      "failureCount": 2,
+      "failureCount": 3,
       "passCount": 0,
       "bundler": "turbopack",
-      "group": "22/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
       "bucket": "App not-found fallback",
       "messages": [
         "FAIL Turbopack test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts ",
-        "Expected substring: not \"0.294600696828794\"",
+        "Expected substring: not \"0.9451777927377527\"",
         "Received string:        \"5:\\\"$Sreact.fragment\\\"",
-        "1:[\\\"$\\\",\\\"$5\\\",\\\"c\\\",{\\\"children\\\":[[[\\\"$\\\",\\\"script\\\",\\\"script-0\\\",{\\\"src\\\":\\\"/_next/static/chunks/28hegb5idstki.js?dpl=brrrd-local-1782395957-90812\\\",\\\"async\\\":true,\\\"nonce\\\":\\\"$undefined\\\"}]],[\\\"$\\\",\\\"html\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"body\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$L10\\\",null,{\\\"parallelRouterKey\\\":\\\"children\\\",\\\"error\\\":\\\"$undefined\\\",\\\"errorStyles\\\":\\\"$undefined\\\",\\\"errorScripts\\\":\\\"$undefined\\\",\\\"template\\\":[\\\"$\\\",\\\"$L11\\\",null,{}],\\\"templateStyles\\\":\\\"$undefined\\\",\\\"templateScripts\\\":\\\"$undefined\\\",\\\"notFound\\\":[[[\\\"$\\\",\\\"title\\\",null,{\\\"children\\\":\\\"404: This page could not be found.\\\"}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"fontFamily\\\":\\\"system-ui,\\\\\\\"Segoe UI\\\\\\\",Roboto,Helvetica,Arial,sans-serif,\\\\\\\"Apple Color Emoji\\\\\\\",\\\\\\\"Segoe UI Emoji\\\\\\\"\\\",\\\"height\\\":\\\"100vh\\\",\\\"textAlign\\\":\\\"center\\\",\\\"display\\\":\\\"flex\\\",\\\"flexDirection\\\":\\\"column\\\",\\\"alignItems\\\":\\\"center\\\",\\\"justifyContent\\\":\\\"center\\\"},\\\"children\\\":[\\\"$\\\",\\\"div\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"style\\\",null,{\\\"dangerouslySetInnerHTML\\\":{\\\"__html\\\":\\\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\\\"}}],[\\\"$\\\",\\\"h1\\\",null,{\\\"className\\\":\\\"next-error-h1\\\",\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\",\\\"margin\\\":\\\"0 20px 0 0\\\",\\\"padding\\\":\\\"0 23px 0 0\\\",\\\"fontSize\\\":24,\\\"fontWeight\\\":500,\\\"verticalAlign\\\":\\\"top\\\",\\\"lineHeight\\\":\\\"49px\\\"},\\\"children\\\":404}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\"},\\\"children\\\":[\\\"$\\\",\\\"h2\\\",null,{\\\"style\\\":{\\\"fontSize\\\":14,\\\"fontWeight\\\":400,\\\"lineHeight\\\":\\\"49px\\\",\\\"margin\\\":0},\\\"children\\\":\\\"This page could not be found.\\\"}]}]]}]}]],[]],\\\"forbidden\\\":\\\"$undefined\\\",\\\"unauthorized\\\":\\\"$undefined\\\"}]}]}]]}]",
+        "1:[\\\"$\\\",\\\"$5\\\",\\\"c\\\",{\\\"children\\\":[[[\\\"$\\\",\\\"script\\\",\\\"script-0\\\",{\\\"src\\\":\\\"/_next/static/chunks/28hegb5idstki.js?dpl=brrrd-local-1782433503-92934\\\",\\\"async\\\":true,\\\"nonce\\\":\\\"$undefined\\\"}]],[\\\"$\\\",\\\"html\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"body\\\",null,{\\\"children\\\":[\\\"$\\\",\\\"$L10\\\",null,{\\\"parallelRouterKey\\\":\\\"children\\\",\\\"error\\\":\\\"$undefined\\\",\\\"errorStyles\\\":\\\"$undefined\\\",\\\"errorScripts\\\":\\\"$undefined\\\",\\\"template\\\":[\\\"$\\\",\\\"$L11\\\",null,{}],\\\"templateStyles\\\":\\\"$undefined\\\",\\\"templateScripts\\\":\\\"$undefined\\\",\\\"notFound\\\":[[[\\\"$\\\",\\\"title\\\",null,{\\\"children\\\":\\\"404: This page could not be found.\\\"}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"fontFamily\\\":\\\"system-ui,\\\\\\\"Segoe UI\\\\\\\",Roboto,Helvetica,Arial,sans-serif,\\\\\\\"Apple Color Emoji\\\\\\\",\\\\\\\"Segoe UI Emoji\\\\\\\"\\\",\\\"height\\\":\\\"100vh\\\",\\\"textAlign\\\":\\\"center\\\",\\\"display\\\":\\\"flex\\\",\\\"flexDirection\\\":\\\"column\\\",\\\"alignItems\\\":\\\"center\\\",\\\"justifyContent\\\":\\\"center\\\"},\\\"children\\\":[\\\"$\\\",\\\"div\\\",null,{\\\"children\\\":[[\\\"$\\\",\\\"style\\\",null,{\\\"dangerouslySetInnerHTML\\\":{\\\"__html\\\":\\\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\\\"}}],[\\\"$\\\",\\\"h1\\\",null,{\\\"className\\\":\\\"next-error-h1\\\",\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\",\\\"margin\\\":\\\"0 20px 0 0\\\",\\\"padding\\\":\\\"0 23px 0 0\\\",\\\"fontSize\\\":24,\\\"fontWeight\\\":500,\\\"verticalAlign\\\":\\\"top\\\",\\\"lineHeight\\\":\\\"49px\\\"},\\\"children\\\":404}],[\\\"$\\\",\\\"div\\\",null,{\\\"style\\\":{\\\"display\\\":\\\"inline-block\\\"},\\\"children\\\":[\\\"$\\\",\\\"h2\\\",null,{\\\"style\\\":{\\\"fontSize\\\":14,\\\"fontWeight\\\":400,\\\"lineHeight\\\":\\\"49px\\\",\\\"margin\\\":0},\\\"children\\\":\\\"This page could not be found.\\\"}]}]]}]}]],[]],\\\"forbidden\\\":\\\"$undefined\\\",\\\"unauthorized\\\":\\\"$undefined\\\"}]}]}]]}]",
         "> 94 |         expect(rsc).not.toContain(first)",
         "97 |       // This proves that the dynamic RSC was able to use the resume data cache",
-        "Expected substring: not \"0.24397562350409197\""
+        "Expected substring: not \"0.5654130565094809\""
       ],
       "targetFixture": "test/e2e/app-dir/resume-data-cache/resume-data-cache.test.ts",
-      "targetName": "turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693",
+      "targetName": "verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c2802d1f",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-22-64-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-ea5f0693.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo/target-logs/verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c2802d1f.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo/target-logs/verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-resume-data-cache-resume-data-cache.test.ts-c2802d1f.stderr.log"
       },
       "testTitles": [
         "resume-data-cache",
@@ -2862,10 +2865,10 @@
         "should see fresh data after updateTag in server action with fetch cache"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-25T14:06:05.703Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
-      "lastFailureAt": "2026-06-25T14:06:05.703Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastSeenAt": "2026-06-26T00:26:27.289Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo",
+      "lastFailureAt": "2026-06-26T00:26:27.289Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo",
       "closedAt": null,
       "closedByRun": null
     },
@@ -2917,7 +2920,7 @@
       "firstSeenAt": "2026-06-25T14:06:05.703Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
       "failureCount": 2,
-      "passCount": 0,
+      "passCount": 1,
       "bundler": "turbopack",
       "group": "fixture",
       "kind": "fixture",
@@ -2950,13 +2953,28 @@
         "dynamic page is fully prefetched with prefetch={true}",
         "dynamic edge page is fully prefetched with prefetch={true}"
       ],
-      "status": "open",
-      "lastSeenAt": "2026-06-25T16:55:56.473Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
+      "status": "closed",
+      "lastSeenAt": "2026-06-26T00:22:04.665Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-21-37-135Z-verify-storage-prefetch2",
       "lastFailureAt": "2026-06-25T16:55:56.473Z",
       "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T16-54-12-388Z-turbo-T123-verify",
-      "closedAt": null,
-      "closedByRun": null
+      "closedAt": "2026-06-26T00:22:04.665Z",
+      "closedByRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-21-37-135Z-verify-storage-prefetch2",
+      "lastVerifiedAt": "2026-06-26T00:22:04.665Z",
+      "lastVerifiedRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-21-37-135Z-verify-storage-prefetch2",
+      "closeReason": "fixture passed in later harvest",
+      "verifiedByTarget": {
+        "kind": "fixture",
+        "bundler": "turbopack",
+        "group": "fixture",
+        "fixture": "test/e2e/app-dir/segment-cache/prefetch-inlining-no-cache-components/prefetch-inlining-no-cache-components.test.ts",
+        "name": "verify-storage-prefetch2-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-6579fdf4",
+        "status": 0,
+        "logs": {
+          "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-21-37-135Z-verify-storage-prefetch2/target-logs/verify-storage-prefetch2-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-6579fdf4.stdout.log",
+          "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-21-37-135Z-verify-storage-prefetch2/target-logs/verify-storage-prefetch2-turbopack-fixture-test-e2e-app-dir-segment-cache-prefetch-inlining-no-cache-components-prefetch-in-6579fdf4.stderr.log"
+        }
+      }
     },
     "turbopack|test/e2e/prerender-native-module.test.ts": {
       "id": "turbopack|test/e2e/prerender-native-module.test.ts",
@@ -3001,25 +3019,25 @@
       "id": "turbopack|test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
       "firstSeenAt": "2026-06-25T14:06:05.703Z",
       "firstSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
-      "failureCount": 1,
+      "failureCount": 2,
       "passCount": 0,
       "bundler": "turbopack",
-      "group": "64/64",
+      "group": "fixture",
       "kind": "fixture",
       "fixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
       "bucket": "bundler output shape",
       "messages": [
         "FAIL Turbopack test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts ",
         "page error PlaywrightError: Minified React error #412; visit https://react.dev/errors/412 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
-        "Expected: not \"2026-06-25T14:04:32.225Z\"",
-        "Expected: not \"0.042938220080129375\"",
-        "Expected: not \"2026-06-25T14:04:32.222Z\""
+        "Expected: not \"2026-06-26T00:25:15.699Z\"",
+        "Expected: not \"0.2342858480008715\"",
+        "Expected: not \"2026-06-26T00:25:15.694Z\""
       ],
       "targetFixture": "test/e2e/app-dir/non-ascii-cache-tags/non-ascii-cache-tags.test.ts",
-      "targetName": "turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b",
+      "targetName": "verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-3bb4cc3c",
       "logs": {
-        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b.stdout.log",
-        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide/target-logs/turbopack-baseline-wide-turbopack-64-64-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-b17de97b.stderr.log"
+        "stdout": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo/target-logs/verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-3bb4cc3c.stdout.log",
+        "stderr": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo/target-logs/verify-rdc-turbo-turbopack-fixture-test-e2e-app-dir-non-ascii-cache-tags-non-ascii-cache-tags.test.ts-3bb4cc3c.stderr.log"
       },
       "testTitles": [
         "non-ASCII cache tags",
@@ -3031,10 +3049,10 @@
         "invalidates a cached entry via updateTag with a non-ASCII tag (Server Action)"
       ],
       "status": "open",
-      "lastSeenAt": "2026-06-25T14:06:05.703Z",
-      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
-      "lastFailureAt": "2026-06-25T14:06:05.703Z",
-      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-25T13-55-45-259Z-turbopack-baseline-wide",
+      "lastSeenAt": "2026-06-26T00:26:27.289Z",
+      "lastSeenRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo",
+      "lastFailureAt": "2026-06-26T00:26:27.289Z",
+      "lastFailureRun": "/Users/ggm/work/.brrrd-local-harness/2026-06-26T00-24-47-068Z-verify-rdc-turbo",
       "closedAt": null,
       "closedByRun": null
     },
