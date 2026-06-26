@@ -278,6 +278,13 @@ function __brrrd_load_cjs_file(file) {
 function __brrrd_resolve_cjs_specifier(id, baseDir) {
   return __brrrd_resolve_cjs_file(String(id), baseDir || "/bundle") || String(id);
 }
+// Expose the CommonJS file loader/resolver globally so a synthetic ESM bridge
+// (emitted by brrrd's module loader when a bare ESM import resolves to a
+// CommonJS file, e.g. an externalized package's CJS leaf like ws/lib/*.js) can
+// evaluate it through the SAME proven CJS machinery instead of failing native
+// ESM/CJS interop. brrrd's loader calls __brrrd_load_cjs_file(absPath).
+globalThis.__brrrd_load_cjs_file ??= __brrrd_load_cjs_file;
+globalThis.__brrrd_resolve_cjs_file ??= __brrrd_resolve_cjs_file;
 var require = globalThis.__brrrd_require || ((id) => {
   var m = globalThis.__brrrd_modules && globalThis.__brrrd_modules[id];
   if (m) {
@@ -320,6 +327,9 @@ var require = globalThis.__brrrd_require || ((id) => {
   throw __brrrdErr;
 });
 require.resolve = (id) => __brrrd_resolve_cjs_specifier(id, "/bundle");
+// Expose the assembled require so the synthetic ESM->CJS bridge can fall back to
+// it (builtins, optional stubs) for ids that are not concrete files on disk.
+globalThis.__brrrd_require ??= require;
 var __filename = "/bundle/handler.js";
 var __dirname = "/bundle";
 globalThis.__brrrd_turbopack_runtime_root ??= "/bundle/.next";

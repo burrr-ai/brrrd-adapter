@@ -13,6 +13,7 @@ import {
   writeAdapterContextSnapshot,
 } from "./diagnostics.js";
 import { compileEdgeFunctions } from "./edge-function-compiler.js";
+import { assertExternalAliasesResolvable } from "./external-preflight.js";
 import { writeManifest } from "./manifest-emitter.js";
 import { createManifestSupplement } from "./manifest-supplement.js";
 import { compileMiddleware } from "./middleware-compiler.js";
@@ -129,6 +130,12 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   if (copySummary.edgeFunctionCount > 0) {
     console.log(`  Copied ${copySummary.edgeFunctionCount} edge function files`);
   }
+
+  // Fail-fast: the built server can carry a bundler-externalized package alias
+  // (e.g. a Turbopack `@scope/name-<hash>/subpath`) that must be materialized
+  // under runtime/node_modules. If any such alias is imported but not packaged,
+  // every request touching it 500s at runtime; reject the build here instead.
+  assertExternalAliasesResolvable(outDir);
 
   const routes = compileRouteTable(model, supplement);
   const routing = compileRouting(model, supplement);

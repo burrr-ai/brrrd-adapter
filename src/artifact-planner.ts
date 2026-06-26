@@ -721,27 +721,70 @@ function routeRuntimeDependencyArtifacts(model: NextBuildModel): ArtifactPlanIte
 
 // Turbopack externalizes some node_modules packages and materializes a hashed
 // alias under `<distDir>/node_modules/<alias>` (a symlink to the real package);
-// the built server then `require`s the alias name (e.g.
-// `firebase-<hash>/firestore`). Webpack produces no `.next/node_modules`, so
-// this is a no-op there. NFT tracing packages the real package files under their
-// real node_modules paths, but the symlinked alias directory itself is never
-// emitted, so the runtime require of the alias fails. Materialize each alias
-// package's own files under `node_modules/<alias>/...` so the alias resolves
-// (its transitive deps remain under their real node_modules paths via tracing).
-function turbopackExternalAliasArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
-  const aliasRoot = path.join(model.distDir, "node_modules");
-  let entries: string[];
+// the built server then imports/requires the alias name (e.g.
+// `firebase-<hash>/firestore` or `@libsql/client-<hash>/web`). Webpack produces
+// no `.next/node_modules`, so this is a no-op there. NFT tracing packages the
+// real package files under their real node_modules paths, but the symlinked
+// alias directory itself is never emitted, so the runtime import of the alias
+// fails. Materialize each alias package's own files under `node_modules/<alias>/`
+// so the alias resolves (its transitive deps remain under their real
+// node_modules paths via tracing).
+//
+// Aliases live at two depths in `.next/node_modules`:
+//   - unscoped:  `.next/node_modules/<name>-<hash>`            (a symlink)
+//   - scoped:    `.next/node_modules/@scope/<name>-<hash>`     (a symlink under
+//                a real `@scope` directory — the `@scope` entry itself is NOT a
+//                symlink, so we must descend one level into it).
+function listTurbopackAliasSymlinks(
+  aliasRoot: string,
+): Array<{ aliasName: string; aliasPath: string }> {
+  let topEntries: string[];
   try {
-    entries = fs.readdirSync(aliasRoot);
+    topEntries = fs.readdirSync(aliasRoot);
   } catch {
     return [];
   }
+  const aliases: Array<{ aliasName: string; aliasPath: string }> = [];
+  const pushIfSymlink = (aliasName: string, aliasPath: string): void => {
+    try {
+      if (fs.lstatSync(aliasPath).isSymbolicLink()) {
+        aliases.push({ aliasName, aliasPath });
+      }
+    } catch {
+      // Dangling/unreadable entry — skip.
+    }
+  };
+  for (const topName of topEntries) {
+    const topPath = path.join(aliasRoot, topName);
+    if (topName.startsWith("@")) {
+      // Scoped alias parent: a real directory holding `<name>-<hash>` symlinks.
+      let scopedEntries: string[];
+      try {
+        if (fs.lstatSync(topPath).isSymbolicLink()) {
+          // Unusual, but if the whole scope is symlinked treat it as one alias.
+          pushIfSymlink(topName, topPath);
+          continue;
+        }
+        scopedEntries = fs.readdirSync(topPath);
+      } catch {
+        continue;
+      }
+      for (const scopedName of scopedEntries) {
+        pushIfSymlink(`${topName}/${scopedName}`, path.join(topPath, scopedName));
+      }
+    } else {
+      pushIfSymlink(topName, topPath);
+    }
+  }
+  return aliases;
+}
+
+function turbopackExternalAliasArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+  const aliasRoot = path.join(model.distDir, "node_modules");
   const items: ArtifactPlanItem[] = [];
-  for (const aliasName of entries) {
-    const aliasPath = path.join(aliasRoot, aliasName);
+  for (const { aliasName, aliasPath } of listTurbopackAliasSymlinks(aliasRoot)) {
     let realPath: string;
     try {
-      if (!fs.lstatSync(aliasPath).isSymbolicLink()) continue;
       realPath = fs.realpathSync(aliasPath);
       if (!fs.statSync(realPath).isDirectory()) continue;
     } catch {
