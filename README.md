@@ -136,7 +136,8 @@ official adapter harness:
 - `.github/workflows/next-adapter-harness.yml`
 
 The first workflow target is a local `brrrd <dist/brrrd>` deploy harness, not
-fleet/AWS. The manual workflow defaults to a small `1/64` deploy-test shard with
+fleet/AWS. The workflow is manual-only until its private runtime checkout is
+requalified; it defaults to a small `1/64` deploy-test shard with
 `IS_WEBPACK_TEST=1` until early failures are classified. The workflow also has an
 explicit bundler input: `webpack`, `turbopack`, or `next-default`. This matters
 because current Next canary defaults an unqualified `next build` to Turbopack.
@@ -146,4 +147,5 @@ tracked in `docs/next-official-harness-matrix.md`.
 
 The GitHub workflow checks out the private `burrr-ai/brrrd` runtime repo through
 the `RUNTIME_REPO_DEPLOY_KEY` secret. Use a read-only deploy key on the runtime
-repo rather than a broad personal token.
+repo rather than a broad personal token. Restore a schedule only after a manual
+run reaches and completes the intended harness signal.

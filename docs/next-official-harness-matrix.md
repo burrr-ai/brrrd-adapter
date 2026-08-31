@@ -35,8 +35,9 @@ Initial local harness integration exists. `scripts/local-harness.mjs` runs a che
 group against the local brrrd deploy scripts, so failures can be reproduced before waiting for GitHub Actions. The
 runner now follows the Next checkout `.node-version` by default, using `npx -y node@<version>` when the current shell
 Node does not match, so local results do not drift from the CI Node 20 baseline. Use `--node-version current` only when
-intentionally probing Node-version-specific Next behavior. The CI workflow still runs deploy-test shards manually or on
-schedule. The current green shards are a compatibility signal, not the full official suite. The workflow makes the
+intentionally probing Node-version-specific Next behavior. The CI workflow runs deploy-test shards manually; its weekly
+schedule was retired after repeated private-runtime checkout failures prevented the harness from reaching its signal.
+Historical green shards are compatibility evidence, not current scheduled health. The workflow makes the
 bundler axis explicit: `webpack` is the forced webpack baseline, `turbopack` is tracked separately, and `next-default`
 records whatever the checked-out Next canary uses when no bundler flag is supplied.
 
