@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import { builtinModules, createRequire } from "node:module";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import { bundleAppHandler } from "../dist/bundler.js";
 import { onBuildComplete } from "../dist/build.js";
@@ -213,44 +214,14 @@ module.exports = function handler(_req, res) {
     /node_modules.*next.*router-context\.shared-runtime\.js/,
   );
 
-  const previousBrrrdModules = globalThis.__brrrd_modules;
-  globalThis.__brrrd_modules = { ...(previousBrrrdModules || {}) };
-  for (const builtin of builtinModules) {
-    if (builtin.startsWith("_")) continue;
-    try {
-      const mod = require(builtin);
-      globalThis.__brrrd_modules[builtin] = mod;
-      if (!builtin.startsWith("node:")) {
-        globalThis.__brrrd_modules[`node:${builtin}`] = mod;
-      }
-    } catch {
-      // Some Node builtins are compile-time aliases only.
-    }
-  }
-
-  try {
-    const { default: dispatch } = await import(
-      `${pathToFileURL(path.join(outDir, "bundles", "app.js")).href}?${Date.now()}`
-    );
-    let body = "";
-    await dispatch(
-      "/",
-      { headers: { host: "localhost" }, __brrrd_request_meta: {} },
-      {
-        end(chunk = "") {
-          body += String(chunk);
-        },
-        writeHead() {},
-      },
-    );
-    assert.equal(body, "true");
-  } finally {
-    if (previousBrrrdModules === undefined) {
-      delete globalThis.__brrrd_modules;
-    } else {
-      globalThis.__brrrd_modules = previousBrrrdModules;
-    }
-  }
+  // Next's Pages runtime patches console and other globals. Run it in its own
+  // initialized realm so those patches cannot affect later build-only tests.
+  const result = spawnSync(process.execPath, [
+    fileURLToPath(new URL("./fixtures/run-pages-router-context.mjs", import.meta.url)),
+    path.join(outDir, "bundles", "app.js"),
+  ], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || String(result.error));
+  assert.equal(result.stdout, "true");
 });
 
 test("writeManifest records NEXT_DEPLOYMENT_ID as build metadata", () => {
