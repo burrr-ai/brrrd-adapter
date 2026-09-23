@@ -83,6 +83,14 @@ export default nextConfig;
 Then `next build` produces `dist/brrrd/`. Deploy it with `brrrd-fleet deploy
 --package dist/brrrd ...`.
 
+The package omits generated Next server JavaScript source maps from automatically
+collected runtime files, including traced dependencies and both server chunk
+locations. The original maps remain in Next's build directory for separate
+debugging or error-reporting uploads; deployed server stack traces therefore use
+compiled code locations. Public/browser source maps and application `.map` data
+files are preserved. JavaScript chunks remain at both runtime locations required
+by Next and the app bundle.
+
 During `modifyConfig`, the adapter materializes its cache handler support files
 under `node_modules/.cache/@brrrd/adapter/` inside the app project and points
 Next at those project-local paths. This keeps webpack, Turbopack, and file-linked

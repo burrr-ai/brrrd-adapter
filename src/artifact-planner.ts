@@ -1189,6 +1189,47 @@ function dedupePlanItems(items: ArtifactPlanItem[]): ArtifactPlanItem[] {
   return out;
 }
 
+function omitNextServerSourceMaps(
+  items: ArtifactPlanItem[],
+  distDir: string,
+): ArtifactPlanItem[] {
+  const serverDir = path.join(distDir, "server");
+  const sourceMaps = new Map<string, boolean>();
+
+  const isServerSourceMap = (sourceAbsPath: string): boolean => {
+    // A .map suffix alone is not enough: traced assets can be application data.
+    if (!/\.[cm]?js\.map$/.test(sourceAbsPath)) return false;
+    try {
+      const realServerDir = fs.realpathSync.native(serverDir);
+      const realSourcePath = fs.realpathSync.native(sourceAbsPath);
+      const scriptPath = sourceAbsPath.slice(0, -".map".length);
+      if (
+        !isInsideDir(realSourcePath, realServerDir)
+        || !isRegularFile(scriptPath)
+        || !isInsideDir(fs.realpathSync.native(scriptPath), realServerDir)
+      ) return false;
+
+      const sourceMap = readJsonIfExists(sourceAbsPath);
+      return sourceMap?.version === 3 && (
+        (Array.isArray(sourceMap.sources) && typeof sourceMap.mappings === "string")
+        || Array.isArray(sourceMap.sections)
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  return items.filter((item) => {
+    // Keep public/browser maps and explicit middleware/edge file contracts.
+    if (item.kind !== "runtime-file" || !item.sourceAbsPath) return true;
+    const sourceAbsPath = item.sourceAbsPath;
+    if (!sourceMaps.has(sourceAbsPath)) {
+      sourceMaps.set(sourceAbsPath, isServerSourceMap(sourceAbsPath));
+    }
+    return !sourceMaps.get(sourceAbsPath);
+  });
+}
+
 export function createArtifactPlan(
   model: NextBuildModel,
   supplement: ManifestSupplement,
@@ -1199,7 +1240,7 @@ export function createArtifactPlan(
   const allPublicPathnames = publicArtifactPathnames(model);
   const staticMeta = staticResponseMetaByPathname(supplement.staticResponseMeta);
   return {
-    items: dedupePlanItems([
+    items: omitNextServerSourceMaps(dedupePlanItems([
       ...(options.hasAppBundle ? [appBundleArtifact(model, outDir)] : []),
       ...model.outputs.staticFiles
         .filter((output) => !isPagesRscFallbackOutput(output))
@@ -1228,7 +1269,7 @@ export function createArtifactPlan(
       ...middlewareArtifacts(model, options.middleware),
       ...nodeMiddlewareNextServerRuntimeArtifacts(model, options.middleware),
       ...edgeFunctionArtifacts(model, edgeFunctions),
-    ]),
+    ]), model.distDir),
   };
 }
 
