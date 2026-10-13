@@ -53,8 +53,8 @@
     "next": "^16.2"
   },
   "devDependencies": {
-    "@next/routing": "^16.2.9",
-    "next": "^16.2.1",
+    "@next/routing": "16.2.9",
+    "next": "16.2.7",
     "typescript": "^5.8.0",
     "@types/node": "^22.0.0"
   }
