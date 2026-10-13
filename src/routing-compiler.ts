@@ -1373,42 +1373,48 @@ export function compileRouteTable(
     if (route) routes.push(route);
   }
 
-  const exactPages = sortBySpecificity(allPages.filter((p) => !p.pathname.includes("[")));
-  const dynamicPages = sortBySpecificity(allPages.filter((p) => p.pathname.includes("[")));
-  for (const page of exactPages) {
-    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
-    if (route) {
-      routes.push(route);
-      const alias = handlerDefaultLocaleAliasPathname(model, page, route);
-      if (alias) routes.push(executableRouteAlias(model, route, alias));
-    }
-  }
-  for (const page of dynamicPages) {
-    const route = handlerRoute(model, page, "page", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
-    if (route) {
-      routes.push(route);
-      const alias = handlerDefaultLocaleAliasPathname(model, page, route);
-      if (alias) routes.push(executableDynamicRouteAlias(route, alias));
-    }
-  }
-
-  for (const routeOutput of sortBySpecificity(model.outputs.appRoutes)) {
-    const route = handlerRoute(model, routeOutput, "route", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
-    if (route) routes.push(route);
-  }
-
-  for (const api of sortBySpecificity(model.outputs.pagesApi)) {
-    const route = handlerRoute(model, api, "route", dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
-    if (route) {
-      routes.push(route);
-      const alias = handlerDefaultLocaleAliasPathname(model, api, route);
-      if (alias) {
-        routes.push(api.pathname.includes("[")
-          ? executableDynamicRouteAlias(route, alias)
-          : executableRouteAlias(model, route, alias));
-      }
-    }
+  // Next resolves pages and route handlers in one specificity-ordered tree:
+  // `/app/api/auth/[...all]` beats `/[...slug]` even though both are dynamic.
+  // Emitting every dynamic page before any route handler let a root catch-all
+  // page answer API requests with HTML in the deployed runtime, so order the
+  // executable handlers together (exact first, then dynamic by specificity)
+  // instead of by output kind.
+  const executables: ExecutableEntry[] = [
+    ...allPages.map((output) => ({ output, type: "page" as const, aliasable: true })),
+    ...model.outputs.appRoutes.map((output) => ({ output, type: "route" as const, aliasable: false })),
+    ...model.outputs.pagesApi.map((output) => ({ output, type: "route" as const, aliasable: true })),
+  ];
+  const orderedExecutables = [
+    ...sortExecutablesBySpecificity(executables.filter((entry) => !isDynamicExecutable(entry))),
+    ...sortExecutablesBySpecificity(executables.filter(isDynamicExecutable)),
+  ];
+  for (const entry of orderedExecutables) {
+    const route = handlerRoute(model, entry.output, entry.type, dynamicRegexes, staticRegexes, dynamicPrerenders, pprResumes);
+    if (!route) continue;
+    routes.push(route);
+    if (!entry.aliasable) continue;
+    const alias = handlerDefaultLocaleAliasPathname(model, entry.output, route);
+    if (!alias) continue;
+    routes.push(isDynamicExecutable(entry)
+      ? executableDynamicRouteAlias(route, alias)
+      : executableRouteAlias(model, route, alias));
   }
 
   return routes;
+}
+
+type ExecutableEntry = {
+  output: NormalizedOutput;
+  type: "page" | "route";
+  // App route handlers never receive a default-locale alias; pages and Pages
+  // API routes keep the alias they had before handlers were ordered together.
+  aliasable: boolean;
+};
+
+function isDynamicExecutable(entry: ExecutableEntry): boolean {
+  return entry.output.pathname.includes("[");
+}
+
+function sortExecutablesBySpecificity(entries: ExecutableEntry[]): ExecutableEntry[] {
+  return [...entries].sort((a, b) => compareRouteSpecificity(a.output, b.output));
 }
