@@ -1,6 +1,8 @@
 name: release
 
-# Push a tag like v0.1.0 -> builds and publishes @brrrd/adapter to npm.
+# Push a tag like v0.1.0 to build and publish @brrrd/adapter to npm.
+# Automated releases use npm Trusted Publishing (OIDC), with no npm token.
+# Already-published versions are skipped so tag workflow re-runs succeed.
 on:
   push:
     tags: ['v*']
@@ -10,18 +12,35 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      - name: Pin npm with OIDC support
+        run: |
+          npm install --global npm@11.17.0 --ignore-scripts
+          npm --version
       - run: npm install
       - name: Set version from tag
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - run: npm run build
+      - name: Check if version is already published
+        id: published
+        run: |
+          if npm view "@brrrd/adapter@${GITHUB_REF_NAME#v}" version > /dev/null 2> "$RUNNER_TEMP/npm-view-error.log"; then
+            echo "@brrrd/adapter@${GITHUB_REF_NAME#v} is already published; skipping publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q '^npm error code E404$' "$RUNNER_TEMP/npm-view-error.log"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/npm-view-error.log" >&2
+            exit 1
+          fi
       - name: Publish
-        run: npm publish --access public
-        env:
-          # NPM_TOKEN must bypass 2FA (Automation token, or Granular token with
-          # "Bypass 2FA" + read/write on the @brrrd scope).
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: steps.published.outputs.exists == 'false'
+        run: npm publish --access public --provenance
