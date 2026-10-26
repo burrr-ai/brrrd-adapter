@@ -10,6 +10,7 @@ import type {
   BrrrdPreviewConfig,
 } from "./types.js";
 import { sanitizeId } from "./routing.js";
+import type { NormalizedOutput } from "./model.js";
 
 export type MiddlewareMeta = {
   files: string[];
@@ -89,6 +90,7 @@ export type SupplementPrefetchSegmentDataRoute = {
 export type SupplementAppPrerenderDataRoute = {
   pathname: string;
   sourceRel: string;
+  filePath?: string;
 };
 
 export type SupplementPrerenderResponseMeta = {
@@ -452,7 +454,22 @@ export function extractDynamicPrerenderRoutes(distDir: string): SupplementDynami
   return out.sort((a, b) => a.page.localeCompare(b.page));
 }
 
-export function extractAppPrerenderDataRoutes(distDir: string): SupplementAppPrerenderDataRoute[] {
+export function extractAppPrerenderDataRoutes(
+  distDir: string,
+  prerenders: readonly NormalizedOutput[] = [],
+): SupplementAppPrerenderDataRoute[] {
+  // Route-cache paths contain owner namespaces, not public URL paths.
+  // Prefer the Adapter API and retain disk discovery for older builds.
+  if (prerenders.length > 0) {
+    return prerenders
+      .filter((output) => output.pathname.endsWith(".rsc") && output.filePath)
+      .map((output) => ({
+        pathname: output.pathname,
+        filePath: output.filePath,
+        sourceRel: output.pathname.slice(1),
+      }))
+      .sort((a, b) => a.pathname.localeCompare(b.pathname));
+  }
   const appDir = path.join(distDir, "server", "app");
   return walkFiles(appDir)
     .filter((filePath) => filePath.endsWith(".rsc"))
@@ -705,13 +722,16 @@ export function extractPprSegmentPrefetchRoutes(
   return routes;
 }
 
-export function createManifestSupplement(distDir: string): ManifestSupplement {
+export function createManifestSupplement(
+  distDir: string,
+  prerenders: readonly NormalizedOutput[] = [],
+): ManifestSupplement {
   return {
     middleware: extractMiddlewareMeta(distDir),
     edgeFunctions: extractEdgeFunctions(distDir),
     preview: extractPreviewConfig(distDir),
     pprPages: extractPprPages(distDir),
-    appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir),
+    appPrerenderDataRoutes: extractAppPrerenderDataRoutes(distDir, prerenders),
     pprSegmentPrefetchRoutes: extractPprSegmentPrefetchRoutes(distDir),
     prerenderResponseMeta: extractAppPrerenderResponseMeta(distDir),
     staticResponseMeta: extractAppStaticResponseMeta(distDir),

@@ -955,7 +955,7 @@ test("static prerender routes are exposed before matching page handlers", () => 
   );
 });
 
-test("PPR app prerenders are marked so runtime can apply document routing policy", () => {
+test("PPR documents select complete runtime rendering instead of a partial shell", () => {
   const routes = compileRouteTable(
     context({
       appPages: [appPage("/")],
@@ -977,18 +977,34 @@ test("PPR app prerenders are marked so runtime can apply document routing policy
     },
   );
 
-  assert.deepEqual(
-    routes.find((route) => route.id === "prerender-index"),
-    {
-      id: "prerender-index",
-      pattern: "^/$",
-      type: "prerender",
-      runtime: "nodejs",
-      bundle: "",
-      file: "/",
-      ppr: true,
-    },
-  );
+  assert.equal(routes.some((route) => route.type === "prerender"), false);
+  const page = routes.find((route) => route.type === "page" && new RegExp(route.pattern).test("/"));
+  assert.ok(page);
+  assert.equal(page.pprResume, undefined);
+});
+
+test("PPR document fallback requires a runtime page", () => {
+  assert.throws(() => compileRouteTable(context({
+    prerenders: [{ id: "/orphan", pathname: "/orphan", pprChain: { headers: { "next-resume": "1" } } }],
+  })), /PPR document .* has no matching runtime page/);
+});
+
+test("PPR generated documents use dynamic runtime pages and preserve RSC resume metadata", () => {
+  const resume = { headers: { "next-resume": "1" } };
+  const routes = compileRouteTable(context({
+    appPages: [appPage("/posts/[id]"), appPage("/posts/[id].rsc")],
+    prerenders: [
+      { id: "/posts/hello", pathname: "/posts/hello", pprChain: resume },
+      { id: "/posts/[id]", pathname: "/posts/[id]", pprChain: resume, fallback: { postponedState: "html-state" } },
+      { id: "/posts/[id].rsc", pathname: "/posts/[id].rsc", pprChain: resume, fallback: { postponedState: "rsc-state" } },
+    ],
+  }));
+  assert.equal(routes.some((route) => route.type === "prerender"), false);
+  const page = routes.find((route) => route.type === "page" && new RegExp(route.pattern).test("/posts/hello"));
+  assert.ok(page);
+  assert.equal(page.pprResume, undefined);
+  const rsc = routes.find((route) => route.type === "page" && new RegExp(route.pattern).test("/posts/hello.rsc") && route.pprResume);
+  assert.equal(rsc?.pprResume.postponedState, "rsc-state");
 });
 
 test("App prerender response metadata is emitted on filesystem routes", () => {

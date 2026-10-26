@@ -932,6 +932,7 @@ exports.trace = {
   },
 };
 exports.context = { active() { return {}; } };
+exports.createContextKey = (name) => Symbol.for(name);
 `,
     "utf8",
   );

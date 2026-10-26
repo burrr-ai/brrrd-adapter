@@ -16,3 +16,7 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: node --test test/*.test.mjs
+      - name: Package a Next.js 16.4 app (Turbopack)
+        run: node scripts/next-build-smoke.mjs turbopack
+      - name: Package a Next.js 16.4 app (webpack)
+        run: node scripts/next-build-smoke.mjs webpack
