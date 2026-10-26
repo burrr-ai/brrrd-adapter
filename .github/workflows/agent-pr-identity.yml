@@ -1,0 +1,29 @@
+name: Agent PR identity
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Agent PR identity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the GitHub App for agent branches
+        shell: bash
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          case "$PR_HEAD" in
+            codex/*|claude/*)
+              if [[ "$PR_AUTHOR" != "burrr-ai-release-automation[bot]" ]]; then
+                echo "::error::Agent work branches must be opened by burrr-ai-release-automation[bot] through the burrr-ai/comwit-sre Agent PR publisher."
+                exit 1
+              fi
+              ;;
+          esac
