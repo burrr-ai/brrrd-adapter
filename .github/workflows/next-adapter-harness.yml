@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       nextjsRef:
-        description: Next.js repo ref, branch, tag, or SHA
-        default: canary
+        description: Next.js npm caret range, repo ref, branch, tag, or SHA
+        default: ^16.4.3
         type: string
       group:
         description: Next e2e shard group
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      NEXTJS_REF: ${{ github.event.inputs.nextjsRef || 'canary' }}
+      NEXTJS_REF: ${{ github.event.inputs.nextjsRef || '^16.4.3' }}
     steps:
       - name: Checkout adapter
         uses: actions/checkout@v4
@@ -112,11 +112,30 @@ jobs:
           persist-credentials: false
           submodules: recursive
 
+      - name: Resolve Next.js version range
+        id: nextjs-ref
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          let ref = process.env.NEXTJS_REF;
+          if (ref.startsWith('^')) {
+            const versions = JSON.parse(execFileSync('npm', ['view', `next@${ref}`, 'version', '--json'], { encoding: 'utf8' }));
+            const version = Array.isArray(versions) ? versions.at(-1) : versions;
+            if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) {
+              throw new Error(`No stable Next.js version matches ${ref}`);
+            }
+            ref = `v${version}`;
+          }
+          console.log(`Testing Next.js ${ref}`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `ref=${ref}\n`);
+          EOF
+
       - name: Checkout Next.js
         uses: actions/checkout@v4
         with:
           repository: vercel/next.js
-          ref: ${{ env.NEXTJS_REF }}
+          ref: ${{ steps.nextjs-ref.outputs.ref }}
           path: nextjs
           fetch-depth: 25
 

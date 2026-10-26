@@ -499,11 +499,12 @@ function clientReferenceArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
 function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const serverDir = path.join(model.distDir, "server");
   const appDir = path.join(serverDir, "app");
-  if (!fs.existsSync(appDir)) return [];
+  const routeCacheDir = path.join(serverDir, "route-cache");
   const items: ArtifactPlanItem[] = [];
   const shouldCopy = (filePath: string) => {
     const ext = path.extname(filePath);
-    return ext === ".html" || ext === ".meta" || ext === ".rsc";
+    return ext === ".html" || ext === ".meta" || ext === ".rsc"
+      || ext === ".body" || ext === ".json";
   };
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -525,7 +526,9 @@ function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[]
       }));
     }
   };
-  walk(appDir);
+  for (const dir of [appDir, routeCacheDir]) {
+    if (fs.existsSync(dir)) walk(dir);
+  }
   return items;
 }
 
@@ -603,7 +606,7 @@ function appPrerenderDataArtifacts(
   supplement: ManifestSupplement,
 ): ArtifactPlanItem[] {
   return supplement.appPrerenderDataRoutes.map((route) => {
-    const sourceAbsPath = path.join(model.distDir, "server", "app", route.sourceRel);
+    const sourceAbsPath = route.filePath ?? path.join(model.distDir, "server", "app", route.sourceRel);
     return artifactItem(model, {
       id: `app-prerender-data:${sanitizeId(route.pathname)}`,
       kind: "static",

@@ -70,7 +70,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   fs.mkdirSync(path.join(outDir, "static"), { recursive: true });
 
   const model = createNextBuildModel(ctx);
-  const supplement = createManifestSupplement(model.distDir);
+  const supplement = createManifestSupplement(model.distDir, model.outputs.prerenders);
   const compiledEdgeFunctions = compileEdgeFunctions(model, supplement);
   const requestOutputList = requestOutputs(model);
   const compatibility = validateCompatibility(

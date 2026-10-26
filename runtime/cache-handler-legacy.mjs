@@ -304,10 +304,14 @@ function readBufferIfExists(filePath) {
 }
 
 function appCachePath(serverDistDir, cacheKey, suffix = "") {
-  return nodePath().join(serverDistDir, "app", `${cacheKey}${suffix}`);
+  return diskPath(nodePath(), serverDistDir, cacheKey, "APP_PAGE", suffix);
 }
 
 function diskPath(pathModule, serverDistDir, cacheKey, kind, suffix = "") {
+  // Next 16.3.8+ response keys already contain their route owner namespace.
+  if (["APP_PAGE", "APP_ROUTE", "PAGES"].includes(kind) && String(cacheKey).startsWith("/route-cache/")) {
+    return pathModule.join(serverDistDir, `${cacheKey}${suffix}`);
+  }
   switch (kind) {
     case "FETCH":
       return pathModule.join(serverDistDir, "..", "cache", "fetch-cache", String(cacheKey));
@@ -429,7 +433,8 @@ function appPageTemplateKeys(serverDistDir) {
   const path = nodePath();
   const appDir = path.join(serverDistDir, "app");
   const templates = [];
-  const stack = [appDir];
+  const routeCacheDir = path.join(serverDistDir, "route-cache", "APP_PAGE");
+  const stack = [appDir, routeCacheDir];
 
   while (stack.length > 0) {
     const current = stack.pop();
@@ -448,8 +453,9 @@ function appPageTemplateKeys(serverDistDir) {
       }
       if (!entry.isFile() || !entry.name.endsWith(".html")) continue;
 
-      const rel = path.relative(appDir, fullPath).split(path.sep).join("/");
-      const key = rel.slice(0, -".html".length);
+      const root = fullPath.startsWith(routeCacheDir + path.sep) ? serverDistDir : appDir;
+      const rel = path.relative(root, fullPath).split(path.sep).join("/");
+      const key = (root === serverDistDir ? "/" : "") + rel.slice(0, -".html".length);
       if (key.includes("[") && key.includes("]")) templates.push(key);
     }
   }
@@ -462,7 +468,8 @@ function appPageTemplateKeys(serverDistDir) {
 function dynamicAppPageCacheKeyCandidates(serverDistDir, cacheKey) {
   const concreteKey = normalizeAppPageKey(cacheKey);
   return appPageTemplateKeys(serverDistDir).filter((templateKey) => (
-    appPageTemplateMatches(templateKey, concreteKey)
+    String(cacheKey).startsWith("/route-cache/") === templateKey.startsWith("/route-cache/")
+    && appPageTemplateMatches(normalizeAppPageKey(templateKey), concreteKey)
   ));
 }
 

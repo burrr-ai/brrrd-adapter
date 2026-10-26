@@ -1134,6 +1134,9 @@ function pprResumeForOutput(
   output: NormalizedOutput,
   pprResumes: Map<string, BrrrdRoute["pprResume"]>,
 ): BrrrdRoute["pprResume"] | undefined {
+  // The runtime cannot concatenate a document shell with resumed HTML. Let
+  // Next render complete documents; RSC requests still use their resume state.
+  if (!isAuxiliaryPrerenderPath(output.pathname)) return undefined;
   return pprResumes.get(output.urlPath) ?? pprResumes.get(output.pathname);
 }
 
@@ -1258,6 +1261,7 @@ export function compileRouteTable(
   >,
 ): BrrrdRoute[] {
   const routes: BrrrdRoute[] = [];
+  const pprDocuments: Array<{ route: BrrrdRoute; pathname: string }> = [];
   const dynamicRegexes = dynamicRegexIndex(model, supplement?.dynamicPrerenderRoutes);
   const dynamicPrerenders = dynamicPrerenderRouteByPage(supplement?.dynamicPrerenderRoutes);
   const staticRegexes = staticRegexByRoutePath(supplement?.staticRoutes);
@@ -1322,6 +1326,10 @@ export function compileRouteTable(
       prerenderResponseMetaForOutput(pr, prerenderMeta.get(pr.pathname)),
       pprPages.has(pr.pathname) || pprPages.has(pr.urlPath),
     );
+    if (route.ppr || pr.pprChain) {
+      pprDocuments.push({ route, pathname: pr.urlPath });
+      continue;
+    }
     routes.push(route);
     const alias = defaultLocaleAliasPathname(model, pr.pathname);
     if (alias) routes.push(publicRouteAlias(model, route, alias, "default-locale"));
@@ -1400,6 +1408,12 @@ export function compileRouteTable(
       : executableRouteAlias(model, route, alias));
   }
 
+  for (const { route, pathname } of pprDocuments) {
+    if (!routes.some((candidate) => candidate.type === "page"
+      && new RegExp(candidate.pattern).test(pathname))) {
+      throw new Error(`PPR document ${route.id} has no matching runtime page; refusing an incomplete deployment`);
+    }
+  }
   return routes;
 }
 
