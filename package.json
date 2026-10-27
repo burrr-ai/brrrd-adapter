@@ -1,6 +1,6 @@
 {
   "name": "@brrrd/adapter",
-  "version": "0.1.9",
+  "version": "0.1.12",
   "description": "Next.js build adapter that packages an app for the brrrd runtime (comwit.io platform).",
   "keywords": [
     "nextjs",

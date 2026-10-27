@@ -123,6 +123,26 @@ function isExpired(entry) {
   return entry.expiresAt > 0 && nowMs() > entry.expiresAt;
 }
 
+// The brrrd host cache outlives a deployment, but response-cache entries
+// (APP_PAGE / APP_ROUTE / PAGES) reference that build's chunks. Unscoped, an
+// entry written by an earlier build keeps winning over the new build's
+// prerender and serves HTML whose CSS/JS no longer exist. Fetch entries stay
+// shared: Next's data cache is meant to survive deployments.
+function readBuildId(serverDistDir) {
+  if (!serverDistDir) return undefined;
+  try {
+    const path = nodePath();
+    const id = String(nodeFs().readFileSync(path.join(serverDistDir, "..", "BUILD_ID"), "utf8")).trim();
+    return id || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function hostCacheKey(cacheKey, buildId, isFetch) {
+  return buildId && !isFetch ? `build:${buildId}:${cacheKey}` : cacheKey;
+}
+
 function maxMemoryTagTimestamp(tags) {
   let max = 0;
   for (const tag of tags || []) {
@@ -721,6 +741,13 @@ class BrrrdLegacyCacheHandler {
     this.serverDistDir = ctx.serverDistDir;
   }
 
+  // Read lazily for the same edge-safety reason as `path`; without a readable
+  // BUILD_ID the key stays unscoped, as before.
+  get buildId() {
+    if (this._buildId === undefined) this._buildId = readBuildId(this.serverDistDir) ?? null;
+    return this._buildId;
+  }
+
   // `node:path`, resolved lazily. This handler is also constructed inside Next's
   // Edge Runtime IncrementalCache (e.g. `next dev` edge routes), where resolving
   // a Node builtin throws; resolving eagerly in the constructor crashed it. The
@@ -785,7 +812,8 @@ class BrrrdLegacyCacheHandler {
       return diskEntry;
     }
 
-    const res = await ops.op_brrrd_cache_get(cacheKey);
+    const hostKey = hostCacheKey(cacheKey, this.buildId, ctx?.kind === "FETCH");
+    const res = await ops.op_brrrd_cache_get(hostKey);
     if (!res) {
       return readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
     }
@@ -805,7 +833,7 @@ class BrrrdLegacyCacheHandler {
         if (reconciled.changed) {
           const nextText = JSON.stringify(parsed, encodeReplacer);
           await ops.op_brrrd_cache_set(
-            cacheKey,
+            hostKey,
             new TextEncoder().encode(nextText),
             reconciled.tags,
             parsed.value?.revalidate || 0,
@@ -851,7 +879,8 @@ class BrrrdLegacyCacheHandler {
       );
       return;
     }
-    await ops.op_brrrd_cache_set(cacheKey, bytes, tags, ttl);
+    const isFetch = data?.kind === "FETCH" || !!ctx?.fetchCache;
+    await ops.op_brrrd_cache_set(hostCacheKey(cacheKey, this.buildId, isFetch), bytes, tags, ttl);
   }
 
   async revalidateTag(tags, _durations) {
