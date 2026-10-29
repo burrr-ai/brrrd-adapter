@@ -123,24 +123,42 @@ function isExpired(entry) {
   return entry.expiresAt > 0 && nowMs() > entry.expiresAt;
 }
 
-// The brrrd host cache outlives a deployment, but response-cache entries
-// (APP_PAGE / APP_ROUTE / PAGES) reference that build's chunks. Unscoped, an
-// entry written by an earlier build keeps winning over the new build's
-// prerender and serves HTML whose CSS/JS no longer exist. Fetch entries stay
-// shared: Next's data cache is meant to survive deployments.
-function readBuildId(serverDistDir) {
+// The brrrd host cache outlives a deployment and can be shared between apps,
+// but response-cache entries (APP_PAGE / APP_ROUTE / PAGES) reference one
+// build's chunks. Unscoped, an entry written by another build or another app
+// keeps winning over this build's prerender and serves HTML whose CSS/JS do
+// not exist here. Fetch entries stay shared: Next's data cache is meant to
+// survive deployments.
+//
+// Scope by deploymentId first. With `deploymentId` set and no
+// `generateBuildId`, Next writes the constant `build-TfctsWXpff2fKS` to
+// BUILD_ID, so BUILD_ID alone would not tell builds or apps apart.
+function readCacheScope(serverDistDir) {
   if (!serverDistDir) return undefined;
+  let path;
   try {
-    const path = nodePath();
-    const id = String(nodeFs().readFileSync(path.join(serverDistDir, "..", "BUILD_ID"), "utf8")).trim();
-    return id || undefined;
+    path = nodePath();
+  } catch {
+    return undefined;
+  }
+  const distDir = path.join(serverDistDir, "..");
+  try {
+    const files = JSON.parse(nodeFs().readFileSync(path.join(distDir, "required-server-files.json"), "utf8"));
+    const id = typeof files?.config?.deploymentId === "string" ? files.config.deploymentId.trim() : "";
+    if (id) return `deploy:${id}`;
+  } catch {
+    // fall through to BUILD_ID
+  }
+  try {
+    const id = String(nodeFs().readFileSync(path.join(distDir, "BUILD_ID"), "utf8")).trim();
+    return id ? `build:${id}` : undefined;
   } catch {
     return undefined;
   }
 }
 
-function hostCacheKey(cacheKey, buildId, isFetch) {
-  return buildId && !isFetch ? `build:${buildId}:${cacheKey}` : cacheKey;
+function hostCacheKey(cacheKey, scope, isFetch) {
+  return scope && !isFetch ? `${scope}:${cacheKey}` : cacheKey;
 }
 
 function maxMemoryTagTimestamp(tags) {
@@ -742,10 +760,10 @@ class BrrrdLegacyCacheHandler {
   }
 
   // Read lazily for the same edge-safety reason as `path`; without a readable
-  // BUILD_ID the key stays unscoped, as before.
-  get buildId() {
-    if (this._buildId === undefined) this._buildId = readBuildId(this.serverDistDir) ?? null;
-    return this._buildId;
+  // deploymentId or BUILD_ID the key stays unscoped, as before.
+  get cacheScope() {
+    if (this._cacheScope === undefined) this._cacheScope = readCacheScope(this.serverDistDir) ?? null;
+    return this._cacheScope;
   }
 
   // `node:path`, resolved lazily. This handler is also constructed inside Next's
@@ -812,7 +830,7 @@ class BrrrdLegacyCacheHandler {
       return diskEntry;
     }
 
-    const hostKey = hostCacheKey(cacheKey, this.buildId, ctx?.kind === "FETCH");
+    const hostKey = hostCacheKey(cacheKey, this.cacheScope, ctx?.kind === "FETCH");
     const res = await ops.op_brrrd_cache_get(hostKey);
     if (!res) {
       return readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
@@ -880,7 +898,7 @@ class BrrrdLegacyCacheHandler {
       return;
     }
     const isFetch = data?.kind === "FETCH" || !!ctx?.fetchCache;
-    await ops.op_brrrd_cache_set(hostCacheKey(cacheKey, this.buildId, isFetch), bytes, tags, ttl);
+    await ops.op_brrrd_cache_set(hostCacheKey(cacheKey, this.cacheScope, isFetch), bytes, tags, ttl);
   }
 
   async revalidateTag(tags, _durations) {
