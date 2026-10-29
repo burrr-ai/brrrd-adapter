@@ -1168,3 +1168,58 @@ test("modern cache handler discards runtime entries invalidated by entry or soft
     }
   }
 });
+
+test("modern cache handler scopes keys and tags to the app so another app cannot read or invalidate them", async () => {
+  const previousDeno = globalThis.Deno;
+  const previousDeployment = process.env.NEXT_DEPLOYMENT_ID;
+  const revalidatedTags = new Map();
+  const stored = new Map();
+  try {
+    globalThis.Deno = {
+      core: {
+        ops: {
+          async op_brrrd_cache_get(key) {
+            return stored.get(key);
+          },
+          async op_brrrd_cache_set(key, value, tags) {
+            stored.set(key, { value, tags, is_expired: false, age_secs: 0 });
+          },
+          async op_brrrd_cache_revalidate_tag(tag) {
+            revalidatedTags.set(tag, 12345);
+            return 0;
+          },
+          async op_brrrd_cache_tag_expiration(tag) {
+            return revalidatedTags.get(tag) ?? 0;
+          },
+        },
+      },
+    };
+    const asApp = (id) => {
+      process.env.NEXT_DEPLOYMENT_ID = id;
+    };
+
+    asApp("deploy-app-a");
+    const bytes = new TextEncoder().encode("app a payload");
+    await cacheHandler.set("shared-key", Promise.resolve(entry(bytes, ["courses"])));
+    assert.deepEqual(stored.get("deploy:deploy-app-a:shared-key").tags, ["deploy:deploy-app-a:courses"]);
+
+    asApp("deploy-app-b");
+    assert.equal(await cacheHandler.get("shared-key", []), undefined);
+    await cacheHandler.updateTags(["courses"]);
+    assert.deepEqual([...revalidatedTags.keys()], ["deploy:deploy-app-b:courses"]);
+
+    asApp("deploy-app-a");
+    const hit = await cacheHandler.get("shared-key", []);
+    assert.deepEqual(await bytesFromStream(hit.value), bytes);
+    assert.deepEqual(hit.tags, ["courses"]);
+    assert.equal(await cacheHandler.getExpiration(["courses"]), 0);
+  } finally {
+    if (previousDeployment === undefined) delete process.env.NEXT_DEPLOYMENT_ID;
+    else process.env.NEXT_DEPLOYMENT_ID = previousDeployment;
+    if (previousDeno === undefined) {
+      delete globalThis.Deno;
+    } else {
+      globalThis.Deno = previousDeno;
+    }
+  }
+});

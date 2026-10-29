@@ -25,6 +25,34 @@ function nowMs() {
   return Date.now();
 }
 
+// The brrrd host cache can be shared between apps. Keys and tags crossing a
+// brrrd op are scoped to the app's data scope: BRRRD_CACHE_SCOPE when the
+// platform provides a stable app id, otherwise the deployment. Read per call:
+// Next sets NEXT_DEPLOYMENT_ID after this module loads.
+function dataScope() {
+  const env = globalThis.process?.env;
+  const app = env?.BRRRD_CACHE_SCOPE;
+  if (typeof app === "string" && app.trim()) return `app:${app.trim()}`;
+  const deployment = env?.NEXT_DEPLOYMENT_ID;
+  if (typeof deployment === "string" && deployment.trim()) return `deploy:${deployment.trim()}`;
+  return undefined;
+}
+
+function scopeKey(key, scope) {
+  return scope ? `${scope}:${key}` : key;
+}
+
+function scopeTag(tag, scope) {
+  if (!scope || tag.startsWith(`${scope}:`)) return tag;
+  return `${scope}:${tag}`;
+}
+
+function unscopeTags(tags, scope) {
+  if (!scope) return tags || [];
+  const prefix = `${scope}:`;
+  return (tags || []).map((tag) => (tag.startsWith(prefix) ? tag.slice(prefix.length) : tag));
+}
+
 function hasBrrrdCacheOps() {
   const ops = brrrdOps();
   return !!(
@@ -166,11 +194,12 @@ function maxMemoryTagState(tags) {
   return out;
 }
 
-async function maxRuntimeTagState(tags) {
+async function maxRuntimeTagState(tags, scope) {
   const ops = brrrdOps();
   const out = { staleAtMs: 0, expiredAtMs: 0 };
   const seen = new Set();
-  for (const tag of tags || []) {
+  for (const unscoped of tags || []) {
+    const tag = scopeTag(unscoped, scope);
     if (seen.has(tag)) continue;
     seen.add(tag);
     if (hasBrrrdCacheTagStateOps()) {
@@ -258,16 +287,17 @@ class BrrrdCacheHandler {
       return cacheEntryWithTagState(entry, memoryTagStateForEntry(entry, softTags));
     }
 
-    const res = await ops.op_brrrd_cache_get(cacheKey);
+    const scope = dataScope();
+    const res = await ops.op_brrrd_cache_get(scopeKey(cacheKey, scope));
     if (!res) return undefined;
     if (res.is_expired) return undefined;
 
     const timestamp = nowMs() - Math.floor((res.age_secs || 0) * 1000);
-    const stored = decodeStoredEntry(res.value, res.tags || [], timestamp);
+    const stored = decodeStoredEntry(res.value, unscopeTags(res.tags, scope), timestamp);
     const tagState = await maxRuntimeTagState([
       ...(stored.tags || []),
       ...(softTags || []),
-    ]);
+    ], scope);
     const now = nowMs();
     if (tagState.expiredAtMs <= now && tagState.expiredAtMs > stored.timestamp) {
       return undefined;
@@ -303,10 +333,11 @@ class BrrrdCacheHandler {
         return;
       }
 
+      const scope = dataScope();
       await ops.op_brrrd_cache_set(
-        cacheKey,
+        scopeKey(cacheKey, scope),
         encodeStoredEntry(stored, bytes),
-        stored.tags,
+        stored.tags.map((tag) => scopeTag(tag, scope)),
         stored.revalidate || 0,
       );
     })();
@@ -324,7 +355,7 @@ class BrrrdCacheHandler {
 
   async getExpiration(tags) {
     if (hasBrrrdCacheOps()) {
-      return (await maxRuntimeTagState(tags)).expiredAtMs;
+      return (await maxRuntimeTagState(tags, dataScope())).expiredAtMs;
     }
     return maxMemoryTagState(tags).expiredAtMs;
   }
@@ -337,9 +368,9 @@ class BrrrdCacheHandler {
       memoryTagStates.set(tag, mergeTagState(memoryTagStates.get(tag), state));
       const ops = brrrdOps();
       if (hasBrrrdCacheTagStateOps()) {
-        await ops.op_brrrd_cache_update_tag(tag, state.staleAtMs, state.expiredAtMs);
+        await ops.op_brrrd_cache_update_tag(scopeTag(tag, dataScope()), state.staleAtMs, state.expiredAtMs);
       } else if (hasBrrrdCacheOps() && state.expiredAtMs > 0) {
-        await ops.op_brrrd_cache_revalidate_tag(tag);
+        await ops.op_brrrd_cache_revalidate_tag(scopeTag(tag, dataScope()));
       }
     }
   }
