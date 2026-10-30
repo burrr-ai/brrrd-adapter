@@ -13,7 +13,7 @@ function fixture(t,source){
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'brrrd-optional-hook-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
   fs.mkdirSync(path.join(root,'.next/server'),{recursive:true});
   if(source!==undefined)fs.writeFileSync(path.join(root,'.next/server/instrumentation.js'),source);
-  const exports={};vm.runInNewContext(adaptOptionalInstrumentation(fs.readFileSync(file,'utf8')),{exports,module:{exports},require:createRequire(file),process:{env:{}},console});
+  const exports={};vm.runInNewContext(adaptOptionalInstrumentation(fs.readFileSync(file,'utf8')),{exports,module:{exports},require:createRequire(file),process:{env:{}},performance,console});
   return {root,exports};
 }
 test('an actually missing instrumentation file is optional without a stub',async t=>{

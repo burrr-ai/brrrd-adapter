@@ -126,6 +126,77 @@ function isExpired(entry) {
   return entry.expiresAt > 0 && nowMs() > entry.expiresAt;
 }
 
+// The brrrd host cache outlives a deployment and can be shared between apps.
+// Response-cache entries (APP_PAGE / APP_ROUTE / PAGES) reference one build's
+// chunks, so they are scoped to the deployment. Unscoped, an entry written by
+// another build or another app keeps winning over this build's prerender and
+// serves HTML whose CSS/JS do not exist here.
+//
+// Fetch entries and tags are scoped to the app's data scope: BRRRD_CACHE_SCOPE
+// when the platform provides a stable app id, otherwise the deployment. Then
+// another app neither reads this app's data cache nor invalidates its tags,
+// and every entry a deployment can read is reached by its own revalidateTag.
+//
+// Scope by deploymentId before BUILD_ID. With `deploymentId` set and no
+// `generateBuildId`, Next writes the constant `build-TfctsWXpff2fKS` to
+// BUILD_ID, so BUILD_ID alone would not tell builds or apps apart.
+function readDeploymentScope(serverDistDir) {
+  if (!serverDistDir) return undefined;
+  let path;
+  try {
+    path = nodePath();
+  } catch {
+    return undefined;
+  }
+  const distDir = path.join(serverDistDir, "..");
+  try {
+    const files = JSON.parse(nodeFs().readFileSync(path.join(distDir, "required-server-files.json"), "utf8"));
+    const id = typeof files?.config?.deploymentId === "string" ? files.config.deploymentId.trim() : "";
+    if (id) return `deploy:${id}`;
+  } catch {
+    // fall through to BUILD_ID
+  }
+  try {
+    const id = String(nodeFs().readFileSync(path.join(distDir, "BUILD_ID"), "utf8")).trim();
+    return id ? `build:${id}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function explicitAppScope() {
+  const value = globalThis.process?.env?.BRRRD_CACHE_SCOPE;
+  return typeof value === "string" && value.trim() ? `app:${value.trim()}` : undefined;
+}
+
+function readCacheScopes(serverDistDir) {
+  const app = explicitAppScope();
+  const deployment = readDeploymentScope(serverDistDir);
+  return { app, deployment, data: app ?? deployment };
+}
+
+function hostCacheKey(cacheKey, scopes, isFetch) {
+  const prefix = (isFetch ? [scopes?.data] : [scopes?.app, scopes?.deployment])
+    .filter(Boolean)
+    .join(":");
+  return prefix ? `${prefix}:${cacheKey}` : cacheKey;
+}
+
+function scopeTag(tag, scope) {
+  if (!scope || tag.startsWith(`${scope}:`)) return tag;
+  return `${scope}:${tag}`;
+}
+
+function scopeTags(tags, scope) {
+  return (tags || []).map((tag) => scopeTag(tag, scope));
+}
+
+function unscopeTags(tags, scope) {
+  if (!scope) return tags || [];
+  const prefix = `${scope}:`;
+  return (tags || []).map((tag) => (tag.startsWith(prefix) ? tag.slice(prefix.length) : tag));
+}
+
 function maxMemoryTagTimestamp(tags) {
   let max = 0;
   for (const tag of tags || []) {
@@ -257,7 +328,7 @@ function shouldFilterEntryByTags(parsed) {
   return parsed?.value?.kind === "FETCH";
 }
 
-async function maxRuntimeTagExpiration(tags) {
+async function maxRuntimeTagExpiration(tags, scope) {
   const op = brrrdOps()?.op_brrrd_cache_tag_expiration;
   if (typeof op !== "function") return 0;
   let max = 0;
@@ -265,7 +336,7 @@ async function maxRuntimeTagExpiration(tags) {
   for (const tag of tags || []) {
     if (seen.has(tag)) continue;
     seen.add(tag);
-    max = Math.max(max, await op(tag));
+    max = Math.max(max, await op(scopeTag(tag, scope)));
   }
   return max;
 }
@@ -307,10 +378,14 @@ function readBufferIfExists(filePath) {
 }
 
 function appCachePath(serverDistDir, cacheKey, suffix = "") {
-  return nodePath().join(serverDistDir, "app", `${cacheKey}${suffix}`);
+  return diskPath(nodePath(), serverDistDir, cacheKey, "APP_PAGE", suffix);
 }
 
 function diskPath(pathModule, serverDistDir, cacheKey, kind, suffix = "") {
+  // Next 16.3.8+ response keys already contain their route owner namespace.
+  if (["APP_PAGE", "APP_ROUTE", "PAGES"].includes(kind) && String(cacheKey).startsWith("/route-cache/")) {
+    return pathModule.join(serverDistDir, `${cacheKey}${suffix}`);
+  }
   switch (kind) {
     case "FETCH":
       return pathModule.join(serverDistDir, "..", "cache", "fetch-cache", String(cacheKey));
@@ -432,7 +507,8 @@ function appPageTemplateKeys(serverDistDir) {
   const path = nodePath();
   const appDir = path.join(serverDistDir, "app");
   const templates = [];
-  const stack = [appDir];
+  const routeCacheDir = path.join(serverDistDir, "route-cache", "APP_PAGE");
+  const stack = [appDir, routeCacheDir];
 
   while (stack.length > 0) {
     const current = stack.pop();
@@ -451,8 +527,9 @@ function appPageTemplateKeys(serverDistDir) {
       }
       if (!entry.isFile() || !entry.name.endsWith(".html")) continue;
 
-      const rel = path.relative(appDir, fullPath).split(path.sep).join("/");
-      const key = rel.slice(0, -".html".length);
+      const root = fullPath.startsWith(routeCacheDir + path.sep) ? serverDistDir : appDir;
+      const rel = path.relative(root, fullPath).split(path.sep).join("/");
+      const key = (root === serverDistDir ? "/" : "") + rel.slice(0, -".html".length);
       if (key.includes("[") && key.includes("]")) templates.push(key);
     }
   }
@@ -465,7 +542,8 @@ function appPageTemplateKeys(serverDistDir) {
 function dynamicAppPageCacheKeyCandidates(serverDistDir, cacheKey) {
   const concreteKey = normalizeAppPageKey(cacheKey);
   return appPageTemplateKeys(serverDistDir).filter((templateKey) => (
-    appPageTemplateMatches(templateKey, concreteKey)
+    String(cacheKey).startsWith("/route-cache/") === templateKey.startsWith("/route-cache/")
+    && appPageTemplateMatches(normalizeAppPageKey(templateKey), concreteKey)
   ));
 }
 
@@ -723,6 +801,13 @@ class BrrrdLegacyCacheHandler {
     this.serverDistDir = ctx.serverDistDir;
   }
 
+  // Read lazily for the same edge-safety reason as `path`; without a scope the
+  // keys and tags stay unscoped, as before.
+  get cacheScopes() {
+    if (this._cacheScopes === undefined) this._cacheScopes = readCacheScopes(this.serverDistDir);
+    return this._cacheScopes;
+  }
+
   // `node:path`, resolved lazily. This handler is also constructed inside Next's
   // Edge Runtime IncrementalCache (e.g. `next dev` edge routes), where resolving
   // a Node builtin throws; resolving eagerly in the constructor crashed it. The
@@ -814,7 +899,9 @@ class BrrrdLegacyCacheHandler {
       return diskEntry;
     }
 
-    const res = await ops.op_brrrd_cache_get(cacheKey);
+    const scopes = this.cacheScopes;
+    const hostKey = hostCacheKey(cacheKey, scopes, ctx?.kind === "FETCH");
+    const res = await ops.op_brrrd_cache_get(hostKey);
     if (!res) {
       return readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
     }
@@ -828,20 +915,21 @@ class BrrrdLegacyCacheHandler {
       if (shouldFilterEntryByTags(parsed)) {
         const reconciled = reconcileFetchTags(
           parsed,
-          parsedStoredTags(parsed, res.tags || []),
+          parsedStoredTags(parsed, unscopeTags(res.tags, scopes.data)),
           ctx,
         );
         if (reconciled.changed) {
           const nextText = JSON.stringify(parsed, encodeReplacer);
           await ops.op_brrrd_cache_set(
-            cacheKey,
+            hostKey,
             new TextEncoder().encode(nextText),
-            reconciled.tags,
+            scopeTags(reconciled.tags, scopes.data),
             parsed.value?.revalidate || 0,
           );
         }
         const invalidatedAt = await maxRuntimeTagExpiration(
           tagsForInvalidation(parsed, reconciled.tags, ctx),
+          scopes.data,
         );
         if (invalidatedAt > 0 && entryLastModified(parsed) <= invalidatedAt) {
           return null;
@@ -885,7 +973,14 @@ class BrrrdLegacyCacheHandler {
       );
       return;
     }
-    await ops.op_brrrd_cache_set(cacheKey, bytes, tags, ttl);
+    const isFetch = data?.kind === "FETCH" || !!ctx?.fetchCache;
+    const scopes = this.cacheScopes;
+    await ops.op_brrrd_cache_set(
+      hostCacheKey(cacheKey, scopes, isFetch),
+      bytes,
+      scopeTags(tags, scopes.data),
+      ttl,
+    );
   }
 
   async revalidateTag(tags, _durations) {
@@ -900,7 +995,7 @@ class BrrrdLegacyCacheHandler {
       if (!hasBrrrdCacheOps()) {
         continue;
       }
-      await ops.op_brrrd_cache_revalidate_tag(tag);
+      await ops.op_brrrd_cache_revalidate_tag(scopeTag(tag, this.cacheScopes.data));
     }
   }
 

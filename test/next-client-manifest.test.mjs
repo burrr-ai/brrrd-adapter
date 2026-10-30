@@ -46,7 +46,7 @@ test('Next original VM result equals emitted data; original cache/freeze/clear a
 test('original JSON and missing loader behavior are unchanged; original JS path remains the cache key',t=>{
   const f=fixture(t),cache=new Map();const context=f.exports.evalManifest(f.target,true,cache);assert.equal(cache.get(f.target),context);
   const json=path.join(f.ctx.outDir,'ordinary.json');fs.writeFileSync(json,'{"value":42}');assert.equal(f.exports.loadManifest(json).value,42);
-  const absent=path.join(f.ctx.outDir,'absent.js');assert.deepEqual(Object.keys(f.exports.evalManifest(absent,false,cache,true)),[]);assert.ok(cache.has(absent));
+  const absent=path.join(f.ctx.outDir,'absent.js');assert.equal(f.exports.evalManifest(absent,false,cache,true),require(loader).evalManifest(absent,false,new Map(),true));assert.ok(cache.has(absent));
   fs.writeFileSync(f.target,'');assert.throws(()=>f.exports.evalManifest(f.target,false),/Manifest file is empty/);
 });
 

@@ -515,16 +515,27 @@ function clientReferenceArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
 function prerenderCacheMetadata(model: NextBuildModel): ArtifactPlanItem {
   const serverDir = path.join(model.distDir, "server");
   const lastModified: Record<string, number> = {};
-  for (const file of walkFiles(path.join(serverDir, "app"))) {
-    if (file.endsWith(".html") || file.endsWith(".body")) {
-      lastModified[path.relative(serverDir, file).split(path.sep).join("/")] = fs.statSync(file).mtimeMs;
+  for (const directory of ["app", "route-cache"]) {
+    for (const file of walkFiles(path.join(serverDir, directory))) {
+      if (file.endsWith(".html") || file.endsWith(".body")) {
+        lastModified[path.relative(serverDir, file).split(path.sep).join("/")] = fs.statSync(file).mtimeMs;
+      }
     }
+  }
+  // Next's Adapter API supplies the owning fallback path. The host must not
+  // reconstruct Next's hashed route-cache keys from a public URL.
+  const fallbackHtml: Record<string, string> = {};
+  for (const output of model.outputs.prerenders) {
+    if (!output.filePath?.endsWith(".html")) continue;
+    const relative = path.relative(serverDir, output.filePath);
+    if (relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) continue;
+    fallbackHtml[output.pathname] = relative.split(path.sep).join("/");
   }
   return artifactItem(model, {
     id: "prerender-cache-metadata", kind: "runtime-manifest",
     packagePath: "runtime/.next/server/brrrd-prerender-cache.json",
     mountPath: ".next/server/brrrd-prerender-cache.json", required: true,
-    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified}),
+    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified, fallbackHtml}),
     reason: "Original prerender generation times for Next cache freshness on immutable VFS",
   });
 }
@@ -532,11 +543,12 @@ function prerenderCacheMetadata(model: NextBuildModel): ArtifactPlanItem {
 function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   const serverDir = path.join(model.distDir, "server");
   const appDir = path.join(serverDir, "app");
-  if (!fs.existsSync(appDir)) return [];
+  const routeCacheDir = path.join(serverDir, "route-cache");
   const items: ArtifactPlanItem[] = [];
   const shouldCopy = (filePath: string) => {
     const ext = path.extname(filePath);
-    return ext === ".html" || ext === ".meta" || ext === ".rsc";
+    return ext === ".html" || ext === ".meta" || ext === ".rsc"
+      || ext === ".body" || ext === ".json";
   };
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -558,7 +570,9 @@ function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[]
       }));
     }
   };
-  walk(appDir);
+  for (const dir of [appDir, routeCacheDir]) {
+    if (fs.existsSync(dir)) walk(dir);
+  }
   return items;
 }
 
@@ -636,7 +650,7 @@ function appPrerenderDataArtifacts(
   supplement: ManifestSupplement,
 ): ArtifactPlanItem[] {
   return supplement.appPrerenderDataRoutes.map((route) => {
-    const sourceAbsPath = path.join(model.distDir, "server", "app", route.sourceRel);
+    const sourceAbsPath = route.filePath ?? path.join(model.distDir, "server", "app", route.sourceRel);
     return artifactItem(model, {
       id: `app-prerender-data:${sanitizeId(route.pathname)}`,
       kind: "static",

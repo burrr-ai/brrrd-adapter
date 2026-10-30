@@ -175,16 +175,18 @@ var __dirname = __filename.slice(0, __filename.lastIndexOf("/"));
 /** The hook itself is optional; a present hook's dependency/import failures are not. */
 export function adaptOptionalInstrumentation(source: string): string {
   const start = "    try {\n        cachedInstrumentationModule =";
-  const classifier = "if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND' && err.code !== 'ERR_MODULE_NOT_FOUND') {\n            throw err;\n        }";
+  const classifier = "if ((0, _iserror.default)(err) && err.code !== 'ENOENT' && err.code !== 'MODULE_NOT_FOUND' && err.code !== 'ERR_MODULE_NOT_FOUND') {\n            error = err;\n            throw err;\n        }";
   if (source.split(start).length !== 2 || source.split(classifier).length !== 2) {
     throw new Error("unsupported Next optional instrumentation loader source");
   }
-  const presence = `    try {
-        require('node:fs').statSync(_nodepath.default.join(projectDir, distDir, 'server', _constants.INSTRUMENTATION_HOOK_FILENAME + '.js'));
-    } catch (error) {
-        if (error && error.code === 'ENOENT') return undefined;
-        throw error;
-    }
-`;
-  return source.replace(start, presence + start).replace(classifier, "throw err;");
+  const checkedImport = `    try {
+        try {
+            require('node:fs').statSync(_nodepath.default.join(projectDir, distDir, 'server', _constants.INSTRUMENTATION_HOOK_FILENAME + '.js'));
+        } catch (error) {
+            if (error && error.code === 'ENOENT') return undefined;
+            throw error;
+        }
+        cachedInstrumentationModule =`;
+  // Preserve Next16.4's load timing/finally and report all errors from a present hook.
+  return source.replace(start, checkedImport).replace(classifier, "error = err; throw err;");
 }

@@ -6,6 +6,15 @@ comwit.io deployment plane). On `next build` it emits a `dist/brrrd/` package
 
 Requires **Next.js ≥ 16.2**.
 
+CI installs **Next.js and @next/routing ^16.4.3**; the official deploy
+harness resolves the latest matching Next.js tag at run time. Prerender bodies and public RSC
+URLs use the Adapter API metadata, including Next 16.4's owner-scoped
+`server/route-cache` storage.
+
+PPR HTML requests use complete runtime rendering because brrrd cannot concatenate
+the prerendered shell and resumed HTML. RSC resume metadata and segment prefetch
+artifacts remain available.
+
 ## Architecture direction
 
 This adapter is the source of truth for `@brrrd/adapter`; the historical

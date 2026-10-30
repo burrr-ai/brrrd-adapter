@@ -83,8 +83,8 @@ export function emitClientManifestData(ctx: BuildContext): Record<string, string
 }
 
 export function adaptManifestLoader(source: string, records: Record<string, string>): string {
-  if (createHash("sha256").update(source).digest("hex") !== "cbc7a88b899cf65149b3117e08d2f30caec493d3ab7f6f29245a1b8cc091cb61") {
-    throw new Error("unsupported Next16.2.7 manifest loader source pin");
+  if (createHash("sha256").update(source).digest("hex") !== "6e88909558245f1e1e95d97de869a9210f58995e4e19fdba62c25adf8e43d826") {
+    throw new Error("unsupported Next16.4.3 manifest loader source pin");
   }
   if (source.split(VM_CALL).length !== 2) throw new Error("unsupported Next manifest loader source: VM call guard changed");
   // Only replace the actual VM operation. Original reads/missing/cache/freeze/clear remain intact.

@@ -237,7 +237,8 @@ function normalizeOutput(
     pathname: raw.pathname,
     kind,
     runtime: raw.runtime,
-    filePath: raw.filePath,
+    // Next 16.4 declares prerender bodies through the Adapter API fallback.
+    filePath: raw.filePath ?? (kind === "prerender" ? raw.fallback?.filePath : undefined),
     sourcePage: raw.sourcePage,
     routeKind,
     appPath: raw.sourcePage,

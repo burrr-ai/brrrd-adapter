@@ -5,10 +5,15 @@ brrrd runtime.
 
 ## Local npm Publish
 
-Use the repository-local `.npmrc` for npm publishing. It is intentionally ignored
-by git because it contains the npm deployment token.
+Automated releases publish from `.github/workflows/release.yml` on `v*` tags via
+npm Trusted Publishing (OIDC), using npm 11.17.0 with no npm deployment token.
+Already-published versions are skipped so release re-runs succeed.
 
-Before publishing, verify that `.npmrc` exists and contains a valid token:
+Use the repository-local `.npmrc` only for manual fallback publishing. It is
+intentionally ignored by git because it contains the npm deployment token.
+
+Before a manual fallback publish, verify that `.npmrc` exists and contains a
+valid token:
 
 ```ini
 registry=https://registry.npmjs.org/
