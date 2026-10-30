@@ -123,6 +123,7 @@ export function writeManifest(
 ): void {
   const manifest: BrrrdManifest = {
     schemaVersion: 6,
+    execution: { abi: "workerd-node-v1" },
     build: {
       buildId: model.buildId,
       deploymentId: deploymentId(),

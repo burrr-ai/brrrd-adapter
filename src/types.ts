@@ -1,5 +1,6 @@
 export interface BrrrdManifest {
   schemaVersion: 6;
+  execution: { abi: "workerd-node-v1" };
   build: BrrrdBuildInfo;
   /** Kept as a top-level convenience for artifact stores and fleet pointers. */
   buildId: string;

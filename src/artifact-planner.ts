@@ -34,6 +34,8 @@ import {
 } from "./pages-dynamic-prerender.js";
 import { basePath } from "./next-config.js";
 
+import { CLIENT_DATA_SUFFIX } from "./compatibility/next-client-manifest.js";
+
 const require = createRequire(import.meta.url);
 
 const COMPRESS_EXTENSIONS = new Set([
@@ -420,10 +422,23 @@ function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   for (const name of rootManifests) {
     const sourceAbsPath = path.join(model.distDir, name);
     if (!fs.existsSync(sourceAbsPath)) continue;
+    let generatedContent: string | undefined;
+    if (name === "required-server-files.json") {
+      const deployed = JSON.parse(fs.readFileSync(sourceAbsPath, "utf8"));
+      const relative = "../node_modules/.cache/@brrrd/adapter/";
+      const absolute = "/bundle/runtime/node_modules/.cache/@brrrd/adapter/";
+      if (deployed.config?.cacheHandler === relative + "cache-handler-legacy.mjs") {
+        deployed.config.cacheHandler = absolute + "cache-handler-legacy.mjs";
+      }
+      if (deployed.config?.cacheHandlers?.default === relative + "cache-handler.mjs") {
+        deployed.config.cacheHandlers.default = absolute + "cache-handler.mjs";
+      }
+      generatedContent = JSON.stringify(deployed, null, 2) + "\n";
+    }
     items.push(artifactItem(model, {
       id: `runtime-root:${name}`,
       kind: "runtime-manifest",
-      sourceAbsPath,
+      ...(generatedContent === undefined ? { sourceAbsPath } : { generatedContent }),
       packagePath: packageJoin("runtime/.next", name),
       mountPath: packageJoin(".next", name),
       required: true,
@@ -494,6 +509,24 @@ function clientReferenceArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   };
   walk(appDir);
   return items;
+}
+
+// Immutable build-file ages belong to the artifact, not the deployment VFS clock.
+function prerenderCacheMetadata(model: NextBuildModel): ArtifactPlanItem {
+  const serverDir = path.join(model.distDir, "server");
+  const lastModified: Record<string, number> = {};
+  for (const file of walkFiles(path.join(serverDir, "app"))) {
+    if (file.endsWith(".html") || file.endsWith(".body")) {
+      lastModified[path.relative(serverDir, file).split(path.sep).join("/")] = fs.statSync(file).mtimeMs;
+    }
+  }
+  return artifactItem(model, {
+    id: "prerender-cache-metadata", kind: "runtime-manifest",
+    packagePath: "runtime/.next/server/brrrd-prerender-cache.json",
+    mountPath: ".next/server/brrrd-prerender-cache.json", required: true,
+    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified}),
+    reason: "Original prerender generation times for Next cache freshness on immutable VFS",
+  });
 }
 
 function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
@@ -839,16 +872,17 @@ function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
 }
 
 function cacheHandlerArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
-  return ["cache-handler", "cache-handler-legacy"].map((variant) => {
-    const sourceAbsPath = require.resolve(`@brrrd/adapter/${variant}`);
+  const sourceDir = path.dirname(require.resolve("@brrrd/adapter/cache-handler"));
+  return ["cache-handler", "cache-handler-legacy", "cache-tags"].map((variant) => {
+    const relative = `node_modules/.cache/@brrrd/adapter/${variant}.mjs`;
     return artifactItem(model, {
-      id: `compat:${variant}`,
+      id: `cache-support:${variant}`,
       kind: "compatibility",
-      sourceAbsPath,
-      packagePath: `runtime/brrrd-${variant}.mjs`,
-      mountPath: `brrrd-${variant}.mjs`,
+      sourceAbsPath: path.join(sourceDir, `${variant}.mjs`),
+      packagePath: `runtime/${relative}`,
+      mountPath: relative,
       required: true,
-      reason: "brrrd cache handler polyfill configured by modifyConfig",
+      reason: "closed adapter cache module graph; canonical runtime path shared by appBundle and Next config",
     });
   });
 }
@@ -1259,7 +1293,16 @@ export function createArtifactPlan(
       ...pprSegmentPrefetchArtifacts(model, supplement),
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),
+      ...walkFiles(path.join(outDir, "runtime", ".next", "server", "app"))
+        .filter(file => file.endsWith(CLIENT_DATA_SUFFIX)).map(file => {
+          const relative = path.relative(outDir, file).split(path.sep).join("/");
+          return artifactItem(model, { id: `next-client-data:${relative}`, kind: "runtime-manifest",
+            packagePath: relative, mountPath: relative.slice("runtime/".length),
+            generatedContent: fs.readFileSync(file), required: true,
+            reason: "Next original build-time VM result for static client manifest; no runtime VM support" });
+        }),
       ...appPrerenderRuntimeArtifacts(model),
+      prerenderCacheMetadata(model),
       ...pagesPrerenderRuntimeArtifacts(model),
       ...routeRuntimeDependencyArtifacts(model),
       ...turbopackExternalAliasArtifacts(model),

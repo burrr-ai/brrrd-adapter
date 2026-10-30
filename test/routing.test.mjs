@@ -2148,3 +2148,19 @@ test("more specific dynamic App prerender segment data wins over generic templat
     "app-prerender-data-dynamic-instant-loading-electronics-_itemId__segments-!root-instant-loading-$d$category_segment_rsc",
   );
 });
+
+test("header and redirect entries with the same source retain the pre-route header", () => {
+  const model = context({});
+  model.routing.beforeMiddleware = [
+    {source:'/from',sourceRegex:'^/from$',headers:{'X-Config':'kept'}},
+    {source:'/from',sourceRegex:'^/from$',headers:{Location:'/to'},status:307},
+  ];
+  const routing = compileRouting(model, {
+    redirects:[{source:'/from',regex:'^/from$',destination:'/to',statusCode:307}],
+    rewrites:{beforeFiles:[],afterFiles:[],fallback:[]},
+  });
+  assert.equal(routing.headers.length,1);
+  assert.deepEqual(routing.headers[0].headers,[{key:'X-Config',value:'kept'}]);
+  assert.equal(routing.redirects.length,1);
+  assert.equal(routing.redirects[0].destination,'/to');
+});

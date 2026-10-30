@@ -219,7 +219,7 @@ module.exports = function handler(_req, res) {
   const result = spawnSync(process.execPath, [
     fileURLToPath(new URL("./fixtures/run-pages-router-context.mjs", import.meta.url)),
     path.join(outDir, "bundles", "app.js"),
-  ], { encoding: "utf8" });
+  ], { encoding: "utf8", env: { ...process.env, BRRRD_RUNTIME_ABI: "workerd-node-v1" } });
   assert.equal(result.status, 0, result.stderr || String(result.error));
   assert.equal(result.stdout, "true");
 });

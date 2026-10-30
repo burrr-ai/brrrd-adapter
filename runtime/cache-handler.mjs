@@ -1,3 +1,5 @@
+import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
+
 // Implements the Next.js 16 cacheHandlers interface. This module is imported by
 // both the Next build process and the brrrd isolate, so the default export must
 // be a handler object and must not touch runtime-only Deno ops at module load.
@@ -247,10 +249,24 @@ function cloneCacheEntryForStorage(entry) {
 }
 
 class BrrrdCacheHandler {
+  constructor(binding) { this.binding = binding; }
+
   async get(cacheKey, softTags) {
     const pending = pendingSets.get(cacheKey);
     if (pending) await pending;
 
+    const native = await nativeCacheBinding(this.binding);
+    if (native) {
+      const publication = cacheTagPublication();
+      const order = publication.issueRead();
+      const hit = await native.get(cacheKey);
+      publication.hydrate(hit?.tag_states, order);
+      if (!hit || hit.is_expired) return undefined;
+      const stored = decodeStoredEntry(hit.value, hit.tags || [], nowMs() - Math.floor((hit.age_secs || 0) * 1000));
+      const state = await nativeTagState(native, [...stored.tags, ...(softTags || [])]);
+      if (state.expiredAtMs <= nowMs() && state.expiredAtMs > stored.timestamp) return undefined;
+      return cacheEntryWithTagState(stored, state);
+    }
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       const entry = memoryEntries.get(cacheKey);
@@ -297,6 +313,11 @@ class BrrrdCacheHandler {
         revalidate: entry.revalidate,
       };
 
+      const native = await nativeCacheBinding(this.binding);
+      if (native) {
+        await native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags, stored.revalidate || 0);
+        return;
+      }
       const ops = brrrdOps();
       if (!hasBrrrdCacheOps()) {
         memoryEntries.set(cacheKey, stored);
@@ -323,6 +344,8 @@ class BrrrdCacheHandler {
   }
 
   async getExpiration(tags) {
+    const native = await nativeCacheBinding(this.binding);
+    if (native) return (await nativeTagState(native, tags)).expiredAtMs;
     if (hasBrrrdCacheOps()) {
       return (await maxRuntimeTagState(tags)).expiredAtMs;
     }
@@ -330,6 +353,8 @@ class BrrrdCacheHandler {
   }
 
   async updateTags(tags, durations) {
+    const native = await nativeCacheBinding(this.binding);
+    if (native) return cacheTagPublication().update(native, tags, tagMutation(durations, nowMs()));
     updateNextTagsManifest(tags, durations);
     const now = nowMs();
     const state = tagStateFromDurations(durations, now);
@@ -349,3 +374,76 @@ const cacheHandler = new BrrrdCacheHandler();
 
 export default cacheHandler;
 export { BrrrdCacheHandler, cacheHandler };
+
+
+// The workerd-node-v1 cache transport. The caller supplies its real env binding;
+// this helper owns no cache data, namespace, retry, or request-completion state.
+export function createCacheBinding(binding) {
+  if (!binding || typeof binding.fetch !== "function") {
+    throw new TypeError("native BRRRD_CACHE binding is required");
+  }
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  async function call(op, key, extra = {}, payload) {
+    const metadata = encoder.encode(JSON.stringify({ op, key, ...extra }));
+    if (metadata.byteLength > 65536) throw new RangeError("cache metadata exceeds 64KiB");
+    if (payload !== undefined && !(payload instanceof Uint8Array)) {
+      throw new TypeError("cache payload must be Uint8Array");
+    }
+    const bytes = payload === undefined ? new Uint8Array(0) : payload;
+    const frame = new Uint8Array(4 + metadata.byteLength + bytes.byteLength);
+    new DataView(frame.buffer).setUint32(0, metadata.byteLength, false);
+    frame.set(metadata, 4);
+    frame.set(bytes, 4 + metadata.byteLength);
+    const response = await binding.fetch("http://cache/", { method: "POST", body: frame });
+    if (op === "get" && response.status === 404) return null;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `cache binding failed: ${response.status}`);
+    }
+    if (op !== "get") return response.json();
+    const body = await response.arrayBuffer();
+    if (body.byteLength < 4) throw new Error("cache reply has no metadata length");
+    const length = new DataView(body).getUint32(0, false);
+    if (length > body.byteLength - 4) throw new Error("cache reply metadata is truncated");
+    return { ...JSON.parse(decoder.decode(new Uint8Array(body, 4, length))),
+      value: new Uint8Array(body, 4 + length) };
+  }
+  return {
+    get: key => call("get", key),
+    set: (key, value, tags = [], ttl = 0) => call("set", key, { tags, ttl }, value),
+    commitTag: (key, { stale = null, expired = null } = {}) => call("commit_tag", key, { stale, expired }),
+    tagSnapshot: key => call("tag_snapshot", key),
+    tagState: key => call("tag_state", key),
+    tagExpiration: key => call("tag_expiration", key),
+    revalidatePath: key => call("revalidate_path", key),
+    pathExpiration: key => call("path_expiration", key),
+  };
+}
+
+
+// Native mode has one explicit ABI and requires the real official env capability.
+// Import is lazy so Next's build-time handler never requires a workerd-only module.
+export async function nativeCacheBinding(binding) {
+  if (binding !== undefined) return createCacheBinding(binding);
+  if (globalThis.process?.env?.BRRRD_RUNTIME_ABI !== 'workerd-node-v1') return undefined;
+  // Next's build/edge scanner must leave this native-only built-in to workerd.
+  const workersModule = 'cloudflare:workers';
+  const { env } = await import(/* webpackIgnore: true */ workersModule);
+  return createCacheBinding(env.BRRRD_CACHE);
+}
+
+export async function nativeTagState(cache, tags) {
+  const publication = cacheTagPublication();
+  const result = { staleAtMs: 0, expiredAtMs: 0 };
+  for (const tag of new Set(tags || [])) {
+    const order = publication.issueRead();
+    const state = await cache.tagSnapshot(tag);
+    if (state?.status !== 'committed') throw new Error(`cache tag snapshot ${state?.status || 'invalid'}`);
+    publication.hydrate([state], order);
+    const published = publication.manifest.get(tag);
+    result.staleAtMs = Math.max(result.staleAtMs, published.stale);
+    result.expiredAtMs = Math.max(result.expiredAtMs, published.expired);
+  }
+  return result;
+}

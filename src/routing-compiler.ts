@@ -304,7 +304,11 @@ export function compileRouting(
   const headers: BrrrdHeaderRule[] = [];
   const redirects: BrrrdRedirect[] = [];
   for (const route of model.routing.beforeMiddleware) {
-    const supplementRedirect = findRedirectSupplement(route, supplement?.redirects ?? []);
+    // A header rule can share a source/regex with a separate redirect rule.
+    // Only redirect-shaped Adapter API entries may consume redirect supplement data.
+    const supplementRedirect = route.destination || locationHeader(route)
+      ? findRedirectSupplement(route, supplement?.redirects ?? [])
+      : undefined;
     const h = headerRule(route, supplementRedirect);
     if (h) headers.push(h);
     const r = redirectRule(route, supplementRedirect);

@@ -7,6 +7,7 @@ import {
   runCompatibilityAfterBundle,
 } from "./compatibility/index.js";
 import { nextServerDefineEnv } from "./next-config.js";
+import { materializeSupportFile } from "./config.js";
 import {
   createRuntimeDependencyPlugin,
   runtimeDependencyExternals,
@@ -77,6 +78,7 @@ export async function bundleAppHandler(
     assets?: Record<string, string>;
   }>,
   ctx: BuildContext,
+  nodeProxy?: { filePath: string; assets?: Record<string, string> },
 ): Promise<string> {
   const outfile = path.join(ctx.outDir, "bundles", "app.js");
   fs.mkdirSync(path.dirname(outfile), { recursive: true });
@@ -84,18 +86,50 @@ export async function bundleAppHandler(
   const moduleEntries = outputs
     .map((o) => `  '${o.id}': () => Promise.resolve().then(() => require('${o.filePath}'))`)
     .join(",\n");
+  const nextEnvironmentBaseline = resolveModulePath("next/dist/server/node-environment-baseline", ctx);
   const nextCacheHandlersModule = resolveModulePath("next/dist/server/use-cache/handlers", ctx);
   const nextTagsManifestModule = resolveModulePath("next/dist/server/lib/incremental-cache/tags-manifest.external", ctx);
-  const brrrdCacheHandlerModule = resolveModulePath("@brrrd/adapter/cache-handler", ctx);
+  // Keep one runtime module identity for publication across dispatcher and lazy Next imports.
+  const cacheModule = materializeSupportFile(path.join(ctx.outDir, "runtime"), "cache-handler");
+  const legacyModule = materializeSupportFile(path.join(ctx.outDir, "runtime"), "cache-handler-legacy");
+  const brrrdCacheHandlerModule = "./" + path.relative(path.dirname(outfile), cacheModule).split(path.sep).join("/");
+  const brrrdLegacyCacheHandlerModule = "./" + path.relative(path.dirname(outfile), legacyModule).split(path.sep).join("/");
 
   const dispatcherCode = `
+// Next requires its official baseline before modules capture AsyncLocalStorage.
+import ${JSON.stringify(nextEnvironmentBaseline)};
 import * as __brrrdNextCacheHandlers from ${JSON.stringify(nextCacheHandlersModule)};
 import { tagsManifest as __brrrdNextTagsManifest } from ${JSON.stringify(nextTagsManifestModule)};
-import __brrrdCacheHandler from ${JSON.stringify(brrrdCacheHandlerModule)};
+import __brrrdCacheHandler, { createCacheBinding as __brrrdCacheBinding } from ${JSON.stringify(brrrdCacheHandlerModule)};
+import __brrrdLegacyCacheHandler from ${JSON.stringify(brrrdLegacyCacheHandlerModule)};
 
 const routeLoaders = {
 ${moduleEntries}
 };
+const loadNodeProxy = ${nodeProxy ? `() => Promise.resolve().then(() => require(${JSON.stringify(nodeProxy.filePath)}))` : "null"};
+let nodeProxyHandler;
+async function resolveNodeProxy() {
+  if (!loadNodeProxy) return null;
+  if (!nodeProxyHandler) {
+    const mod = await loadNodeProxy();
+    // Next16's generated named handler takes a Web Request and context.
+    // Its default export is the lower-level adapter(options), a different ABI.
+    if (typeof mod.handler !== 'function') {
+      throw new TypeError('Next Node proxy output requires handler(Request, context)');
+    }
+    nodeProxyHandler = mod.handler;
+  }
+  return nodeProxyHandler;
+}
+export async function proxy(request, _env, ctx, requestMeta) {
+  const handler = await resolveNodeProxy();
+  if (!handler) throw new Error('No Node proxy in this artifact');
+  return handler(request, {
+    signal: request.signal,
+    waitUntil: promise => ctx.waitUntil(promise),
+    requestMeta,
+  });
+}
 
 const resolvedHandlers = new Map();
 
@@ -127,23 +161,46 @@ let brrrdCacheHandlersReady;
 async function ensureBrrrdCacheHandlers() {
   if (!brrrdCacheHandlersReady) {
     brrrdCacheHandlersReady = (async () => {
-      let cacheMaxMemorySize = 50 * 1024 * 1024;
-      try {
-        const fs = require('fs');
-        const serverFiles = JSON.parse(fs.readFileSync('/bundle/runtime/.next/required-server-files.json', 'utf8'));
-        if (typeof serverFiles?.config?.cacheMaxMemorySize === 'number') {
-          cacheMaxMemorySize = serverFiles.config.cacheMaxMemorySize;
-        }
-      } catch (_) {
-        // Synthetic build contexts may not include Next's full server-file manifest.
-      }
-
+      // The native profile owns its real backend/budget; no JS memory fallback is initialized.
       globalThis.__brrrd_next_cache_tags_manifest = __brrrdNextTagsManifest;
-      __brrrdNextCacheHandlers.initializeCacheHandlers(cacheMaxMemorySize);
-      __brrrdNextCacheHandlers.setCacheHandler('default', __brrrdCacheHandler);
+      const registryKey = Symbol.for('@next/cache-handlers');
+      const registry = globalThis[registryKey] || {};
+      for (const [name, handler] of Object.entries({
+        DefaultCache: __brrrdCacheHandler, RemoteCache: __brrrdCacheHandler,
+        FetchCache: __brrrdLegacyCacheHandler,
+      })) {
+        if (registry[name] && registry[name] !== handler) {
+          throw new Error('unsupported competing Next cache handler: ' + name);
+        }
+        registry[name] = handler;
+      }
+      globalThis[registryKey] = registry;
+      __brrrdNextCacheHandlers.initializeCacheHandlers(0);
+      const entries = Array.from(__brrrdNextCacheHandlers.getCacheHandlerEntries() || []);
+      const writers = Array.from(__brrrdNextCacheHandlers.getCacheHandlers() || []);
+      if (entries.length !== 2 || !entries.every(([kind, handler]) =>
+        (kind === 'default' || kind === 'remote') && handler === __brrrdCacheHandler)
+        || writers.length !== 1 || writers[0] !== __brrrdCacheHandler) {
+        throw new Error('unsupported preinitialized Next cache publication writer');
+      }
     })();
   }
   return brrrdCacheHandlersReady;
+}
+
+function requestMetaPath(req, relative) {
+  const distDir = req.__brrrd_request_meta?.distDir;
+  if (typeof distDir !== 'string' || !distDir.startsWith('/')) {
+    throw new TypeError('native Next distDir metadata is required');
+  }
+  return require('path').join(distDir, relative);
+}
+
+// Public artifact bootstrap: real module imports, without a fabricated request event.
+export async function initialize() {
+  await ensureBrrrdCacheHandlers();
+  for (const routeId of Object.keys(routeLoaders)) await resolveHandler(routeId);
+  await resolveNodeProxy();
 }
 
 export default async function dispatch(routeId, req, res) {
@@ -152,17 +209,17 @@ export default async function dispatch(routeId, req, res) {
   if (!h) { res.writeHead(404); res.end('Not Found'); return; }
   const brrrdRequestMeta = req.__brrrd_request_meta || {};
   const waitUntil = (p) => {
-      Deno.core.ops.op_brrrd_wait_until_start(globalThis.__brrrd_realm_id);
-      Promise.resolve(p)
-        .catch(e => console.error('[waitUntil]', e))
-        .finally(() => Deno.core.ops.op_brrrd_wait_until_end(globalThis.__brrrd_realm_id));
-    };
+    if (typeof req.cloudflare?.ctx?.waitUntil !== 'function') {
+      throw new Error('workerd-node-v1 requires the native request ExecutionContext');
+    }
+    req.cloudflare.ctx.waitUntil(p);
+  };
   const createContext = (requestMetaOverrides = {}) => {
     const requestMeta = {
       ...brrrdRequestMeta,
       ...requestMetaOverrides,
       relativeProjectDir: '.',
-      distDir: '/bundle/.next',
+      distDir: brrrdRequestMeta.distDir,
       hostname: req.headers?.host || 'localhost',
       minimalMode: brrrdRequestMeta.minimalMode === true,
     };
@@ -180,11 +237,7 @@ export default async function dispatch(routeId, req, res) {
       if (!urlPath || typeof urlPath !== 'string') {
         throw new Error('brrrd revalidate requires a urlPath');
       }
-      const ops = globalThis.Deno?.core?.ops;
-      if (!ops || typeof ops.op_brrrd_cache_revalidate_path !== 'function') {
-        throw new Error('brrrd cache revalidate path op is unavailable');
-      }
-      await ops.op_brrrd_cache_revalidate_path(urlPath);
+      await __brrrdCacheBinding(req.cloudflare?.env?.BRRRD_CACHE).revalidatePath(urlPath);
     };
     return {
       waitUntil,
@@ -233,11 +286,11 @@ export default async function dispatch(routeId, req, res) {
     try {
       const fs = require('fs');
       const pagesManifest = JSON.parse(
-        fs.readFileSync('/bundle/.next/server/pages-manifest.json', 'utf8'),
+        fs.readFileSync(requestMetaPath(req, 'server/pages-manifest.json'), 'utf8'),
       );
       const staticErrorPage = pagesManifest['/500'];
       if (typeof staticErrorPage === 'string' && staticErrorPage.endsWith('.html')) {
-        const html = fs.readFileSync('/bundle/.next/server/' + staticErrorPage);
+        const html = fs.readFileSync(requestMetaPath(req, 'server/' + staticErrorPage));
         if (!res.headersSent) {
           res.setHeader('content-type', 'text/html; charset=utf-8');
         }
@@ -269,7 +322,7 @@ export default async function dispatch(routeId, req, res) {
         ".wasm": "binary",
         ".map": "js",
       },
-      external: runtimeDependencyExternals(),
+      external: [...runtimeDependencyExternals(), brrrdCacheHandlerModule, brrrdLegacyCacheHandlerModule],
       banner: {
         js: runtimeRequireBanner(),
       },
@@ -285,7 +338,7 @@ export default async function dispatch(routeId, req, res) {
       logLevel: "warning",
       mainFields: ["main", "module"],
       conditions: ["node"],
-      nodePaths: computeNodePaths(outputs.map((o) => o.assets), ctx),
+      nodePaths: computeNodePaths([...outputs.map((o) => o.assets), nodeProxy?.assets], ctx),
     });
     runCompatibilityAfterBundle(ctx, result.metafile);
   } catch (e) {
@@ -296,7 +349,8 @@ export default async function dispatch(routeId, req, res) {
   return outfile;
 }
 
-// bundleMiddleware removed — Next compiled proxy/middleware and Edge route
+// Node proxy's official Web handler is bundled with the Node dispatcher above.
+// Separate Edge bundleMiddleware removed — Next compiled Edge middleware and route
 // entries are already runtime-shaped chunks. Re-bundling them with esbuild
 // breaks Next's registration format, so build.ts raw-copies the manifest-listed
 // files into runtime/server/.

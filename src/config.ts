@@ -74,23 +74,20 @@ function supportsModernCacheHandlerInjection(ctx: { nextVersion: string }): bool
   return detectBuildBundler(ctx) === "webpack";
 }
 
-function materializeSupportFile(projectDir: string, variant: string): string {
-  const source = require.resolve(`@brrrd/adapter/${variant}`);
-  const target = path.join(projectDir, SUPPORT_DIR, `${variant}.mjs`);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-
-  const sourceBytes = fs.readFileSync(source);
-  let shouldWrite = true;
-  try {
-    shouldWrite = !fs.readFileSync(target).equals(sourceBytes);
-  } catch {
-    shouldWrite = true;
+export function materializeSupportFile(projectDir: string, variant: string): string {
+  const variants = ["cache-handler", "cache-handler-legacy", "cache-tags"];
+  if (!variants.includes(variant)) throw new Error(`unknown cache support module: ${variant}`);
+  const sourceDir = path.dirname(require.resolve("@brrrd/adapter/cache-handler"));
+  const targetDir = path.join(projectDir, SUPPORT_DIR);
+  fs.mkdirSync(targetDir, { recursive: true });
+  for (const name of variants) {
+    const sourceBytes = fs.readFileSync(path.join(sourceDir, `${name}.mjs`));
+    const target = path.join(targetDir, `${name}.mjs`);
+    let current: Buffer | undefined;
+    try { current = fs.readFileSync(target); } catch { /* First materialization. */ }
+    if (!current?.equals(sourceBytes)) fs.writeFileSync(target, sourceBytes);
   }
-  if (shouldWrite) {
-    fs.writeFileSync(target, sourceBytes);
-  }
-
-  return target;
+  return path.join(targetDir, `${variant}.mjs`);
 }
 
 function resolveProjectDir(ctx: ModifyConfigContext): string {

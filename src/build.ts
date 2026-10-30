@@ -103,8 +103,13 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     ))
     .map((output) => ({ ...output, id: sanitizeId(output.id) }));
 
+  const middleware = compileMiddleware(model, supplement);
+  const proxyOutput = model.outputs.middleware;
+  const nodeProxy = middleware?.moduleFormat === "node" && proxyOutput?.filePath
+    ? { filePath: proxyOutput.filePath, assets: proxyOutput.assets }
+    : undefined;
   if (nodeOutputs.length > 0) {
-    await bundleAppHandler(nodeOutputs, buildCtx);
+    await bundleAppHandler(nodeOutputs, buildCtx, nodeProxy);
     console.log(`  Bundled ${nodeOutputs.length} handlers into app.js`);
   }
   const hasEdgeFunctions = compiledEdgeFunctions.size > 0;
@@ -113,7 +118,6 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     console.log("  Wrote fallback dispatcher for edge-only app");
   }
 
-  const middleware = compileMiddleware(model, supplement);
   const artifactPlan = createArtifactPlan(model, supplement, compiledEdgeFunctions, outDir, {
     hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
     middleware,
