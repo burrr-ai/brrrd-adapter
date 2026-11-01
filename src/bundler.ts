@@ -98,10 +98,16 @@ export async function bundleAppHandler(
   const dispatcherCode = `
 // Next requires its official baseline before modules capture AsyncLocalStorage.
 import ${JSON.stringify(nextEnvironmentBaseline)};
+import { waitUntil as __brrrdRuntimeWaitUntil } from 'cloudflare:workers';
 import * as __brrrdNextCacheHandlers from ${JSON.stringify(nextCacheHandlersModule)};
 import { tagsManifest as __brrrdNextTagsManifest } from ${JSON.stringify(nextTagsManifestModule)};
-import __brrrdCacheHandler, { createCacheBinding as __brrrdCacheBinding } from ${JSON.stringify(brrrdCacheHandlerModule)};
-import __brrrdLegacyCacheHandler from ${JSON.stringify(brrrdLegacyCacheHandlerModule)};
+import __brrrdCacheHandler, { createCacheBinding as __brrrdCacheBinding, ownRequestWork as __brrrdOwnWork, configureNativeCacheHandler as __brrrdConfigureCacheOwner } from ${JSON.stringify(brrrdCacheHandlerModule)};
+import __brrrdLegacyCacheHandler, { configureNativeLegacyCacheHandler as __brrrdConfigureLegacyOwner } from ${JSON.stringify(brrrdLegacyCacheHandlerModule)};
+
+// The injected function resolves the current IoContext at call time. No request
+// ExecutionContext or ALS store is retained in this module-level owner.
+__brrrdConfigureCacheOwner(__brrrdRuntimeWaitUntil);
+__brrrdConfigureLegacyOwner(__brrrdRuntimeWaitUntil);
 
 const routeLoaders = {
 ${moduleEntries}
@@ -126,7 +132,7 @@ export async function proxy(request, _env, ctx, requestMeta) {
   if (!handler) throw new Error('No Node proxy in this artifact');
   return handler(request, {
     signal: request.signal,
-    waitUntil: promise => ctx.waitUntil(promise),
+    waitUntil: promise => { __brrrdOwnWork(__brrrdRuntimeWaitUntil, promise); },
     requestMeta,
   });
 }
@@ -209,10 +215,7 @@ export default async function dispatch(routeId, req, res) {
   if (!h) { res.writeHead(404); res.end('Not Found'); return; }
   const brrrdRequestMeta = req.__brrrd_request_meta || {};
   const waitUntil = (p) => {
-    if (typeof req.cloudflare?.ctx?.waitUntil !== 'function') {
-      throw new Error('workerd-node-v1 requires the native request ExecutionContext');
-    }
-    req.cloudflare.ctx.waitUntil(p);
+    __brrrdOwnWork(__brrrdRuntimeWaitUntil, p);
   };
   const createContext = (requestMetaOverrides = {}) => {
     const requestMeta = {
@@ -233,11 +236,14 @@ export default async function dispatch(routeId, req, res) {
       }
       return errorHandler(renderReq, renderRes, createContext());
     };
-    requestMeta.revalidate = async ({ urlPath }) => {
-      if (!urlPath || typeof urlPath !== 'string') {
-        throw new Error('brrrd revalidate requires a urlPath');
-      }
-      await __brrrdCacheBinding(req.cloudflare?.env?.BRRRD_CACHE).revalidatePath(urlPath);
+    requestMeta.revalidate = ({ urlPath }) => {
+      const work = (async () => {
+        if (!urlPath || typeof urlPath !== 'string') {
+          throw new Error('brrrd revalidate requires a urlPath');
+        }
+        await __brrrdCacheBinding(req.cloudflare?.env?.BRRRD_CACHE).revalidatePath(urlPath);
+      })();
+      return __brrrdOwnWork(__brrrdRuntimeWaitUntil, work);
     };
     return {
       waitUntil,
@@ -322,7 +328,7 @@ export default async function dispatch(routeId, req, res) {
         ".wasm": "binary",
         ".map": "js",
       },
-      external: [...runtimeDependencyExternals(), brrrdCacheHandlerModule, brrrdLegacyCacheHandlerModule],
+      external: [...runtimeDependencyExternals(), 'cloudflare:workers', brrrdCacheHandlerModule, brrrdLegacyCacheHandlerModule],
       banner: {
         js: runtimeRequireBanner(),
       },

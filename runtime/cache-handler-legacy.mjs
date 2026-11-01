@@ -1,4 +1,4 @@
-import { nativeCacheBinding, nativeTagState } from './cache-handler.mjs';
+import { nativeCacheBinding, nativeTagState, createOwnedLegacyCacheHandler } from './cache-handler.mjs';
 import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
 
 // A-6: Polyfill for the CacheHandler interface of Next.js's legacy IncrementalCache.
@@ -1004,5 +1004,18 @@ class BrrrdLegacyCacheHandler {
   }
 }
 
-export default BrrrdLegacyCacheHandler;
-export { BrrrdLegacyCacheHandler, decodeReviver, encodeReplacer };
+let cacheHandlerClass = BrrrdLegacyCacheHandler;
+let configuredNativeOwner;
+
+export function configureNativeLegacyCacheHandler(owner) {
+  if (configuredNativeOwner !== undefined) {
+    if (configuredNativeOwner !== owner) throw new Error('competing native cache work owner');
+    return cacheHandlerClass;
+  }
+  const owned = createOwnedLegacyCacheHandler(BrrrdLegacyCacheHandler, owner);
+  configuredNativeOwner = owner;
+  cacheHandlerClass = owned;
+  return cacheHandlerClass;
+}
+
+export { cacheHandlerClass as default, BrrrdLegacyCacheHandler, decodeReviver, encodeReplacer };

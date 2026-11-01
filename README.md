@@ -166,3 +166,28 @@ The GitHub workflow checks out the private `burrr-ai/brrrd` runtime repo through
 the `RUNTIME_REPO_DEPLOY_KEY` secret. Use a read-only deploy key on the runtime
 repo rather than a broad personal token. Restore a schedule only after a manual
 run reaches and completes the intended harness signal.
+
+
+## Native cache request lifetime
+
+The native bundle registers complete modern and legacy cache operations with
+`cloudflare:workers.waitUntil`, including producer serialization and RPC body
+consumption after the foreground response. Its live module exports and Next
+registry share one owned handler. Native reads never await another request's
+JavaScript producer promise: they read the backend. Build-time Node cache maps
+retain their existing in-memory/pending behavior.
+
+Native tag publication stores committed revision/epoch snapshots and causality
+fences only. Each operation snapshots its input batch and sequences that batch
+locally; it stores no generation-wide pending promises or speculative intent.
+Next's request-local pending revalidation tags provide immediate invalidation
+within that request. Other requests observe backend commits.
+
+An owner ending **before native submission** leaves no submitted write or
+invalidation. After submission, accepted backend work drains independently and
+may commit after that owner's CPU-limit response; subsequent requests must still
+make progress without awaiting the terminated owner's promise. This is not a
+rollback or exactly-once contract. A legacy SET HTTP 200 is not an unconditional
+durable-commit acknowledgement because the current backend trait can log and
+consume a write error; healthy commit/read observations and unknown outcomes
+remain distinct.

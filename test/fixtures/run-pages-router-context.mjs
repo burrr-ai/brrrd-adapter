@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { builtinModules, createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
+import { loadNativeBundle } from './native-request-owner.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -21,7 +22,7 @@ for (const builtin of builtinModules) {
   }
 }
 
-const { default: dispatch } = await import(pathToFileURL(process.argv[2]));
+const { default: dispatch } = await loadNativeBundle(pathToFileURL(process.argv[2]));
 let body = "";
 await dispatch(
   "/",

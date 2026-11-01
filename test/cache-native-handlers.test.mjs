@@ -102,3 +102,16 @@ test('native disk fallback uses original artifact age and cannot revive after pa
   fs.writeFileSync(sidecar,JSON.stringify({lastModified:{'app/isr.html':generated}}));
   await handler.revalidateTag('_N_T_/isr',{expire:0});assert.equal(await handler.get('/isr',{kind:'APP_PAGE'}),null);
 });
+
+
+test('native get reads backend authority while another request has an unresolved producer', {timeout:1000},async()=>{
+  fresh();const p=provider(),writer=new BrrrdCacheHandler(p.binding),reader=new BrrrdCacheHandler(p.binding);
+  const entry=text=>({value:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(text));c.close();}}),tags:[],stale:60,timestamp:Date.now(),expire:3600,revalidate:60});
+  await writer.set('pending-native',Promise.resolve(entry('old')));
+  let release;const producer=new Promise(resolve=>{release=resolve;});
+  const pending=writer.set('pending-native',producer);
+  const hit=await reader.get('pending-native',[]);
+  assert.equal(await new Response(hit.value).text(),'old');
+  release(entry('new'));await pending;
+  assert.equal(await new Response((await reader.get('pending-native',[])).value).text(),'new');
+});

@@ -6,10 +6,55 @@ import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
 
 const memoryEntries = new Map();
 const memoryTagStates = new Map();
-const pendingSets = new Map();
+// Build-time Node work has no request I/O lifetime. Native requests must never
+// await another request's producer promise; their reads go to the backend.
+const buildPendingSets = new Map();
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const ENVELOPE_MAGIC = textEncoder.encode("brrrd-next-cache-v1\n");
+
+// Native requests have finite I/O lifetimes. Own the complete operation, not
+// just its RPC headers: serialization, response body consumption and finally
+// cleanup can all continue after the foreground response has been consumed.
+export function ownRequestWork(owner, promise) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  if (!promise || typeof promise.then !== "function") {
+    throw new TypeError("request work must be a promise");
+  }
+  owner(promise);
+  return promise;
+}
+
+export function createOwnedCacheHandler(handler, owner) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  for (const method of ["get", "set", "refreshTags", "getExpiration", "updateTags"]) {
+    if (typeof handler?.[method] !== "function") throw new TypeError(`cache handler requires ${method}`);
+  }
+  return {
+    get: (...args) => ownRequestWork(owner, handler.get(...args)),
+    set: (...args) => ownRequestWork(owner, handler.set(...args)),
+    refreshTags: (...args) => ownRequestWork(owner, handler.refreshTags(...args)),
+    getExpiration: (...args) => ownRequestWork(owner, handler.getExpiration(...args)),
+    updateTags: (...args) => ownRequestWork(owner, handler.updateTags(...args)),
+  };
+}
+
+export function createOwnedLegacyCacheHandler(Handler, owner) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  for (const method of ["get", "set", "revalidateTag"]) {
+    if (typeof Handler?.prototype?.[method] !== "function") throw new TypeError(`legacy cache handler requires ${method}`);
+  }
+  return class OwnedLegacyCacheHandler extends Handler {
+    get(...args) { return ownRequestWork(owner, super.get(...args)); }
+    set(...args) { return ownRequestWork(owner, super.set(...args)); }
+    revalidateTag(...args) { return ownRequestWork(owner, super.revalidateTag(...args)); }
+  };
+}
+
+function isNativeCacheExecution(binding) {
+  return binding !== undefined || configuredNativeOwner !== undefined
+    || globalThis.process?.env?.BRRRD_RUNTIME_ABI === 'workerd-node-v1';
+}
 
 function brrrdOps() {
   return globalThis.Deno?.core?.ops;
@@ -281,8 +326,10 @@ class BrrrdCacheHandler {
   constructor(binding) { this.binding = binding; }
 
   async get(cacheKey, softTags) {
-    const pending = pendingSets.get(cacheKey);
-    if (pending) await pending;
+    if (!isNativeCacheExecution(this.binding)) {
+      const pending = buildPendingSets.get(cacheKey);
+      if (pending) await pending;
+    }
 
     const native = await nativeCacheBinding(this.binding);
     if (native) {
@@ -362,11 +409,12 @@ class BrrrdCacheHandler {
         stored.revalidate || 0,
       );
     })();
-    pendingSets.set(cacheKey, setPromise);
+    if (isNativeCacheExecution(this.binding)) return setPromise;
+    buildPendingSets.set(cacheKey, setPromise);
     try {
       await setPromise;
     } finally {
-      pendingSets.delete(cacheKey);
+      buildPendingSets.delete(cacheKey);
     }
   }
 
@@ -401,10 +449,24 @@ class BrrrdCacheHandler {
   }
 }
 
-const cacheHandler = new BrrrdCacheHandler();
+const buildCacheHandler = new BrrrdCacheHandler();
+let cacheHandler = buildCacheHandler;
+let configuredNativeOwner;
 
-export default cacheHandler;
-export { BrrrdCacheHandler, cacheHandler };
+export function configureNativeCacheHandler(owner) {
+  if (configuredNativeOwner !== undefined) {
+    if (configuredNativeOwner !== owner) throw new Error('competing native cache work owner');
+    return cacheHandler;
+  }
+  const owned = createOwnedCacheHandler(buildCacheHandler, owner);
+  configuredNativeOwner = owner;
+  cacheHandler = owned;
+  return cacheHandler;
+}
+
+// Live exports keep bootstrap publication and Next's later dynamic import of
+// this external module on the same owned handler. Node build never configures it.
+export { BrrrdCacheHandler, cacheHandler, cacheHandler as default };
 
 
 // The workerd-node-v1 cache transport. The caller supplies its real env binding;
@@ -457,7 +519,7 @@ export function createCacheBinding(binding) {
 // Import is lazy so Next's build-time handler never requires a workerd-only module.
 export async function nativeCacheBinding(binding) {
   if (binding !== undefined) return createCacheBinding(binding);
-  if (globalThis.process?.env?.BRRRD_RUNTIME_ABI !== 'workerd-node-v1') return undefined;
+  if (!isNativeCacheExecution(binding)) return undefined;
   // Next's build/edge scanner must leave this native-only built-in to workerd.
   const workersModule = 'cloudflare:workers';
   const { env } = await import(/* webpackIgnore: true */ workersModule);
@@ -472,7 +534,7 @@ export async function nativeTagState(cache, tags) {
     const state = await cache.tagSnapshot(tag);
     if (state?.status !== 'committed') throw new Error(`cache tag snapshot ${state?.status || 'invalid'}`);
     publication.hydrate([state], order);
-    const published = publication.manifest.get(tag);
+    const published = publication.read(tag);
     result.staleAtMs = Math.max(result.staleAtMs, published.stale);
     result.expiredAtMs = Math.max(result.expiredAtMs, published.expired);
   }
