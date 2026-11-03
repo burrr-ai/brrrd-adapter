@@ -12,7 +12,8 @@ the adapter API peer range starts at Next.js 16.2.
 Node Turbopack chunks and static package imports are linked into one esbuild
 graph. Chunk factories remain lazy and share dependency instances. The runtime
 still supplies the admitted filesystem roots for asset paths and file metadata.
-Node package exports use the workerd condition before the node condition.
+Node bundles enable both workerd and node export conditions. Each package's
+exports key order determines which matching branch is selected.
 
 Next import readiness is tracked only by the current work-unit's cache signal.
 The adapter does not retain Next's process-wide import signal or its timers.

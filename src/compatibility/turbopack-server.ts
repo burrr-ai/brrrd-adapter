@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
-import { isBuiltin, createRequire } from "node:module";
+import { createRequire } from "node:module";
 import * as path from "node:path";
-import type { Plugin, PluginBuild } from "esbuild";
+import type { Plugin, PluginBuild, ResolveResult } from "esbuild";
 
 import type { BuildContext } from "../types.js";
 import type { CompatibilityPolicy } from "./types.js";
@@ -12,7 +12,15 @@ const GRAPH = "brrrd:turbopack-node-graph";
 const RUNTIME_ROOT_RE = /\b(?:var|const)\s+RUNTIME_ROOT\s*=\s*path\.resolve\(__filename,\s*relativePathToRuntimeRoot\);/;
 const ABSOLUTE_ROOT_RE = /\b(?:var|const)\s+ABSOLUTE_ROOT\s*=\s*path\.resolve\(__filename,\s*relativePathToDistRoot\);/;
 
-type External = { id: string; importer: string; kind: "require-resolve" | "dynamic-import" };
+type External = { id: string; importer: string; kind: "require-call" | "require-resolve" | "dynamic-import" };
+type ImportBinding = { specifier: string; resolved: ResolveResult };
+type NodeGraph = { contents: string; bindings: Map<string, ResolveResult> };
+
+function memberName(node: any): string | undefined {
+  return node?.type === "MemberExpression"
+    ? node.computed ? node.property.value : node.property.name
+    : undefined;
+}
 
 function chunkFiles(directory: string): string[] {
   if (!fs.existsSync(directory)) return [];
@@ -57,13 +65,19 @@ function externals(ctx: BuildContext, files: string[]): External[] {
         if ((node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression"
           || node.type === "FunctionDeclaration") && node.params.some((p: any) => p.name === context.name)) continue;
         if (node.type === "CatchClause" && node.param?.name === context.name) continue;
-        if (node.type === "CallExpression" && node.callee.type === "MemberExpression"
-          && node.callee.object.type === "Identifier" && node.callee.object.name === context.name) {
-          const method = node.callee.computed ? node.callee.property.value : node.callee.property.name;
+        if (node.type === "CallExpression" && node.callee.type === "MemberExpression") {
+          const receiver = node.callee.object;
+          const method = memberName(node.callee);
           const id = node.arguments[0]?.value;
-          if ((method === "x" || method === "y") && typeof id === "string") {
-            result.push({ id, importer, kind: method === "y" ? "dynamic-import" : "require-resolve" });
+          let kind: External["kind"] | undefined;
+          if (receiver.type === "Identifier" && receiver.name === context.name) {
+            if (method === "x") kind = "require-call";
+            else if (method === "y") kind = "dynamic-import";
+          } else if (method === "resolve" && memberName(receiver) === "x"
+            && receiver.object.type === "Identifier" && receiver.object.name === context.name) {
+            kind = "require-resolve";
           }
+          if (kind && typeof id === "string") result.push({ id, importer, kind });
         }
         for (const value of Object.values(node)) {
           if (Array.isArray(value)) {
@@ -89,32 +103,37 @@ function runtimePath(ctx: BuildContext, file: string): string {
   throw new Error(`Turbopack external is outside the artifact namespace: ${file}`);
 }
 
-async function graphSource(ctx: BuildContext, build: PluginBuild): Promise<string> {
+async function graphSource(ctx: BuildContext, build: PluginBuild): Promise<NodeGraph> {
   const files = chunkFiles(path.join(ctx.distDir, "server", "chunks"));
-  const imports = new Map<string, string>();
-  const resolutions = new Map<string, { native?: string; file?: string }>();
+  const imports = new Map<string, ImportBinding>();
+  const bindings = new Map<string, ResolveResult>();
+  const resolutions = new Map<string, { external?: string; file?: string }>();
   for (const external of externals(ctx, files)) {
-    if (isBuiltin(external.id)) {
-      resolutions.set(external.id, { native: external.id });
-      if (external.kind === "dynamic-import") imports.set(external.id, external.id);
-      continue;
-    }
+    // The chunk's static require thunk already uses the build's dependency policy.
+    if (external.kind === "require-call") continue;
     const resolved = await build.resolve(external.id, {
       importer: external.importer,
       resolveDir: path.dirname(external.importer),
       kind: external.kind,
     });
-    if (resolved.errors.length || resolved.external || !resolved.path) {
+    if (resolved.errors.length || !resolved.path) {
       throw new Error(`Cannot statically link Turbopack external ${external.id} from ${external.importer}`);
     }
     if (external.kind === "dynamic-import") {
       const previous = imports.get(external.id);
-      if (previous !== undefined && previous !== resolved.path) {
+      const identity = (value: ResolveResult) => [value.path, value.namespace, value.external, value.suffix];
+      if (previous !== undefined && JSON.stringify(identity(previous.resolved)) !== JSON.stringify(identity(resolved))) {
         throw new Error(`Turbopack external has conflicting build resolutions: ${external.id}`);
       }
-      imports.set(external.id, resolved.path);
+      if (previous === undefined) {
+        const specifier = `brrrd:turbopack-import:${imports.size}`;
+        imports.set(external.id, { specifier, resolved });
+        bindings.set(specifier, resolved);
+      }
     } else {
-      const target = { file: runtimePath(ctx, resolved.path) };
+      const target = resolved.external
+        ? { external: resolved.path }
+        : { file: runtimePath(ctx, resolved.path) };
       const previous = resolutions.get(external.id);
       if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(target)) {
         throw new Error(`Turbopack external has conflicting build resolutions: ${external.id}`);
@@ -126,8 +145,8 @@ async function graphSource(ctx: BuildContext, build: PluginBuild): Promise<strin
     const id = path.relative(ctx.distDir, file).split(path.sep).join("/");
     return `[${JSON.stringify(id)}]: () => require(${JSON.stringify(file)})`;
   });
-  const asyncImports = [...imports].map(([id, file]) => `[${JSON.stringify(id)}]: () => import(${JSON.stringify(file)})`);
-  return `
+  const asyncImports = [...imports].map(([id, binding]) => `[${JSON.stringify(id)}]: () => import(${JSON.stringify(binding.specifier)})`);
+  return { bindings, contents: `
 const path = require('node:path');
 const chunks = Object.assign(Object.create(null), {${chunks.join(",\n")}});
 const imports = Object.assign(Object.create(null), {${asyncImports.join(",\n")}});
@@ -141,9 +160,9 @@ exports.importExternal = id => declared(imports, id, 'import')();
 exports.resolveExternal = (id, root, options) => {
   if (options !== undefined) throw new Error('Turbopack require.resolve options are not part of the build graph');
   const target = declared(resolutions, id, 'resolution');
-  return target.native ?? path.resolve(root, target.file);
+  return target.external ?? path.resolve(root, target.file);
 };
-`;
+` };
 }
 
 function connectRuntime(source: string): string {
@@ -171,10 +190,18 @@ function createTurbopackServerRuntimePlugin(ctx: BuildContext): Plugin {
   return {
     name: "brrrd-turbopack-server-runtime",
     setup(build) {
-      let graph: Promise<string> | undefined;
+      let graph: Promise<NodeGraph> | undefined;
+      const nodeGraph = () => graph ??= graphSource(ctx, build);
       build.onResolve({ filter: /^brrrd:turbopack-node-graph$/ }, () => ({ path: GRAPH, namespace: "brrrd-node-graph" }));
+      build.onResolve({ filter: /^brrrd:turbopack-import:/, namespace: "brrrd-node-graph" }, async (args) => {
+        // Keep the decision made by the existing resolver in the source chunk's
+        // context, including intentional runtime externals and optional imports.
+        const resolved = (await nodeGraph()).bindings.get(args.path);
+        if (!resolved) return { errors: [{ text: `Undeclared Turbopack import binding: ${args.path}` }] };
+        return resolved;
+      });
       build.onLoad({ filter: /.*/, namespace: "brrrd-node-graph" }, async () => ({
-        contents: await (graph ??= graphSource(ctx, build)), loader: "js", resolveDir: ctx.projectDir,
+        contents: (await nodeGraph()).contents, loader: "js", resolveDir: ctx.projectDir,
       }));
       build.onLoad({ filter: RUNTIME_RE }, (args) => ({
         contents: connectRuntime(fs.readFileSync(args.path, "utf8")),
