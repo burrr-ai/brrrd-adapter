@@ -36,8 +36,15 @@ function externals(ctx: BuildContext, files: string[]): External[] {
       if (assignment?.type !== "AssignmentExpression" || left?.type !== "MemberExpression"
         || left.object.name !== "module" || left.property.name !== "exports"
         || assignment.right.type !== "ArrayExpression") return [];
-      return assignment.right.elements.filter((node: any) =>
-        node?.type === "ArrowFunctionExpression" || node?.type === "FunctionExpression");
+      const arrays = [assignment.right];
+      const result = [];
+      while (arrays.length) {
+        for (const node of arrays.pop().elements) {
+          if (node?.type === "ArrayExpression") arrays.push(node);
+          else if (node?.type === "ArrowFunctionExpression" || node?.type === "FunctionExpression") result.push(node);
+        }
+      }
+      return result;
     });
     for (const factory of factories) {
       const context = factory.params[0];

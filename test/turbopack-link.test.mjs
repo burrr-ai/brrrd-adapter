@@ -29,7 +29,7 @@ test('Turbopack links lazy chunks, shared package identity, cycles and external 
   fs.writeFileSync(path.join(dynamic, 'workerd.mjs'), 'export const value = "workerd-import";');
   fs.writeFileSync(path.join(dynamic, 'other.mjs'), 'throw new Error("wrong export condition");');
   fs.writeFileSync(path.join(chunks, 'a.js'), `module.exports = ["a", c => { const ordinary = { y: () => 1 }; ordinary.y("not-a-package"); const a = { shared: c.x("fixture-shared", () => require("fixture-shared")) }; c.v(a); a.peer = c.r("b"); }];`);
-  fs.writeFileSync(path.join(chunks, 'b.js'), `module.exports = ["b", c => { const b = { shared: c.x("fixture-shared", () => require("fixture-shared")) }; c.v(b); b.peer = c.r("a"); }, "dynamic", c => { c.v(() => c.y("fixture-dynamic")); }];`);
+  fs.writeFileSync(path.join(chunks, 'b.js'), `module.exports = [["b", c => { const b = { shared: c.x("fixture-shared", () => require("fixture-shared")) }; c.v(b); b.peer = c.r("a"); }, "dynamic", c => { c.v(() => c.y("fixture-dynamic")); }]];`);
   fs.writeFileSync(path.join(chunks, 'unused.js'), 'throw new Error("unused chunk evaluated eagerly");');
   const entry = path.join(distDir, 'server/entry.cjs');
   fs.writeFileSync(entry, `
