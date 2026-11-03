@@ -14,6 +14,13 @@ graph. Chunk factories remain lazy and share dependency instances. The runtime
 still supplies the admitted filesystem roots for asset paths and file metadata.
 Node package exports use the workerd condition before the node condition.
 
+Next import readiness is tracked only by the current work-unit's cache signal.
+The adapter does not retain Next's process-wide import signal or its timers.
+An import started outside that work unit, including a cached import Promise from
+another request or an earlier prerender, is not added to a later render's signal.
+Dynamic SSR/API code still awaits that Promise. Cache Components warming and PPR
+may produce fewer static results or fail static validation in this case.
+
 CI installs **Next.js and @next/routing ^16.4.3**; the official deploy
 harness resolves the latest matching Next.js tag at run time. Prerender bodies and public RSC
 URLs use the Adapter API metadata, including Next 16.4's owner-scoped

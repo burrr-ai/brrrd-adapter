@@ -1,6 +1,7 @@
 import type { Metafile, Plugin } from "esbuild";
 import type { BuildContext } from "../types.js";
 import { nextClientManifestPolicy } from "./next-client-manifest.js";
+import { nextImportSignalPolicy } from "./next-import-signal.js";
 import { nextOgPolicy } from "./next-og.js";
 import { nextRouterContextPolicy } from "./next-router-context.js";
 import { nextServerSourceMapPolicy } from "./next-server-source-map.js";
@@ -12,6 +13,7 @@ import type { CompatibilityPolicy, CompatibilityTracedOutput } from "./types.js"
 // module quirks such as @vercel/og assets or optional native fallbacks.
 const POLICIES: CompatibilityPolicy[] = [
   nextClientManifestPolicy,
+  nextImportSignalPolicy,
   nextOgPolicy,
   nextRouterContextPolicy,
   nextServerSourceMapPolicy,
