@@ -343,7 +343,7 @@ export default async function dispatch(routeId, req, res) {
       define: nextServerDefineEnv(ctx.config),
       logLevel: "warning",
       mainFields: ["main", "module"],
-      conditions: ["node"],
+      conditions: ["workerd", "node"],
       nodePaths: computeNodePaths([...outputs.map((o) => o.assets), nodeProxy?.assets], ctx),
     });
     runCompatibilityAfterBundle(ctx, result.metafile);
