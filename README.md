@@ -4,7 +4,15 @@ Next.js build adapter that packages a Next app for the **brrrd** runtime (the
 comwit.io deployment plane). On `next build` it emits a `dist/brrrd/` package
 (manifest + bundled handlers + static + runtime) that `brrrd-fleet deploy` ships.
 
-Requires **Next.js ≥ 16.2**.
+**0.2.x targets workerd only.** Deno maintenance stays on the 0.1.x line.
+Packages declare `execution.abi = workerd-node-v1` and require a matching native
+brrrd runtime. The current native profile is qualified with Next.js 16.4.3;
+the adapter API peer range starts at Next.js 16.2.
+
+Node Turbopack chunks and static package imports are linked into one esbuild
+graph. Chunk factories remain lazy and share dependency instances. The runtime
+still supplies the admitted filesystem roots for asset paths and file metadata.
+Node package exports use the workerd condition before the node condition.
 
 CI installs **Next.js and @next/routing ^16.4.3**; the official deploy
 harness resolves the latest matching Next.js tag at run time. Prerender bodies and public RSC

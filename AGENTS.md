@@ -3,6 +3,9 @@
 This repository publishes the standalone `@brrrd/adapter` package for the
 brrrd runtime.
 
+Version 0.2.x is workerd-only and emits the workerd-node-v1 execution ABI.
+Keep Deno maintenance on 0.1.x. Do not add an engine fallback to 0.2.x.
+
 ## Local npm Publish
 
 Automated releases publish from `.github/workflows/release.yml` on `v*` tags via
