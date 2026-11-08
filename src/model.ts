@@ -102,7 +102,6 @@ export type NormalizedOutput = {
   pagesRoutePath?: string;
   assets: Record<string, string>;
   wasmAssets: Record<string, string>;
-  edgeRuntime?: RawAdapterOutput["edgeRuntime"];
   config: Record<string, unknown>;
   immutableHash?: string;
   fallback?: RawAdapterOutput["fallback"];
@@ -246,7 +245,6 @@ function normalizeOutput(
     ...(pagesRoutePath ? { pagesRoutePath } : {}),
     assets: raw.assets ?? {},
     wasmAssets: raw.wasmAssets ?? {},
-    edgeRuntime: raw.edgeRuntime,
     config: raw.config ?? {},
     immutableHash: raw.immutableHash,
     fallback: raw.fallback,

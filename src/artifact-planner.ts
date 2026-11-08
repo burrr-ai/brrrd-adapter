@@ -20,7 +20,7 @@ import {
   isDynamicPrerenderTemplatePath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import type { BrrrdArtifact, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
+import type { BrrrdArtifact, BrrrdMiddleware } from "./types.js";
 import { sanitizeId } from "./routing.js";
 import {
   isPagesRscFallbackOutput,
@@ -59,7 +59,6 @@ export type ArtifactCopySummary = {
   prerenderCount: number;
   runtimeCount: number;
   middlewareCount: number;
-  edgeFunctionCount: number;
   compressedCount: number;
 };
 
@@ -1013,7 +1012,7 @@ function nodeMiddlewareNextServerRuntimeArtifacts(
   model: NextBuildModel,
   middleware: BrrrdMiddleware | undefined,
 ): ArtifactPlanItem[] {
-  if (middleware?.moduleFormat !== "node") return [];
+  if (!middleware) return [];
 
   const projectRequire = createRequire(path.join(model.projectDir, "package.json"));
   let nextServerDir: string;
@@ -1191,29 +1190,6 @@ function nodeMiddlewareNextSupportDependencyArtifacts(
   return items;
 }
 
-function edgeFunctionArtifacts(
-  model: NextBuildModel,
-  edgeFunctions: Map<string, BrrrdEdgeFunction>,
-): ArtifactPlanItem[] {
-  const refs: string[] = [];
-  for (const edgeFn of edgeFunctions.values()) {
-    refs.push(
-      ...edgeFn.files,
-      ...edgeFn.wasm.map((file) => file.filePath),
-      ...edgeFn.assets.map((file) => file.filePath),
-    );
-  }
-  return uniqueStrings(refs).map((rel) => artifactItem(model, {
-    id: `edge-function:${rel}`,
-    kind: "edge-function",
-    sourceAbsPath: path.join(model.distDir, rel),
-    packagePath: packageJoin("runtime", rel),
-    mountPath: rel,
-    required: true,
-    reason: "Next Edge app/page/API compiled chunk or supporting asset",
-  }));
-}
-
 function appBundleArtifact(model: NextBuildModel, outDir: string): ArtifactPlanItem {
   return artifactItem(model, {
     id: "bundle:app",
@@ -1268,7 +1244,7 @@ function omitNextServerSourceMaps(
   };
 
   return items.filter((item) => {
-    // Keep public/browser maps and explicit middleware/edge file contracts.
+    // Keep public/browser maps and explicit middleware file contracts.
     if (item.kind !== "runtime-file" || !item.sourceAbsPath) return true;
     const sourceAbsPath = item.sourceAbsPath;
     if (!sourceMaps.has(sourceAbsPath)) {
@@ -1281,7 +1257,6 @@ function omitNextServerSourceMaps(
 export function createArtifactPlan(
   model: NextBuildModel,
   supplement: ManifestSupplement,
-  edgeFunctions: Map<string, BrrrdEdgeFunction>,
   outDir: string,
   options: { hasAppBundle: boolean; middleware?: BrrrdMiddleware },
 ): ArtifactPlan {
@@ -1325,7 +1300,6 @@ export function createArtifactPlan(
       ...middlewareAdapterAssetArtifacts(model, options.middleware),
       ...middlewareArtifacts(model, options.middleware),
       ...nodeMiddlewareNextServerRuntimeArtifacts(model, options.middleware),
-      ...edgeFunctionArtifacts(model, edgeFunctions),
     ]), model.distDir),
   };
 }
@@ -1384,7 +1358,6 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
     prerenderCount: 0,
     runtimeCount: 0,
     middlewareCount: 0,
-    edgeFunctionCount: 0,
     compressedCount: 0,
   };
 
@@ -1423,9 +1396,6 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
         break;
       case "middleware":
         summary.middlewareCount++;
-        break;
-      case "edge-function":
-        summary.edgeFunctionCount++;
         break;
       case "app-bundle":
         break;

@@ -356,7 +356,3 @@ export default async function dispatch(routeId, req, res) {
 }
 
 // Node proxy's official Web handler is bundled with the Node dispatcher above.
-// Separate Edge bundleMiddleware removed — Next compiled Edge middleware and route
-// entries are already runtime-shaped chunks. Re-bundling them with esbuild
-// breaks Next's registration format, so build.ts raw-copies the manifest-listed
-// files into runtime/server/.

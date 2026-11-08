@@ -71,7 +71,7 @@ test('packages declared HTML, RSC, segments and runtime seeds using public route
   assert.deepEqual(model.outputs.prerenders.map(output => output.filePath), outputs.map(output => output.filePath))
   const supplement = createManifestSupplement(distDir, model.outputs.prerenders)
   const outDir = join(projectDir, 'package')
-  executeArtifactPlan(createArtifactPlan(model, supplement, new Map(), outDir, { hasAppBundle: false }), outDir)
+  executeArtifactPlan(createArtifactPlan(model, supplement, outDir, { hasAppBundle: false }), outDir)
   assert.equal(readFileSync(join(outDir, 'static/_global-error'), 'utf8'), '<html>error document</html>')
   assert.equal(readFileSync(join(outDir, 'static/_global-error.rsc'), 'utf8'), '0:["seed"]')
   assert.equal(readFileSync(join(outDir, 'static/_global-error.segments/_tree.segment.rsc'), 'utf8'), '0:["segment"]')
@@ -148,7 +148,7 @@ test('packages scoped route-handler bodies and Pages data without a server/app d
     pages: [], pagesApi: [], appPages: [], appRoutes: [], staticFiles: [], prerenders: [],
   } })
   const outDir = join(projectDir, 'package')
-  executeArtifactPlan(createArtifactPlan(model, createManifestSupplement(distDir), new Map(), outDir, { hasAppBundle: false }), outDir)
+  executeArtifactPlan(createArtifactPlan(model, createManifestSupplement(distDir), outDir, { hasAppBundle: false }), outDir)
   for (const [file, contents] of Object.entries(files)) {
     assert.equal(readFileSync(join(outDir, 'runtime/.next/server', file), 'utf8'), contents)
   }

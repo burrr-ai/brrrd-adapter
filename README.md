@@ -9,6 +9,16 @@ Packages declare `execution.abi = workerd-node-v1` and require a matching native
 brrrd runtime. The current native profile is qualified with Next.js 16.4.3;
 the adapter API peer range starts at Next.js 16.2.
 
+**Edge runtime is unsupported in 0.2.x.** Builds fail with all affected Next
+outputs listed before writing `dist/brrrd/`. For App Router pages/routes, remove
+`runtime = 'edge'` (including inherited layout config) or set it to `'nodejs'`.
+For Pages Router pages, remove the Edge/`experimental-edge` runtime declaration.
+Pages Router Edge APIs also need a `(req, res)` handler, or migration to an App
+Router route handler; removing the declaration alone is insufficient. Rename
+Edge `middleware.ts` to `proxy.ts` (and its `middleware` export to `proxy`), or set
+`config.runtime = 'nodejs'` in `middleware.ts`. Node routes can still use the
+`next/og` WASM compatibility renderer.
+
 Node Turbopack chunks and static package imports are linked into one esbuild
 graph. Chunk factories remain lazy and share dependency instances. The runtime
 still supplies the admitted filesystem roots for asset paths and file metadata.
@@ -55,14 +65,6 @@ not exposed by the Adapter API. Because brrrd is currently internally opened,
 manifest/runtime backward compatibility is not a goal; prefer the clean final
 contract over bridge layers.
 
-For Edge app/page/API routes, `ctx.outputs[].edgeRuntime` is the primary
-contract: it carries the canonical `_ENTRIES` key and entry module. Next's
-`middleware-manifest.json` remains a supplement for proxy/middleware
-matcher/env/wasm metadata and as a fallback for older/gap-shaped Edge function
-records. The adapter compiles these normalized Edge function records into
-`manifest.edgeFunctions`; it does not infer Edge runtime files from hard-coded
-`.next` filenames.
-
 Routing regexes come from the `sourceRegex` field on each `ctx.routing` phase
 entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.) whenever Next
 provides one. Some Adapter API outputs currently omit a `dynamicRoutes[]` entry
@@ -83,7 +85,7 @@ The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
 adapter release must be tested with the matching brrrd runtime/fleet build before
 publish/deploy is considered complete. The minimum manifest contract is
 `schemaVersion`, `build`, `routes[]`, phase-aware `routing`,
-`artifacts[].packagePath`, optional `middleware`, optional `edgeFunctions`, and
+`artifacts[].packagePath`, optional Node `middleware`, and
 `compatibility`.
 
 ## Use

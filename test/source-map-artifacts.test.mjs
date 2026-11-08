@@ -42,7 +42,7 @@ function fixture(t, distName = ".next") {
     },
   };
   const plan = () => createArtifactPlan(
-    createNextBuildModel(context), emptySupplement, new Map(), outDir,
+    createNextBuildModel(context), emptySupplement, outDir,
     { hasAppBundle: false },
   );
   return { root, distDir, outDir, handler, output, context, write, plan };

@@ -21,7 +21,7 @@ test('actual Next config import and unpacked cache artifact retain the closed mo
   assert.equal(typeof configured.default,'function');
   const context={projectDir:root,repoRoot:root,distDir,config,nextVersion:'16.2.7',buildId:'closed',
     outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],prerenders:[],staticFiles:[]}};
-  const plan=createArtifactPlan(createNextBuildModel(context),empty,new Map(),path.join(root,'out'),{hasAppBundle:false});
+  const plan=createArtifactPlan(createNextBuildModel(context),empty,path.join(root,'out'),{hasAppBundle:false});
   const items=plan.items.filter(v=>v.id.startsWith('cache-support:'));
   assert.equal(items.length,3);
   const names=items.map(v=>path.basename(v.packagePath)).sort();assert.deepEqual(names,['cache-handler-legacy.mjs','cache-handler.mjs','cache-tags.mjs']);
@@ -42,7 +42,7 @@ test('deployment config uses absolute canonical VFS hooks while Node build input
   const original={config:{distDir:'.next',cacheHandler:'../node_modules/.cache/@brrrd/adapter/cache-handler-legacy.mjs',cacheHandlers:{default:'../node_modules/.cache/@brrrd/adapter/cache-handler.mjs'}}};
   const source=path.join(distDir,'required-server-files.json');fs.writeFileSync(source,JSON.stringify(original));
   const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.2.7',buildId:'runtime-config',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],prerenders:[],staticFiles:[]}});
-  const out=path.join(root,'out');const plan=createArtifactPlan(model,empty,new Map(),out,{hasAppBundle:false});
+  const out=path.join(root,'out');const plan=createArtifactPlan(model,empty,out,{hasAppBundle:false});
   const item=plan.items.find(item=>item.id==='runtime-root:required-server-files.json');assert.equal(item.sourceAbsPath,undefined);assert.equal(typeof item.generatedContent,'string');
   executeArtifactPlan({items:[item]},out);assert.deepEqual(JSON.parse(fs.readFileSync(source)),original);
   const emitted=JSON.parse(fs.readFileSync(path.join(out,item.packagePath)));
@@ -55,7 +55,7 @@ test('prerender cache metadata captures actual build ages and immutable build id
   const distDir=path.join(root,'.next'),app=path.join(distDir,'server/app');fs.mkdirSync(app,{recursive:true});
   const html=path.join(app,'isr.html');fs.writeFileSync(html,'build HTML');fs.utimesSync(html,1234,1234);
   const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.2.7',buildId:'age-build',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],prerenders:[],staticFiles:[]}});
-  const plan=createArtifactPlan(model,empty,new Map(),path.join(root,'out'),{hasAppBundle:false});
+  const plan=createArtifactPlan(model,empty,path.join(root,'out'),{hasAppBundle:false});
   const metadata=JSON.parse(plan.items.find(item=>item.id==='prerender-cache-metadata').generatedContent);
   assert.deepEqual(metadata,{version:1,buildId:'age-build',lastModified:{'app/isr.html':1234000},fallbackHtml:{}});
 });
@@ -67,7 +67,7 @@ test('Next16.4 route-cache seed age and public fallback mapping use actual Adapt
   const relative='route-cache/APP_PAGE/actual-owner-hash/$/isr.html',file=path.join(server,relative);
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'actual seed');fs.utimesSync(file,1234,1234);
   const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.4.3',buildId:'cache-owner',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],staticFiles:[],prerenders:[{id:'seed',pathname:'/isr',fallback:{filePath:file},config:{}}]}});
-  const plan=createArtifactPlan(model,empty,new Map(),path.join(root,'out'),{hasAppBundle:false});
+  const plan=createArtifactPlan(model,empty,path.join(root,'out'),{hasAppBundle:false});
   const metadata=JSON.parse(plan.items.find(item=>item.id==='prerender-cache-metadata').generatedContent);
   assert.equal(metadata.lastModified[relative],1234000);assert.equal(metadata.fallbackHtml['/isr'],relative);
   assert.ok(plan.items.some(item=>item.mountPath==='.next/server/'+relative));

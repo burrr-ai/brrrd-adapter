@@ -18,8 +18,6 @@ export interface BrrrdManifest {
   routing: BrrrdRouting;
   /** Next proxy/middleware phase bundle path + matcher metadata. */
   middleware?: BrrrdMiddleware;
-  /** Next Edge app/page/API route functions, keyed by route id. */
-  edgeFunctions?: Record<string, BrrrdEdgeFunction>;
   /** A-7: Partial Prerendering 활성 페이지 목록. 빈 배열이면 PPR 미사용. */
   pprPages?: string[];
 }
@@ -71,7 +69,6 @@ export interface BrrrdArtifact {
     | "runtime-manifest"
     | "runtime-file"
     | "middleware"
-    | "edge-function"
     | "compatibility";
   ownerRouteId?: string;
   sourcePath?: string;
@@ -122,7 +119,7 @@ export interface BrrrdProxySpec {
 
 export interface BrrrdMiddleware {
   /** How the copied Next proxy/middleware chunks should be loaded by the runtime bridge. */
-  moduleFormat: "edge" | "node";
+  moduleFormat: "node";
   /** Next proxy/middleware chunk files, in manifest evaluation order. */
   files: string[];
   /** Legacy single runtime chunk path retained for diagnostics and older webpack-shaped output. */
@@ -140,31 +137,6 @@ export interface BrrrdMiddleware {
   /** middleware-manifest.assets — copied raw next to runtime files. */
   assets: BrrrdMiddlewareFile[];
   /** middleware-manifest.env — process.env 에 머지될 build-time 상수. */
-  env: Record<string, string>;
-}
-
-export interface BrrrdEdgeFunction {
-  /** Stable brrrd edge function id, usually the sanitized Adapter API output id. */
-  id: string;
-  /** Next edge chunk files, in manifest evaluation order. */
-  files: string[];
-  /** Legacy single runtime chunk path retained for diagnostics. */
-  runtime: string;
-  /** Next edge function entry chunk. */
-  entry: string;
-  /** Next _ENTRIES key from Adapter API edgeRuntime.entryKey or manifest fallback. */
-  entryKey: string;
-  /** Next _ENTRIES key suffix, usually app/.../route or pages/api/... */
-  name: string;
-  /** Next page field, usually /app/.../route. */
-  page: string;
-  /** Export to invoke from the registered entry. */
-  handlerExport: "default" | "handler";
-  /** Adapter API wasmAssets or middleware-manifest.functions[].wasm refs copied into runtime/. */
-  wasm: BrrrdMiddlewareFile[];
-  /** Adapter API assets or middleware-manifest.functions[].assets refs copied into runtime/. */
-  assets: BrrrdMiddlewareFile[];
-  /** build-time env merged before evaluating the function bundle. */
   env: Record<string, string>;
 }
 
@@ -231,8 +203,7 @@ export interface BrrrdRoute {
   id: string;
   pattern: string;
   type: "page" | "route" | "static" | "prerender" | "image-optimizer";
-  runtime: "nodejs" | "edge";
-  edgeFunction?: string;
+  runtime: "nodejs";
   bundle?: string;
   /** Static store key or Next static lookup template for captured filesystem routes. */
   file?: string;

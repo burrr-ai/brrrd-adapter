@@ -6,7 +6,6 @@ import type { NextBuildModel } from "./model.js";
 import type {
   BrrrdArtifact,
   BrrrdCompatibilityReport,
-  BrrrdEdgeFunction,
   BrrrdImagesConfig,
   BrrrdLocalImagePattern,
   BrrrdManifest,
@@ -117,7 +116,6 @@ export function writeManifest(
   compatibility: BrrrdCompatibilityReport,
   appBundle: string | undefined,
   middleware?: BrrrdMiddleware,
-  edgeFunctions?: Record<string, BrrrdEdgeFunction>,
   pprPages: string[] = [],
   preview?: BrrrdPreviewConfig | null,
 ): void {
@@ -144,7 +142,6 @@ export function writeManifest(
     compatibility,
     routing,
     middleware,
-    edgeFunctions,
     pprPages,
   };
 
