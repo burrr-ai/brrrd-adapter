@@ -20,7 +20,7 @@ import {
   isDynamicPrerenderTemplatePath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import type { BrrrdArtifact, BrrrdMiddleware } from "./types.js";
+import type { BrrrdArtifact, BrrrdArtifactProvenance, BrrrdMiddleware } from "./types.js";
 import { sanitizeId } from "./routing.js";
 import {
   isPagesRscFallbackOutput,
@@ -43,7 +43,7 @@ const COMPRESS_EXTENSIONS = new Set([
 ]);
 const COMPRESS_MIN_BYTES = 1024;
 
-export type ArtifactPlanItem = BrrrdArtifact & {
+export type ArtifactPlanItem = BrrrdArtifact & Omit<BrrrdArtifactProvenance, "id"> & {
   packagePath: string;
   sourceAbsPath?: string;
   generatedContent?: string | Buffer;
@@ -522,19 +522,23 @@ function prerenderCacheMetadata(model: NextBuildModel): ArtifactPlanItem {
     }
   }
   // Next's Adapter API supplies the owning fallback path. The host must not
-  // reconstruct Next's hashed route-cache keys from a public URL.
+  // reconstruct Next's hashed route-cache keys from a public URL. App Router
+  // pages seed HTML; prerendered App Route handlers seed a response body.
   const fallbackHtml: Record<string, string> = {};
+  const fallbackBody: Record<string, string> = {};
   for (const output of model.outputs.prerenders) {
-    if (!output.filePath?.endsWith(".html")) continue;
+    const target = output.filePath?.endsWith(".html") ? fallbackHtml
+      : output.filePath?.endsWith(".body") ? fallbackBody : undefined;
+    if (!target || !output.filePath) continue;
     const relative = path.relative(serverDir, output.filePath);
     if (relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) continue;
-    fallbackHtml[output.pathname] = relative.split(path.sep).join("/");
+    target[output.pathname] = relative.split(path.sep).join("/");
   }
   return artifactItem(model, {
     id: "prerender-cache-metadata", kind: "runtime-manifest",
     packagePath: "runtime/.next/server/brrrd-prerender-cache.json",
     mountPath: ".next/server/brrrd-prerender-cache.json", required: true,
-    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified, fallbackHtml}),
+    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified, fallbackHtml, fallbackBody}),
     reason: "Original prerender generation times for Next cache freshness on immutable VFS",
   });
 }
@@ -1405,17 +1409,25 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
   return summary;
 }
 
+/** Runtime artifact records: only fields the brrrd runtime reads. */
 export function manifestArtifacts(plan: ArtifactPlan): BrrrdArtifact[] {
   return plan.items.map((item) => ({
     id: item.id,
     kind: item.kind,
-    ...(item.ownerRouteId ? { ownerRouteId: item.ownerRouteId } : {}),
-    ...(item.sourcePath ? { sourcePath: item.sourcePath } : {}),
     packagePath: item.packagePath,
     mountPath: item.mountPath,
     ...(item.contentType ? { contentType: item.contentType } : {}),
     ...(item.immutable !== undefined ? { immutable: item.immutable } : {}),
     required: item.required,
+  }));
+}
+
+/** Build-local provenance, keyed by artifact id; never part of the package. */
+export function artifactProvenance(plan: ArtifactPlan): BrrrdArtifactProvenance[] {
+  return plan.items.map((item) => ({
+    id: item.id,
+    ...(item.ownerRouteId ? { ownerRouteId: item.ownerRouteId } : {}),
+    ...(item.sourcePath ? { sourcePath: item.sourcePath } : {}),
     reason: item.reason,
   }));
 }

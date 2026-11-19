@@ -14,7 +14,7 @@ function context(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   return {
     projectDir: root, repoRoot: root, distDir: path.join(root, ".next"),
-    config: {}, nextVersion: "16.4.3", buildId: "node-only",
+    config: {}, nextVersion: "16.4.6", buildId: "node-only",
     outputs: {
       pages: [], appPages: [], appRoutes: [], pagesApi: [],
       prerenders: [], staticFiles: [],

@@ -64,7 +64,7 @@ test('packages declared HTML, RSC, segments and runtime seeds using public route
     { pathname: '/_global-error.rsc', filePath: rscPath, contentType: 'text/x-component' },
     { pathname: '/_global-error.segments/_tree.segment.rsc', filePath: segmentPath, contentType: 'text/x-component' },
   ]
-  const model = createNextBuildModel({ projectDir, repoRoot: projectDir, distDir, config: {}, nextVersion: '16.4.3', buildId: 'fixture', outputs: {
+  const model = createNextBuildModel({ projectDir, repoRoot: projectDir, distDir, config: {}, nextVersion: '16.4.6', buildId: 'fixture', outputs: {
     pages: [], pagesApi: [], appPages: [owner], appRoutes: [], staticFiles: [],
     prerenders: outputs.map(output => ({ id: output.pathname, pathname: output.pathname, parentOutputId: owner.id, config: {}, fallback: { filePath: output.filePath, initialHeaders: { 'content-type': output.contentType, 'cache-control': 'public, max-age=60' } } })),
   } })

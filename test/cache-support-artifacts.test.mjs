@@ -57,7 +57,7 @@ test('prerender cache metadata captures actual build ages and immutable build id
   const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.2.7',buildId:'age-build',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],prerenders:[],staticFiles:[]}});
   const plan=createArtifactPlan(model,empty,path.join(root,'out'),{hasAppBundle:false});
   const metadata=JSON.parse(plan.items.find(item=>item.id==='prerender-cache-metadata').generatedContent);
-  assert.deepEqual(metadata,{version:1,buildId:'age-build',lastModified:{'app/isr.html':1234000},fallbackHtml:{}});
+  assert.deepEqual(metadata,{version:1,buildId:'age-build',lastModified:{'app/isr.html':1234000},fallbackHtml:{},fallbackBody:{}});
 });
 
 
@@ -66,9 +66,22 @@ test('Next16.4 route-cache seed age and public fallback mapping use actual Adapt
   const distDir=path.join(root,'.next'),server=path.join(distDir,'server');
   const relative='route-cache/APP_PAGE/actual-owner-hash/$/isr.html',file=path.join(server,relative);
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'actual seed');fs.utimesSync(file,1234,1234);
-  const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.4.3',buildId:'cache-owner',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],staticFiles:[],prerenders:[{id:'seed',pathname:'/isr',fallback:{filePath:file},config:{}}]}});
+  const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.4.6',buildId:'cache-owner',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],staticFiles:[],prerenders:[{id:'seed',pathname:'/isr',fallback:{filePath:file},config:{}}]}});
   const plan=createArtifactPlan(model,empty,path.join(root,'out'),{hasAppBundle:false});
   const metadata=JSON.parse(plan.items.find(item=>item.id==='prerender-cache-metadata').generatedContent);
   assert.equal(metadata.lastModified[relative],1234000);assert.equal(metadata.fallbackHtml['/isr'],relative);
   assert.ok(plan.items.some(item=>item.mountPath==='.next/server/'+relative));
+});
+
+test('prerendered App Route handlers declare their route-cache body fallback',t=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'brrrd-route-body-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const distDir=path.join(root,'.next'),server=path.join(distDir,'server');
+  const relative='route-cache/APP_ROUTE/actual-owner-hash/$/admin/manifest.webmanifest.body',file=path.join(server,relative);
+  fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'{"name":"admin"}');fs.utimesSync(file,1234,1234);
+  const model=createNextBuildModel({projectDir:root,repoRoot:root,distDir,config:{},nextVersion:'16.4.6',buildId:'route-body',outputs:{pages:[],appPages:[],appRoutes:[],pagesApi:[],staticFiles:[],prerenders:[{id:'body',pathname:'/admin/manifest.webmanifest',fallback:{filePath:file},config:{}}]}});
+  const plan=createArtifactPlan(model,empty,path.join(root,'out'),{hasAppBundle:false});
+  const metadata=JSON.parse(plan.items.find(item=>item.id==='prerender-cache-metadata').generatedContent);
+  assert.equal(metadata.lastModified[relative],1234000);
+  assert.deepEqual(metadata.fallbackHtml,{});
+  assert.equal(metadata.fallbackBody['/admin/manifest.webmanifest'],relative);
 });

@@ -70,13 +70,22 @@ export interface BrrrdArtifact {
     | "runtime-file"
     | "middleware"
     | "compatibility";
-  ownerRouteId?: string;
-  sourcePath?: string;
   packagePath: string;
   mountPath: string;
   contentType?: string;
   immutable?: boolean;
   required: boolean;
+}
+
+/**
+ * Build-only provenance for one artifact. The runtime never reads it, so it is
+ * written beside the package (`dist/brrrd-diagnostics/artifacts.json`), not in
+ * the deployed manifest.
+ */
+export interface BrrrdArtifactProvenance {
+  id: string;
+  ownerRouteId?: string;
+  sourcePath?: string;
   reason: string;
 }
 

@@ -84,6 +84,18 @@ function minimalContext(projectDir, distDir, output) {
   };
 }
 
+
+/** Runtime manifest records joined with build-only provenance written beside the package. */
+function builtArtifacts(root) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"));
+  const provenance = new Map(
+    JSON.parse(
+      fs.readFileSync(path.join(root, "dist", "brrrd-diagnostics", "artifacts.json"), "utf8"),
+    ).map((item) => [item.id, item]),
+  );
+  return manifest.artifacts.map((artifact) => ({ ...artifact, ...provenance.get(artifact.id) }));
+}
+
 test("onBuildComplete rejects native .node traced assets", async () => {
   const root = tempDir("native");
   const distDir = path.join(root, ".next");
@@ -492,7 +504,7 @@ test("onBuildComplete preserves Adapter API node middleware root package assets"
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.packagePath === "runtime/package.json"
         && artifact.sourcePath === "package.json"
         && artifact.reason === "Next Adapter API proxy/middleware runtime asset"
@@ -500,7 +512,7 @@ test("onBuildComplete preserves Adapter API node middleware root package assets"
     true,
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.packagePath === "runtime/.next/package.json"
         && artifact.sourcePath === ".next/package.json"
         && artifact.reason === "Next Adapter API proxy/middleware runtime asset"
@@ -952,6 +964,45 @@ test("extractAppStaticResponseMeta reads metadata route .body response headers",
   ]);
 });
 
+test("onBuildComplete keeps build-only artifact provenance out of the deployed manifest", async () => {
+  const root = tempDir("artifact-provenance-split");
+  const distDir = path.join(root, ".next");
+  const handler = path.join(root, "handler.js");
+  fs.writeFileSync(handler, "export function handler(_req, res) { res.end('dynamic'); }\n", "utf8");
+  const appDir = path.join(distDir, "server", "app");
+  const bodyFile = path.join(appDir, "robots.txt.body");
+  fs.mkdirSync(appDir, { recursive: true });
+  fs.writeFileSync(bodyFile, "User-agent: *", "utf8");
+  const context = minimalContext(root, distDir, {
+    id: "/page",
+    pathname: "/",
+    filePath: handler,
+    assets: {},
+  });
+  context.outputs.staticFiles = [{ id: "/robots.txt", pathname: "/robots.txt", filePath: bodyFile }];
+
+  await onBuildComplete(context);
+
+  const raw = fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8");
+  assert.equal(raw, JSON.stringify(JSON.parse(raw)), "the runtime parses a compact manifest");
+  const manifest = JSON.parse(raw);
+  const runtimeKeys = new Set(["id", "kind", "packagePath", "mountPath", "contentType", "immutable", "required"]);
+  assert.ok(manifest.artifacts.length > 0);
+  for (const artifact of manifest.artifacts) {
+    assert.deepEqual(Object.keys(artifact).filter((key) => !runtimeKeys.has(key)), [], artifact.id);
+  }
+  const provenanceFile = path.join(root, "dist", "brrrd-diagnostics", "artifacts.json");
+  assert.equal(fs.existsSync(path.join(root, "dist", "brrrd", "brrrd-diagnostics")), false);
+  const provenance = JSON.parse(fs.readFileSync(provenanceFile, "utf8"));
+  assert.deepEqual(provenance.map((item) => item.id), manifest.artifacts.map((item) => item.id));
+  assert.deepEqual(provenance.find((item) => item.id === "static:robots_txt"), {
+    id: "static:robots_txt",
+    ownerRouteId: "static-robots_txt",
+    sourcePath: ".next/server/app/robots.txt.body",
+    reason: "Next Adapter API staticFiles output",
+  });
+});
+
 test("onBuildComplete emits App metadata static response headers from .meta files", async () => {
   const root = tempDir("app-static-response-meta");
   const distDir = path.join(root, ".next");
@@ -1011,7 +1062,7 @@ test("onBuildComplete emits App metadata static response headers from .meta file
     },
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "static:manifest_webmanifest"),
+    builtArtifacts(root).find((artifact) => artifact.id === "static:manifest_webmanifest"),
     {
       id: "static:manifest_webmanifest",
       kind: "static",
@@ -1104,7 +1155,7 @@ test("onBuildComplete publishes static App metadata route prerenders before dyna
     ],
   });
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender:products-sitemap-1_xml"),
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender:products-sitemap-1_xml"),
     {
       id: "prerender:products-sitemap-1_xml",
       kind: "prerender",
@@ -1466,7 +1517,7 @@ test("onBuildComplete maps Pages Router static index HTML to root route", async 
     },
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "static:index"),
+    builtArtifacts(root).find((artifact) => artifact.id === "static:index"),
     {
       id: "static:index",
       kind: "static",
@@ -1498,7 +1549,7 @@ test("onBuildComplete maps Pages Router static index HTML to root route", async 
     },
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "static-data:index"),
+    builtArtifacts(root).find((artifact) => artifact.id === "static-data:index"),
     {
       id: "static-data:index",
       kind: "static",
@@ -1638,7 +1689,7 @@ test("onBuildComplete resolves Pages Router prerender HTML from server/pages", a
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender:gsp").sourcePath,
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender:gsp").sourcePath,
     ".next/server/pages/gsp.html",
   );
 });
@@ -1704,7 +1755,7 @@ test("onBuildComplete packages Pages Router dynamic SSG fallback shells", async 
     },
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender-fallback:_slug_"),
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender-fallback:_slug_"),
     {
       id: "prerender-fallback:_slug_",
       kind: "prerender",
@@ -1773,7 +1824,7 @@ test("onBuildComplete resolves i18n default-locale Pages fallback shell sources"
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender-fallback:fallback-true-blog-_slug_").sourcePath,
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender-fallback:fallback-true-blog-_slug_").sourcePath,
     ".next/server/pages/en/fallback-true-blog/[slug].html",
   );
 });
@@ -2070,7 +2121,7 @@ test("onBuildComplete resolves Pages Router basePath prerender HTML from unprefi
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender:base-gsp"),
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender:base-gsp"),
     {
       id: "prerender:base-gsp",
       kind: "prerender",
@@ -2120,7 +2171,7 @@ test("onBuildComplete resolves App Router basePath prerender HTML from unprefixe
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "prerender:base-another"),
+    builtArtifacts(root).find((artifact) => artifact.id === "prerender:base-another"),
     {
       id: "prerender:base-another",
       kind: "prerender",
@@ -2183,7 +2234,7 @@ test("onBuildComplete resolves Pages Router prerender data JSON from server/page
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => (
+    builtArtifacts(root).find((artifact) => (
       artifact.id === "prerender:_next-data-test-build-gsp_json"
     )),
     {
@@ -2395,7 +2446,7 @@ test("onBuildComplete resolves Pages Router basePath prerender data JSON from un
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => (
+    builtArtifacts(root).find((artifact) => (
       artifact.id === "prerender:base-_next-data-test-build-gsp_json"
     )),
     {
@@ -2566,7 +2617,7 @@ test("onBuildComplete preserves static route handler prerender response metadata
     },
   );
   assert.deepEqual(
-    manifest.artifacts.find((artifact) => artifact.id === "static:manifest_webmanifest"),
+    builtArtifacts(root).find((artifact) => artifact.id === "static:manifest_webmanifest"),
     {
       id: "static:manifest_webmanifest",
       kind: "static",
@@ -2774,13 +2825,13 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.filter((artifact) =>
+    builtArtifacts(root).filter((artifact) =>
       artifact.packagePath === "runtime/.next/server/chunks/ssr/chunk.js"
     ).length,
     1,
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.packagePath === "runtime/chunks/static/media/my-data.1234.json"
         && artifact.mountPath === "chunks/static/media/my-data.1234.json"
         && artifact.reason === "Next traced route runtime dependency for app bundle runtime chunk URL"
@@ -2788,7 +2839,7 @@ test("onBuildComplete copies traced route runtime files from .next", async () =>
     true,
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.packagePath === "runtime/assets/typewr__.ttf"
         && artifact.mountPath === "assets/typewr__.ttf"
         && artifact.reason === "Next traced route runtime dependency for project-relative server asset"
@@ -2844,7 +2895,7 @@ test("onBuildComplete copies App Route project-relative traced assets into runti
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.ownerRouteId === "font-opengraph-image2"
         && artifact.packagePath === "runtime/assets/typewr__.ttf"
         && artifact.mountPath === "assets/typewr__.ttf"
@@ -2916,7 +2967,7 @@ test("onBuildComplete copies untraced Next server chunk graph files", async () =
     fs.readFileSync(path.join(root, "dist", "brrrd", "manifest.json"), "utf8"),
   );
   assert.equal(
-    manifest.artifacts.some((artifact) =>
+    builtArtifacts(root).some((artifact) =>
       artifact.packagePath === "runtime/.next/server/chunks/ssr/template-page.js"
         && artifact.reason === "Next server runtime chunk graph"
     ),

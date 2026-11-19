@@ -6,7 +6,7 @@ comwit.io deployment plane). On `next build` it emits a `dist/brrrd/` package
 
 **0.2.x targets workerd only.** Deno maintenance stays on the 0.1.x line.
 Packages declare `execution.abi = workerd-node-v1` and require a matching native
-brrrd runtime. The current native profile is qualified with Next.js 16.4.3;
+brrrd runtime. The current native profile is qualified with Next.js 16.4.6;
 the adapter API peer range starts at Next.js 16.2.
 
 **Edge runtime is unsupported in 0.2.x.** Builds fail with all affected Next
@@ -32,7 +32,7 @@ another request or an earlier prerender, is not added to a later render's signal
 Dynamic SSR/API code still awaits that Promise. Cache Components warming and PPR
 may produce fewer static results or fail static validation in this case.
 
-CI installs **Next.js and @next/routing ^16.4.3**; the official deploy
+CI installs **Next.js and @next/routing ^16.4.6**; the official deploy
 harness resolves the latest matching Next.js tag at run time. Prerender bodies and public RSC
 URLs use the Adapter API metadata, including Next 16.4's owner-scoped
 `server/route-cache` storage.

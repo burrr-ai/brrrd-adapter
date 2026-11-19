@@ -5,6 +5,7 @@ import * as path from "node:path";
 import type { NextBuildModel } from "./model.js";
 import type {
   BrrrdArtifact,
+  BrrrdArtifactProvenance,
   BrrrdCompatibilityReport,
   BrrrdImagesConfig,
   BrrrdLocalImagePattern,
@@ -145,8 +146,20 @@ export function writeManifest(
     pprPages,
   };
 
-  fs.writeFileSync(
-    path.join(outDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-  );
+  // Compact: the runtime parses every byte and charges it to node memory.
+  fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(manifest));
+}
+
+/** Build-local provenance beside the package; `brrrd-fleet deploy` never uploads it. */
+export function artifactProvenancePath(outDir: string): string {
+  return path.join(path.dirname(outDir), "brrrd-diagnostics", "artifacts.json");
+}
+
+export function writeArtifactProvenance(
+  outDir: string,
+  provenance: BrrrdArtifactProvenance[],
+): void {
+  const file = artifactProvenancePath(outDir);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(provenance, null, 2));
 }

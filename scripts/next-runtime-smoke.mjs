@@ -65,7 +65,7 @@ function validateContract(projectDir) {
   const manifest = JSON.parse(fs.readFileSync(path.join(outDir, "manifest.json"), "utf8"));
   assert.equal(manifest.schemaVersion, 6);
   assert.equal(manifest.execution.abi, "workerd-node-v1");
-  assert.equal(manifest.build.nextVersion, "16.4.3");
+  assert.equal(manifest.build.nextVersion, "16.4.6");
   assert.equal(manifest.middleware.moduleFormat, "node");
   assert.equal(manifest.edgeFunctions, undefined);
   assert.ok(manifest.routes.every((route) => route.runtime === "nodejs"));

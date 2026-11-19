@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import {
+  artifactProvenance,
   createArtifactPlan,
   executeArtifactPlan,
   manifestArtifacts,
@@ -13,7 +14,11 @@ import {
   writeAdapterContextSnapshot,
 } from "./diagnostics.js";
 import { assertExternalAliasesResolvable } from "./external-preflight.js";
-import { writeManifest } from "./manifest-emitter.js";
+import {
+  artifactProvenancePath,
+  writeArtifactProvenance,
+  writeManifest,
+} from "./manifest-emitter.js";
 import { createManifestSupplement } from "./manifest-supplement.js";
 import { compileMiddleware } from "./middleware-compiler.js";
 import {
@@ -151,5 +156,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     supplement.preview,
   );
   console.log(`  Manifest written to ${path.join(outDir, "manifest.json")}`);
+  writeArtifactProvenance(outDir, artifactProvenance(artifactPlan));
+  console.log(`  Artifact provenance written to ${artifactProvenancePath(outDir)}`);
   console.log(`[@brrrd/adapter] Done!`);
 }
