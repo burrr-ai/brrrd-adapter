@@ -12,6 +12,11 @@ Automated releases publish from `.github/workflows/release.yml` on `v*` tags via
 npm Trusted Publishing (OIDC), using npm 11.17.0 with no npm deployment token.
 Already-published versions are skipped so release re-runs succeed.
 
+A prerelease tag (`v0.2.0-rc.0`: a hyphen in the version core) publishes under
+the `next` dist-tag; any other tag publishes under `latest`. Trusted Publishing
+can only publish, not move dist-tags, so promote a prerelease by tagging and
+publishing the final version (`v0.2.0`), not with `npm dist-tag add`.
+
 Use the repository-local `.npmrc` only for manual fallback publishing. It is
 intentionally ignored by git because it contains the npm deployment token.
 

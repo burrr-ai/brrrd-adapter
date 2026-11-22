@@ -88,6 +88,14 @@ publish/deploy is considered complete. The minimum manifest contract is
 `artifacts[].packagePath`, optional Node `middleware`, and
 `compatibility`.
 
+## Releases
+
+Tags `vX.Y.Z` publish to npm under `latest`. Prerelease tags such as
+`v0.2.0-rc.0` publish under `next` for gradual adoption
+(`pnpm add @brrrd/adapter@next`); a prerelease is promoted by publishing the
+final `vX.Y.Z` tag, since the trusted-publishing release workflow cannot move
+dist-tags.
+
 ## Use
 
 ```sh

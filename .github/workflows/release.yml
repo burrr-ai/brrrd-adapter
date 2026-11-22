@@ -3,6 +3,12 @@ name: release
 # Push a tag like v0.1.0 to build and publish @brrrd/adapter to npm.
 # Automated releases use npm Trusted Publishing (OIDC), with no npm token.
 # Already-published versions are skipped so tag workflow re-runs succeed.
+#
+# dist-tag: a semver prerelease tag (a hyphen in the version core, e.g.
+# v0.2.0-rc.0) publishes under the `next` dist-tag; any other tag publishes
+# under `latest`. Trusted Publishing can only publish, not run `npm dist-tag
+# add`, so a prerelease is promoted by tagging and publishing the final
+# version (e.g. v0.2.0), never by moving a dist-tag.
 on:
   push:
     tags: ['v*']
@@ -41,6 +47,19 @@ jobs:
             cat "$RUNNER_TEMP/npm-view-error.log" >&2
             exit 1
           fi
+      - name: Choose npm dist-tag
+        id: dist
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Build metadata (+...) is not part of the prerelease decision.
+          case "${version%%+*}" in
+            *-*) tag=next ;;
+            *) tag=latest ;;
+          esac
+          echo "@brrrd/adapter@${version} publishes under dist-tag ${tag}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
       - name: Publish
         if: steps.published.outputs.exists == 'false'
-        run: npm publish --access public --provenance
+        env:
+          DIST_TAG: ${{ steps.dist.outputs.tag }}
+        run: npm publish --access public --provenance --tag "$DIST_TAG"
