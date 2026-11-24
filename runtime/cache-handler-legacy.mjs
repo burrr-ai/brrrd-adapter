@@ -822,7 +822,7 @@ class BrrrdLegacyCacheHandler {
   async get(cacheKey, ctx) {
     const native = await nativeCacheBinding(this.binding);
     if (native) {
-      const read = await degradedCacheRead("get", async () => {
+      const read = await degradedCacheRead(async () => {
         const publication = cacheTagPublication();
         const order = publication.issueRead();
         const hit = await native.get(cacheKey);
@@ -838,7 +838,7 @@ class BrrrdLegacyCacheHandler {
         }
         const reconciled = reconcileFetchTags(parsed, parsedStoredTags(parsed, hit?.tags || []), ctx);
         if (reconciled.changed) {
-          await degradedCacheWrite("set", () => native.set(cacheKey,
+          await degradedCacheWrite(() => native.set(cacheKey,
             new TextEncoder().encode(JSON.stringify(parsed, encodeReplacer)), reconciled.tags, parsed.value?.revalidate || 0));
         }
         // Include disk fallbacks and page entries: path tags must not resurrect a
@@ -956,7 +956,7 @@ class BrrrdLegacyCacheHandler {
     const native = await nativeCacheBinding(this.binding);
     // Next owns page staleness and SWR. The backend must retain stale HTML/RSC
     // until Next replaces it; a hard TTL would turn expiry into a cache miss.
-    if (native) return degradedCacheWrite("set", () => native.set(cacheKey, bytes, tags,
+    if (native) return degradedCacheWrite(() => native.set(cacheKey, bytes, tags,
       data?.kind === "APP_PAGE" || data?.kind === "APP_ROUTE" ? 0 : ttl));
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {

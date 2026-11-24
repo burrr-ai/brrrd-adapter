@@ -71,8 +71,15 @@ test('native capability failure is propagated without build-time memory fallback
   await assert.rejects(new BrrrdCacheHandler({}).get('key',[]),/binding is required/);
 });
 
+// A controlled clock for the rate-limited degradation summary.
+function clock(){
+  const real=globalThis.performance;let now=1_000_000;
+  globalThis.performance={timeOrigin:0,now:()=>now};
+  return {advance(ms){now+=ms;},restore(){globalThis.performance=real;}};
+}
+
 for(const status of [408,429,504]){
-  test(`native ${status} degrades reads to a miss and writes to not stored; invalidation keeps its error`,async()=>{
+  test(`native ${status} degrades reads to a miss, writes to not stored and expiration to get-checked; invalidation keeps its error`,async()=>{
     fresh();const p=provider(),refused=new Set(['get','set','tag_snapshot','commit_tag']);
     const binding={async fetch(url,init){
       const body=init.body,length=new DataView(body.buffer,body.byteOffset,4).getUint32(0,false);
@@ -81,28 +88,45 @@ for(const status of [408,429,504]){
       return p.binding.fetch(url,init);
     }};
     const modern=new BrrrdCacheHandler(binding),legacy=new BrrrdLegacyCacheHandler({cacheBinding:binding});
-    const {cacheDegradation}=await import('../runtime/cache-handler.mjs');const before={...cacheDegradation};
-    const warnings=[],warn=console.warn;console.warn=line=>warnings.push(JSON.parse(line));
+    const {cacheDegradation,resetDegradationLog}=await import('../runtime/cache-handler.mjs');const before={...cacheDegradation};
+    resetDegradationLog();const warnings=[],warn=console.warn;
+    const time=clock();console.warn=line=>warnings.push(JSON.parse(line));
     try{
       assert.equal(await modern.get('key',[]),undefined);assert.equal(await legacy.get('key',{}),null);
       const entry={value:new ReadableStream({start(c){c.enqueue(new Uint8Array([1]));c.close();}}),tags:['t'],timestamp:Date.now()};
       await modern.set('key',Promise.resolve(entry));
       assert.deepEqual(new Uint8Array(await new Response(entry.value).arrayBuffer()),new Uint8Array([1]),'caller stream intact');
       await legacy.set('key',{kind:'FETCH',data:{}},{tags:['t']});
+      // Unknown soft-tag expiration: Infinity hands the check to get (Next's
+      // contract), never 0 ("never revalidated"), which could revive an entry.
+      assert.equal(await modern.getExpiration(['t']),Infinity);
       // A stored entry whose tag state read is refused is a miss, never a stale hit.
       refused.delete('get');refused.delete('set');
       await legacy.set('page',{kind:'FETCH',data:{}},{tags:['t']});
-      assert.equal(await legacy.get('page',{}),null);
+      await modern.set('mpage',Promise.resolve({...entry,value:new ReadableStream({start(c){c.close();}})}));
+      assert.equal(await legacy.get('page',{}),null);assert.equal(await modern.get('mpage',['soft']),undefined);
       await assert.rejects(modern.updateTags(['t'],{expire:0}),/refused commit_tag/);
       await assert.rejects(legacy.revalidateTag('t',{}),/refused commit_tag/);
-    }finally{console.warn=warn;}
-    assert.equal(cacheDegradation.readMisses-before.readMisses,3);assert.equal(cacheDegradation.writesSkipped-before.writesSkipped,2);
-    assert.deepEqual(warnings.map(w=>[w.event,w.outcome,w.op,w.status]),[
-      ['brrrd.cache.degraded','miss','get',status],['brrrd.cache.degraded','miss','get',status],
-      ['brrrd.cache.degraded','not_stored','set',status],['brrrd.cache.degraded','not_stored','set',status],
-      ['brrrd.cache.degraded','miss','get',status]]);
+      // The summary is rate limited: one line for the burst above, then one
+      // line per interval carrying what happened since the last line.
+      assert.equal(warnings.length,1);
+      refused.add('get');time.advance(10_000);assert.equal(await modern.get('later',[]),undefined);
+    }finally{console.warn=warn;time.restore();}
+    assert.deepEqual({readMisses:cacheDegradation.readMisses-before.readMisses,writesSkipped:cacheDegradation.writesSkipped-before.writesSkipped,
+      expirationsDeferred:cacheDegradation.expirationsDeferred-before.expirationsDeferred},{readMisses:5,writesSkipped:2,expirationsDeferred:1});
+    assert.deepEqual(warnings.map(w=>[w.event,w.status,w.since]),[
+      ['brrrd.cache.degraded',status,{readMisses:1,writesSkipped:0,expirationsDeferred:0}],
+      ['brrrd.cache.degraded',status,{readMisses:4,writesSkipped:2,expirationsDeferred:1}]]);
   });
 }
+
+test('native getExpiration reads committed tag state and keeps non-degraded errors',async()=>{
+  fresh();const p=provider(),handler=new BrrrdCacheHandler(p.binding);
+  await handler.updateTags(['t'],undefined);const expired=p.tags.get('t').expired;
+  assert.ok(expired>0);assert.equal(await handler.getExpiration(['t','other']),expired);
+  const broken=new BrrrdCacheHandler({async fetch(){return Response.json({error:'backend unavailable'},{status:500});}});
+  await assert.rejects(broken.getExpiration(['t']),/backend unavailable/);
+});
 
 test('duration intent is read once, retains omitted expiry and passes explicit zero',()=>{
   let reads=0;assert.deepEqual(tagMutation({get expire(){reads++;return 0;}},100),{stale:100,expired:100});assert.equal(reads,1);

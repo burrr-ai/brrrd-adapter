@@ -15,31 +15,48 @@ const ENVELOPE_MAGIC = textEncoder.encode("brrrd-next-cache-v1\n");
 
 // The cache is an optimization. When the native backend refuses an operation
 // (429) or it misses its deadline (408 frame, 504 reply), a read is a miss and
-// a write is not stored: Next renders fresh output either way. Tag and path
+// a write is not stored: Next renders fresh output either way. An unknown tag
+// expiration is left to `get`, which checks the soft tags itself. Tag and path
 // invalidation never degrade; their errors stay errors.
 const DEGRADED_STATUSES = new Set([408, 429, 504]);
-export const cacheDegradation = { readMisses: 0, writesSkipped: 0 };
+// Cumulative counters, one per outcome; the log is a rate-limited summary.
+export const cacheDegradation = { readMisses: 0, writesSkipped: 0, expirationsDeferred: 0 };
+export const DEGRADATION_LOG_INTERVAL_MS = 10_000;
+const degradationLog = { lastAt: -Infinity, logged: { ...cacheDegradation } };
 
-export async function degradedCacheRead(op, read) {
+// Test seam: forget when the last summary was written.
+export function resetDegradationLog() {
+  degradationLog.lastAt = -Infinity;
+  degradationLog.logged = { ...cacheDegradation };
+}
+
+function degraded(counter, error) {
+  if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
+  cacheDegradation[counter] += 1;
+  const now = nowMs();
+  if (now - degradationLog.lastAt < DEGRADATION_LOG_INTERVAL_MS) return;
+  const since = {};
+  for (const [name, total] of Object.entries(cacheDegradation)) since[name] = total - degradationLog.logged[name];
+  degradationLog.lastAt = now;
+  degradationLog.logged = { ...cacheDegradation };
+  console.warn(JSON.stringify({ event: "brrrd.cache.degraded", status: error.cacheStatus,
+    since, totals: { ...cacheDegradation } }));
+}
+
+export async function degradedCacheRead(read) {
   try {
     return { value: await read() };
   } catch (error) {
-    if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
-    cacheDegradation.readMisses += 1;
-    console.warn(JSON.stringify({ event: "brrrd.cache.degraded", outcome: "miss", op,
-      status: error.cacheStatus, total: cacheDegradation.readMisses }));
+    degraded("readMisses", error);
     return { degraded: true };
   }
 }
 
-export async function degradedCacheWrite(op, write) {
+export async function degradedCacheWrite(write) {
   try {
     await write();
   } catch (error) {
-    if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
-    cacheDegradation.writesSkipped += 1;
-    console.warn(JSON.stringify({ event: "brrrd.cache.degraded", outcome: "not_stored", op,
-      status: error.cacheStatus, total: cacheDegradation.writesSkipped }));
+    degraded("writesSkipped", error);
   }
 }
 
@@ -363,7 +380,7 @@ class BrrrdCacheHandler {
 
     const native = await nativeCacheBinding(this.binding);
     if (native) {
-      const read = await degradedCacheRead("get", async () => {
+      const read = await degradedCacheRead(async () => {
         const publication = cacheTagPublication();
         const order = publication.issueRead();
         const hit = await native.get(cacheKey);
@@ -425,8 +442,8 @@ class BrrrdCacheHandler {
 
       const native = await nativeCacheBinding(this.binding);
       if (native) {
-        await degradedCacheWrite("set",
-          () => native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags, stored.revalidate || 0));
+        await degradedCacheWrite(() => native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags,
+          stored.revalidate || 0));
         return;
       }
       const ops = brrrdOps();
@@ -458,7 +475,17 @@ class BrrrdCacheHandler {
 
   async getExpiration(tags) {
     const native = await nativeCacheBinding(this.binding);
-    if (native) return (await nativeTagState(native, tags)).expiredAtMs;
+    if (native) {
+      // Infinity tells Next that `get` checks these soft tags itself (Next's
+      // CacheHandler contract); native `get` does, and is a miss when it cannot.
+      // 0 ("never revalidated") could revive an invalidated entry.
+      try {
+        return (await nativeTagState(native, tags)).expiredAtMs;
+      } catch (error) {
+        degraded("expirationsDeferred", error);
+        return Infinity;
+      }
+    }
     if (hasBrrrdCacheOps()) {
       return (await maxRuntimeTagState(tags, dataScope())).expiredAtMs;
     }
@@ -524,8 +551,9 @@ export function createCacheBinding(binding) {
     frame.set(bytes, 4 + metadata.byteLength);
     const response = await binding.fetch("http://cache/", { method: "POST", body: frame });
     if (op === "get" && response.status === 404) {
-      // A miss has nothing to read; release the reply instead of leaving it unread.
-      await response.body?.cancel();
+      // A miss has nothing to read; release the reply instead of leaving it
+      // unread. Releasing is best effort: it never turns the miss into an error.
+      try { await response.body?.cancel(); } catch { /* the miss stands */ }
       return null;
     }
     if (!response.ok) {

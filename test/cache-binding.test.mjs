@@ -82,3 +82,10 @@ test('native cache miss releases its unread reply body', async () => {
   assert.equal(await cache.get('absent'), null);
   assert.equal(cancelled, 1);
 });
+
+test('native cache miss stays a miss when releasing its reply fails', async () => {
+  const cache = createCacheBinding({ async fetch() {
+    return new Response(new ReadableStream({ cancel() { throw new Error('cancel refused'); } }), { status: 404 });
+  } });
+  assert.equal(await cache.get('absent'), null);
+});
