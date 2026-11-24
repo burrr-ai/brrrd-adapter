@@ -13,6 +13,36 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const ENVELOPE_MAGIC = textEncoder.encode("brrrd-next-cache-v1\n");
 
+// The cache is an optimization. When the native backend refuses an operation
+// (429) or it misses its deadline (408 frame, 504 reply), a read is a miss and
+// a write is not stored: Next renders fresh output either way. Tag and path
+// invalidation never degrade; their errors stay errors.
+const DEGRADED_STATUSES = new Set([408, 429, 504]);
+export const cacheDegradation = { readMisses: 0, writesSkipped: 0 };
+
+export async function degradedCacheRead(op, read) {
+  try {
+    return { value: await read() };
+  } catch (error) {
+    if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
+    cacheDegradation.readMisses += 1;
+    console.warn(JSON.stringify({ event: "brrrd.cache.degraded", outcome: "miss", op,
+      status: error.cacheStatus, total: cacheDegradation.readMisses }));
+    return { degraded: true };
+  }
+}
+
+export async function degradedCacheWrite(op, write) {
+  try {
+    await write();
+  } catch (error) {
+    if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
+    cacheDegradation.writesSkipped += 1;
+    console.warn(JSON.stringify({ event: "brrrd.cache.degraded", outcome: "not_stored", op,
+      status: error.cacheStatus, total: cacheDegradation.writesSkipped }));
+  }
+}
+
 // Native requests have finite I/O lifetimes. Own the complete operation, not
 // just its RPC headers: serialization, response body consumption and finally
 // cleanup can all continue after the foreground response has been consumed.
@@ -333,15 +363,18 @@ class BrrrdCacheHandler {
 
     const native = await nativeCacheBinding(this.binding);
     if (native) {
-      const publication = cacheTagPublication();
-      const order = publication.issueRead();
-      const hit = await native.get(cacheKey);
-      publication.hydrate(hit?.tag_states, order);
-      if (!hit || hit.is_expired) return undefined;
-      const stored = decodeStoredEntry(hit.value, hit.tags || [], nowMs() - Math.floor((hit.age_secs || 0) * 1000));
-      const state = await nativeTagState(native, [...stored.tags, ...(softTags || [])]);
-      if (state.expiredAtMs <= nowMs() && state.expiredAtMs > stored.timestamp) return undefined;
-      return cacheEntryWithTagState(stored, state);
+      const read = await degradedCacheRead("get", async () => {
+        const publication = cacheTagPublication();
+        const order = publication.issueRead();
+        const hit = await native.get(cacheKey);
+        publication.hydrate(hit?.tag_states, order);
+        if (!hit || hit.is_expired) return undefined;
+        const stored = decodeStoredEntry(hit.value, hit.tags || [], nowMs() - Math.floor((hit.age_secs || 0) * 1000));
+        const state = await nativeTagState(native, [...stored.tags, ...(softTags || [])]);
+        if (state.expiredAtMs <= nowMs() && state.expiredAtMs > stored.timestamp) return undefined;
+        return cacheEntryWithTagState(stored, state);
+      });
+      return read.value;
     }
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
@@ -392,7 +425,8 @@ class BrrrdCacheHandler {
 
       const native = await nativeCacheBinding(this.binding);
       if (native) {
-        await native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags, stored.revalidate || 0);
+        await degradedCacheWrite("set",
+          () => native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags, stored.revalidate || 0));
         return;
       }
       const ops = brrrdOps();
@@ -489,10 +523,16 @@ export function createCacheBinding(binding) {
     frame.set(metadata, 4);
     frame.set(bytes, 4 + metadata.byteLength);
     const response = await binding.fetch("http://cache/", { method: "POST", body: frame });
-    if (op === "get" && response.status === 404) return null;
+    if (op === "get" && response.status === 404) {
+      // A miss has nothing to read; release the reply instead of leaving it unread.
+      await response.body?.cancel();
+      return null;
+    }
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || `cache binding failed: ${response.status}`);
+      const body = await response.json();
+      const error = new Error(body.error || `cache binding failed: ${response.status}`);
+      error.cacheStatus = response.status;
+      throw error;
     }
     if (op !== "get") return response.json();
     const body = await response.arrayBuffer();

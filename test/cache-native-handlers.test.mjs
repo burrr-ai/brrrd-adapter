@@ -63,12 +63,46 @@ test('modern and legacy native mutations share authoritative publication and par
 });
 
 test('native capability failure is propagated without build-time memory fallback',async()=>{
-  fresh();const broken={async fetch(){return Response.json({error:'backend unavailable; commit unknown'},{status:504});}};
+  fresh();const broken={async fetch(){return Response.json({error:'backend unavailable'},{status:500});}};
   const modern=new BrrrdCacheHandler(broken),legacy=new BrrrdLegacyCacheHandler({cacheBinding:broken});
-  await assert.rejects(modern.get('key',[]),/commit unknown/);await assert.rejects(legacy.get('key',{}),/commit unknown/);
-  await assert.rejects(modern.updateTags(['tag'],{expire:0}),/commit unknown/);
+  await assert.rejects(modern.get('key',[]),/backend unavailable/);await assert.rejects(legacy.get('key',{}),/backend unavailable/);
+  await assert.rejects(modern.set('key',Promise.resolve({value:new ReadableStream({start(c){c.close();}}),tags:[],timestamp:Date.now()})),/backend unavailable/);
+  await assert.rejects(legacy.set('key',{kind:'FETCH',data:{}},{tags:[]}),/backend unavailable/);
   await assert.rejects(new BrrrdCacheHandler({}).get('key',[]),/binding is required/);
 });
+
+for(const status of [408,429,504]){
+  test(`native ${status} degrades reads to a miss and writes to not stored; invalidation keeps its error`,async()=>{
+    fresh();const p=provider(),refused=new Set(['get','set','tag_snapshot','commit_tag']);
+    const binding={async fetch(url,init){
+      const body=init.body,length=new DataView(body.buffer,body.byteOffset,4).getUint32(0,false);
+      const input=JSON.parse(new TextDecoder().decode(body.subarray(4,4+length)));
+      if(refused.has(input.op))return Response.json({error:`refused ${input.op}`},{status});
+      return p.binding.fetch(url,init);
+    }};
+    const modern=new BrrrdCacheHandler(binding),legacy=new BrrrdLegacyCacheHandler({cacheBinding:binding});
+    const {cacheDegradation}=await import('../runtime/cache-handler.mjs');const before={...cacheDegradation};
+    const warnings=[],warn=console.warn;console.warn=line=>warnings.push(JSON.parse(line));
+    try{
+      assert.equal(await modern.get('key',[]),undefined);assert.equal(await legacy.get('key',{}),null);
+      const entry={value:new ReadableStream({start(c){c.enqueue(new Uint8Array([1]));c.close();}}),tags:['t'],timestamp:Date.now()};
+      await modern.set('key',Promise.resolve(entry));
+      assert.deepEqual(new Uint8Array(await new Response(entry.value).arrayBuffer()),new Uint8Array([1]),'caller stream intact');
+      await legacy.set('key',{kind:'FETCH',data:{}},{tags:['t']});
+      // A stored entry whose tag state read is refused is a miss, never a stale hit.
+      refused.delete('get');refused.delete('set');
+      await legacy.set('page',{kind:'FETCH',data:{}},{tags:['t']});
+      assert.equal(await legacy.get('page',{}),null);
+      await assert.rejects(modern.updateTags(['t'],{expire:0}),/refused commit_tag/);
+      await assert.rejects(legacy.revalidateTag('t',{}),/refused commit_tag/);
+    }finally{console.warn=warn;}
+    assert.equal(cacheDegradation.readMisses-before.readMisses,3);assert.equal(cacheDegradation.writesSkipped-before.writesSkipped,2);
+    assert.deepEqual(warnings.map(w=>[w.event,w.outcome,w.op,w.status]),[
+      ['brrrd.cache.degraded','miss','get',status],['brrrd.cache.degraded','miss','get',status],
+      ['brrrd.cache.degraded','not_stored','set',status],['brrrd.cache.degraded','not_stored','set',status],
+      ['brrrd.cache.degraded','miss','get',status]]);
+  });
+}
 
 test('duration intent is read once, retains omitted expiry and passes explicit zero',()=>{
   let reads=0;assert.deepEqual(tagMutation({get expire(){reads++;return 0;}},100),{stale:100,expired:100});assert.equal(reads,1);

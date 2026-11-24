@@ -73,3 +73,12 @@ test('native cache codec rejects nonbinary input before submitting a write', asy
   await assert.rejects(cache.set('key', 4096), /Uint8Array/);
   assert.equal(submitted, 0);
 });
+
+test('native cache miss releases its unread reply body', async () => {
+  let cancelled = 0;
+  const cache = createCacheBinding({ async fetch() {
+    return new Response(new ReadableStream({ cancel() { cancelled++; } }), { status: 404 });
+  } });
+  assert.equal(await cache.get('absent'), null);
+  assert.equal(cancelled, 1);
+});

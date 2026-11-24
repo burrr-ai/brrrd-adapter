@@ -1,4 +1,4 @@
-import { nativeCacheBinding, nativeTagState, createOwnedLegacyCacheHandler } from './cache-handler.mjs';
+import { nativeCacheBinding, nativeTagState, createOwnedLegacyCacheHandler, degradedCacheRead, degradedCacheWrite } from './cache-handler.mjs';
 import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
 
 // A-6: Polyfill for the CacheHandler interface of Next.js's legacy IncrementalCache.
@@ -822,30 +822,33 @@ class BrrrdLegacyCacheHandler {
   async get(cacheKey, ctx) {
     const native = await nativeCacheBinding(this.binding);
     if (native) {
-      const publication = cacheTagPublication();
-      const order = publication.issueRead();
-      const hit = await native.get(cacheKey);
-      publication.hydrate(hit?.tag_states, order);
-      if (hit?.is_expired) return null;
-      let parsed;
-      if (!hit) {
-        parsed = readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
-        if (!parsed) return null;
-      } else {
-        try { parsed = JSON.parse(new TextDecoder().decode(hit.value), decodeReviver); }
-        catch (error) { if (error instanceof SyntaxError) return null; throw error; }
-      }
-      const reconciled = reconcileFetchTags(parsed, parsedStoredTags(parsed, hit?.tags || []), ctx);
-      if (reconciled.changed) {
-        await native.set(cacheKey, new TextEncoder().encode(JSON.stringify(parsed, encodeReplacer)),
-          reconciled.tags, parsed.value?.revalidate || 0);
-      }
-      // Include disk fallbacks and page entries: path tags must not resurrect a
-      // prerender after invalidation just because SQLite has no page row yet.
-      const state = await nativeTagState(native, tagsForInvalidation(parsed, reconciled.tags, ctx));
-      if (state.expiredAtMs > 0 && state.expiredAtMs <= nowMs()
-        && entryLastModified(parsed) <= state.expiredAtMs) return null;
-      return parsed;
+      const read = await degradedCacheRead("get", async () => {
+        const publication = cacheTagPublication();
+        const order = publication.issueRead();
+        const hit = await native.get(cacheKey);
+        publication.hydrate(hit?.tag_states, order);
+        if (hit?.is_expired) return null;
+        let parsed;
+        if (!hit) {
+          parsed = readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
+          if (!parsed) return null;
+        } else {
+          try { parsed = JSON.parse(new TextDecoder().decode(hit.value), decodeReviver); }
+          catch (error) { if (error instanceof SyntaxError) return null; throw error; }
+        }
+        const reconciled = reconcileFetchTags(parsed, parsedStoredTags(parsed, hit?.tags || []), ctx);
+        if (reconciled.changed) {
+          await degradedCacheWrite("set", () => native.set(cacheKey,
+            new TextEncoder().encode(JSON.stringify(parsed, encodeReplacer)), reconciled.tags, parsed.value?.revalidate || 0));
+        }
+        // Include disk fallbacks and page entries: path tags must not resurrect a
+        // prerender after invalidation just because SQLite has no page row yet.
+        const state = await nativeTagState(native, tagsForInvalidation(parsed, reconciled.tags, ctx));
+        if (state.expiredAtMs > 0 && state.expiredAtMs <= nowMs()
+          && entryLastModified(parsed) <= state.expiredAtMs) return null;
+        return parsed;
+      });
+      return read.degraded ? null : read.value;
     }
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
@@ -953,8 +956,8 @@ class BrrrdLegacyCacheHandler {
     const native = await nativeCacheBinding(this.binding);
     // Next owns page staleness and SWR. The backend must retain stale HTML/RSC
     // until Next replaces it; a hard TTL would turn expiry into a cache miss.
-    if (native) return native.set(cacheKey, bytes, tags,
-      data?.kind === "APP_PAGE" || data?.kind === "APP_ROUTE" ? 0 : ttl);
+    if (native) return degradedCacheWrite("set", () => native.set(cacheKey, bytes, tags,
+      data?.kind === "APP_PAGE" || data?.kind === "APP_ROUTE" ? 0 : ttl));
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       memoryEntries.set(cacheKey, {
