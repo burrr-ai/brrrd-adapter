@@ -3,9 +3,21 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 
 import { bundleAppHandler } from "../dist/bundler.js";
+import { loadNativeBundle, registeredWork, runNativeRequest } from './fixtures/native-request-owner.mjs';
+
+// Unit tests declare the same ABI a native runtime provides as a reserved binding.
+process.env.BRRRD_RUNTIME_ABI = "workerd-node-v1";
+
+// Each case is a different product isolate. Production rejects mixed bundle owners.
+beforeEach(() => {
+  registeredWork.length = 0;
+  for (const key of ['@next/cache-handlers', '@next/cache-handlers-map', '@next/cache-handlers-set']) {
+    delete globalThis[Symbol.for(key)];
+  }
+});
 
 function tempDir(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `brrrd-adapter-${name}-`));
@@ -55,7 +67,7 @@ test("dispatcher resolves async webpack route module exports before calling hand
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const syncRes = res();
   await dispatch("sync", { headers: { host: "example.test" } }, syncRes);
@@ -95,7 +107,7 @@ test("dispatcher loads only the requested route module", async () => {
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const healthyRes = res();
   await dispatch("healthy", { headers: { host: "example.test" } }, healthyRes);
@@ -161,7 +173,7 @@ test("dispatcher inlines Next server build-time env from resolved config", async
   assert.equal(bundle.includes("process.env.__NEXT_APP_SHELLS"), false);
   assert.equal(bundle.includes("process.env.__NEXT_VARY_PARAMS"), false);
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
   const envRes = res();
   await dispatch("env", { headers: { host: "example.test" } }, envRes);
 
@@ -200,14 +212,14 @@ test("dispatcher provides Next virtual project and dist request metadata", async
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const metaRes = res();
   await dispatch(
     "meta",
     {
       headers: { host: "example.test" },
-      __brrrd_request_meta: { preserved: "yes" },
+      __brrrd_request_meta: { preserved: "yes", distDir: "/bundle/runtime/.next" },
     },
     metaRes,
   );
@@ -215,7 +227,7 @@ test("dispatcher provides Next virtual project and dist request metadata", async
   assert.deepEqual(JSON.parse(metaRes.body), {
     preserved: "yes",
     relativeProjectDir: ".",
-    distDir: "/bundle/.next",
+    distDir: "/bundle/runtime/.next",
     hostname: "example.test",
     minimalMode: false,
   });
@@ -241,7 +253,7 @@ test("dispatcher preserves brrrd PPR resume metadata for Next route modules", as
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const metaRes = res();
   await dispatch(
@@ -251,6 +263,7 @@ test("dispatcher preserves brrrd PPR resume metadata for Next route modules", as
       __brrrd_request_meta: {
         minimalMode: true,
         postponed: "postponed-state",
+        distDir: "/bundle/runtime/.next",
       },
     },
     metaRes,
@@ -260,7 +273,7 @@ test("dispatcher preserves brrrd PPR resume metadata for Next route modules", as
     minimalMode: true,
     postponed: "postponed-state",
     relativeProjectDir: ".",
-    distDir: "/bundle/.next",
+    distDir: "/bundle/runtime/.next",
     hostname: "example.test",
   });
 });
@@ -293,7 +306,7 @@ test("dispatcher keeps brrrd PPR fallback route params out of Next request metad
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const metaRes = res();
   await dispatch(
@@ -346,7 +359,7 @@ test("dispatcher provides render404 request metadata for Next Pages notFound han
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const notFoundRes = res();
   await dispatch(
@@ -394,7 +407,7 @@ test("dispatcher renders custom Pages 500 route when a Pages handler throws", as
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const errorRes = res();
   await dispatch(
@@ -427,31 +440,24 @@ test("dispatcher wires Next router-server revalidate metadata to brrrd path inva
     },
   );
 
-  const previousDeno = globalThis.Deno;
   const invalidated = [];
-  globalThis.Deno = {
-    core: {
-      ops: {
-        async op_brrrd_cache_revalidate_path(pathname) {
-          invalidated.push(pathname);
-          return true;
-        },
-      },
-    },
-  };
-  try {
-    const { default: dispatch } = await import(pathToFileURL(bundlePath));
-    const apiRes = res();
-    await dispatch("api-revalidate", { headers: { host: "example.test" } }, apiRes);
-    assert.equal(apiRes.body, "ok");
-    assert.deepEqual(invalidated, ["/stale"]);
-  } finally {
-    if (previousDeno === undefined) {
-      delete globalThis.Deno;
-    } else {
-      globalThis.Deno = previousDeno;
-    }
-  }
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
+  const apiRes = res();
+  await dispatch("api-revalidate", {
+    headers: { host: "example.test" },
+    cloudflare: { env: { BRRRD_CACHE: { async fetch(_url, init) {
+      assert.equal(init.method, "POST");
+      assert.ok(init.body instanceof Uint8Array);
+      const length = new DataView(init.body.buffer, init.body.byteOffset, 4).getUint32(0, false);
+      assert.equal(length + 4, init.body.byteLength);
+      const operation = JSON.parse(new TextDecoder().decode(init.body.subarray(4)));
+      assert.equal(operation.op, "revalidate_path");
+      invalidated.push(operation.key);
+      return Response.json(true);
+    } } } },
+  }, apiRes);
+  assert.equal(apiRes.body, "ok");
+  assert.deepEqual(invalidated, ["/stale"]);
 });
 
 test("dispatcher bundling tolerates missing package requires from Next runtime files", async () => {
@@ -498,7 +504,7 @@ test("dispatcher bundling tolerates missing package requires from Next runtime f
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const healthyRes = res();
   await dispatch("healthy", { headers: { host: "example.test" } }, healthyRes);
@@ -565,7 +571,7 @@ test("dispatcher bundling leaves missing late imports inside node_modules for ru
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
   const lateDepRes = res();
   await dispatch("late-dep", { headers: { host: "example.test" } }, lateDepRes);
   assert.equal(lateDepRes.body, "esm-ok:cjs-ok");
@@ -612,7 +618,7 @@ test("dispatcher bundling preserves require conditions for Next Pages server bun
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
   const ssrRes = res();
   await dispatch("ssr", { headers: { host: "example.test" } }, ssrRes);
   assert.equal(ssrRes.body, "Alternative");
@@ -667,7 +673,7 @@ test("dispatcher bundling handles wasm assets referenced by traced runtime chunk
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
   const wasmRes = res();
   await dispatch("worker", { headers: { host: "example.test" } }, wasmRes);
   assert.equal(wasmRes.body, "true");
@@ -773,7 +779,7 @@ module.exports = {
   globalThis.__brrrd_external_runtime_spec =
     "next/dist/compiled/next-server/pages-turbo.runtime.prod.js";
   try {
-    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
     const runtimeFileRes = res();
     await dispatch("runtime-file", { headers: { host: "example.test" } }, runtimeFileRes);
     assert.equal(runtimeFileRes.body, "chunk-ok:pages-turbo:source-map-ok:swc-helper-ok");
@@ -844,7 +850,7 @@ module.exports = {
   globalThis.__brrrd_modules = { fs, path };
   globalThis.__brrrd_node_modules_root = path.join(root, "node_modules");
   try {
-    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
     const runtimeFileRes = res();
     await dispatch("runtime-require-resolve", { headers: { host: "example.test" } }, runtimeFileRes);
     assert.equal(runtimeFileRes.body, "typescript.js:ts-runtime");
@@ -862,7 +868,7 @@ module.exports = {
   }
 });
 
-test("dispatcher supplies Next-compatible no-op OpenTelemetry API", async () => {
+test("dispatcher bundles the actual Next OpenTelemetry API with its default no-op provider", async () => {
   const root = tempDir("dispatcher-otel");
   const otelRoute = path.join(root, "otel-route.cjs");
 
@@ -896,14 +902,14 @@ module.exports = {
     },
   );
 
-  const { default: dispatch } = await import(pathToFileURL(bundlePath));
+  const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
 
   const otelRes = res();
   await dispatch("otel", { headers: { host: "example.test" } }, otelRes);
   assert.equal(otelRes.body, "otel-ok");
 });
 
-test("dispatcher prefers packaged OpenTelemetry API over fallback stub", async () => {
+test("dispatcher prefers the app OpenTelemetry API over the Next vendored API", async () => {
   const root = tempDir("dispatcher-otel-real-package");
   const otelRoute = path.join(root, "otel-route.cjs");
   const packageDir = path.join(root, "node_modules", "@opentelemetry", "api");
@@ -970,7 +976,7 @@ module.exports = {
   globalThis.__brrrd_modules = { fs, path };
   globalThis.__brrrd_node_modules_root = path.join(root, "node_modules");
   try {
-    const { default: dispatch } = await import(pathToFileURL(bundlePath));
+    const { default: dispatch } = await loadNativeBundle(pathToFileURL(bundlePath));
     const otelRes = res();
     await dispatch("otel", { headers: { host: "example.test" } }, otelRes);
     assert.equal(otelRes.body, "real-otel-api:0000000000000042");
@@ -986,4 +992,103 @@ module.exports = {
       globalThis.__brrrd_node_modules_root = previousNodeModulesRoot;
     }
   }
+});
+
+test('dispatcher selects one owned modern writer and an owned canonical legacy subclass', async () => {
+  const root = tempDir('dispatcher-cache-writer');
+  const route = path.join(root, 'route.mjs');
+  fs.writeFileSync(route, "export function handler(_req,res){res.end('ok');}\n");
+  const outDir = path.join(root, 'out');
+  const file = await bundleAppHandler([{id:'route',filePath:route}], {projectDir:root,distDir:path.join(root,'.next'),outDir,buildId:'writers'});
+  const {default:dispatch} = await loadNativeBundle(pathToFileURL(file));
+  await dispatch('route', {headers:{host:'example.test'}}, res());
+  const runtime = path.join(outDir,'runtime/node_modules/.cache/@brrrd/adapter');
+  const modernModule = await loadNativeBundle(pathToFileURL(path.join(runtime,'cache-handler.mjs')));
+  const legacyModule = await loadNativeBundle(pathToFileURL(path.join(runtime,'cache-handler-legacy.mjs')));
+  const modern = modernModule.default;
+  const legacy = legacyModule.default;
+  const entries = globalThis[Symbol.for('@next/cache-handlers-map')];
+  assert.deepEqual([...entries.keys()].sort(), ['default','remote']);
+  const writer=entries.get('default');
+  assert.equal(writer,modern,'lazy imports must see the same owned publication');
+  assert.equal(entries.get('remote'),writer);
+  assert.deepEqual([...globalThis[Symbol.for('@next/cache-handlers-set')]], [writer]);
+  const OwnedLegacy=globalThis[Symbol.for('@next/cache-handlers')].FetchCache;
+  assert.equal(OwnedLegacy,legacy,'lazy legacy imports must see the owned class');
+  assert.equal(Object.getPrototypeOf(OwnedLegacy.prototype),legacyModule.BrrrdLegacyCacheHandler.prototype);
+  const work=Promise.resolve('owned');modernModule.BrrrdCacheHandler.prototype.get=()=>work;
+  assert.equal(runNativeRequest({},()=>writer.get('key')),work);
+  assert.equal(registeredWork.at(-1),work);
+});
+
+test('two bundles in one global are explicitly rejected without replacing the first writer', async () => {
+  const root = tempDir('dispatcher-competing-cache-writer');
+  const route=path.join(root,'route.mjs');fs.writeFileSync(route,"export function handler(_req,res){res.end('ok');}\n");
+  const builds=[];
+  for(const id of ['one','two'])builds.push(await bundleAppHandler([{id:'route',filePath:route}],{projectDir:root,distDir:path.join(root,'.next'),outDir:path.join(root,id),buildId:id}));
+  const first=(await loadNativeBundle(pathToFileURL(builds[0]))).default, second=(await loadNativeBundle(pathToFileURL(builds[1]))).default;
+  await first('route',{headers:{host:'example.test'}},res());
+  const writer=globalThis[Symbol.for('@next/cache-handlers')].DefaultCache;
+  await assert.rejects(second('route',{headers:{host:'example.test'}},res()),/unsupported competing Next cache handler/);
+  assert.equal(globalThis[Symbol.for('@next/cache-handlers')].DefaultCache,writer);
+  const response=res();await first('route',{headers:{host:'example.test'}},response);assert.equal(response.body,'ok');
+});
+
+test('artifact initializer imports real routes without fabricating a request event', async () => {
+  const root=tempDir('dispatcher-native-initialize');
+  const route=path.join(root,'route.mjs');
+  fs.writeFileSync(route,"globalThis.__brrrdInitializerImported = true; export function handler(_req,res){res.end('ok');}\n");
+  delete globalThis.__brrrdInitializerImported;
+  const file=await bundleAppHandler([{id:'route',filePath:route}],{projectDir:root,distDir:path.join(root,'.next'),outDir:path.join(root,'out'),buildId:'initialize'});
+  const app=await loadNativeBundle(pathToFileURL(file));assert.equal(globalThis.__brrrdInitializerImported,undefined);
+  await app.initialize();assert.equal(globalThis.__brrrdInitializerImported,true);
+  delete globalThis.__brrrdInitializerImported;
+});
+
+test('artifact initializer rejects an actual route import failure before invocation', async () => {
+  const root=tempDir('dispatcher-native-initialize-error');
+  const route=path.join(root,'route.mjs');
+  fs.writeFileSync(route,"throw new Error('actual-route-initialization-refused'); export function handler(){ throw new Error('must not invoke'); }\n");
+  const file=await bundleAppHandler([{id:'route',filePath:route}],{projectDir:root,distDir:path.join(root,'.next'),outDir:path.join(root,'out'),buildId:'initialize-error'});
+  const app=await loadNativeBundle(pathToFileURL(file));
+  await assert.rejects(app.initialize(),/actual-route-initialization-refused/);
+});
+
+test('dispatcher loads official Next baseline before actual AsyncLocalStorage capture', async () => {
+  const root=tempDir('dispatcher-next-als-baseline');const route=path.join(root,'route.mjs');
+  const alsModule=path.join(import.meta.dirname,'../node_modules/next/dist/server/app-render/work-async-storage.external.js');
+  fs.writeFileSync(route,`import { workAsyncStorage } from ${JSON.stringify(alsModule)}; export function handler(_req,res){workAsyncStorage.run({nativeBaseline:true},()=>res.end(JSON.stringify(workAsyncStorage.getStore()))); }\n`);
+  const file=await bundleAppHandler([{id:'als',filePath:route}],{projectDir:root,distDir:path.join(root,'.next'),outDir:path.join(root,'out'),buildId:'als'});
+  const before=globalThis.AsyncLocalStorage;delete globalThis.AsyncLocalStorage;
+  try {
+    const app=await loadNativeBundle(pathToFileURL(file));const response=res();await app.default('als',{headers:{host:'example.test'}},response);
+    assert.deepEqual(JSON.parse(response.body),{nativeBaseline:true});
+    assert.equal(globalThis.AsyncLocalStorage,(await import('node:async_hooks')).AsyncLocalStorage);
+  } finally { if(before===undefined)delete globalThis.AsyncLocalStorage;else globalThis.AsyncLocalStorage=before; }
+});
+
+test("Node proxy uses the generated Web handler and keeps its default adapter ABI separate", async () => {
+  const root = tempDir("node-proxy-web-handler");
+  const route = path.join(root, "route.mjs");
+  const proxyModule = path.join(root, "proxy.mjs");
+  fs.writeFileSync(route, "export function handler(_req,res) { res.end('route'); }\n");
+  fs.writeFileSync(proxyModule, `
+    export default function adapterOptions() { throw new Error('wrong default ABI'); }
+    export async function handler(request, ctx) {
+      ctx.waitUntil(Promise.resolve());
+      return new Response(request.method + ':' + await request.text(), {headers: {'x-official-handler':'web'}});
+    }
+  `);
+  const bundle = await bundleAppHandler([{id:'route',filePath:route}], {
+    projectDir:root,distDir:path.join(root,'.next'),outDir:path.join(root,'out'),buildId:'proxy-test',
+  }, {filePath:proxyModule});
+  const app = await loadNativeBundle(pathToFileURL(bundle));
+  await app.initialize();
+  const background = [];
+  const response = await app.proxy(new Request('http://proxy.test/body', {method:'POST',body:'actual-body'}), {}, {waitUntil(p) {background.push(p);}}, {});
+  assert.equal(await response.text(),'POST:actual-body');
+  assert.equal(response.headers.get('x-official-handler'),'web');
+  assert.equal(background.length,1,'proxy work uses the current native owner');
+  await Promise.all(background);
+  fs.rmSync(root,{recursive:true,force:true});
 });

@@ -1223,3 +1223,14 @@ test("modern cache handler scopes keys and tags to the app so another app cannot
     }
   }
 });
+
+
+test('Node build get still waits for its local pending cache producer', {timeout:1000},async()=>{
+  const { BrrrdCacheHandler }=await import('../runtime/cache-handler.mjs');const handler=new BrrrdCacheHandler();
+  let release;const pending=new Promise(resolve=>{release=resolve;});let completed=false;
+  const write=handler.set('node-build-pending-contract',pending);
+  const read=handler.get('node-build-pending-contract',[]).then(value=>{completed=true;return value;});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(completed,false);
+  release({value:new ReadableStream({start(c){c.enqueue(new Uint8Array([42]));c.close();}}),tags:[],stale:60,timestamp:Date.now(),expire:3600,revalidate:60});
+  await write;assert.ok(await read);
+});

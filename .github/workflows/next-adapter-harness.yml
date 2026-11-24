@@ -5,7 +5,7 @@ on:
     inputs:
       nextjsRef:
         description: Next.js npm caret range, repo ref, branch, tag, or SHA
-        default: ^16.4.3
+        default: ^16.4.6
         type: string
       group:
         description: Next e2e shard group
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      NEXTJS_REF: ${{ github.event.inputs.nextjsRef || '^16.4.3' }}
+      NEXTJS_REF: ${{ github.event.inputs.nextjsRef || '^16.4.6' }}
     steps:
       - name: Checkout adapter
         uses: actions/checkout@v4

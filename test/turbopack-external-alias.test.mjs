@@ -81,7 +81,6 @@ const emptySupplement = {
   staticResponseMeta: [], dynamicPrerenderRoutes: [], appPrerenderDataRoutes: [],
   pprSegmentPrefetchRoutes: [], rewriteSupplement: undefined,
   staticRouteSupplement: [], pprPages: [], preview: undefined,
-  edgeFunctions: [], middleware: undefined,
 };
 
 test("scoped Turbopack alias (@scope/name-<hash>) is materialized under runtime node_modules", () => {
@@ -90,7 +89,7 @@ test("scoped Turbopack alias (@scope/name-<hash>) is materialized under runtime 
   const outDir = path.join(root, "dist", "brrrd");
 
   const plan = createArtifactPlan(
-    minimalModel(root, distDir), emptySupplement, new Map(), outDir,
+    minimalModel(root, distDir), emptySupplement, outDir,
     { hasAppBundle: false },
   );
 

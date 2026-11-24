@@ -1,6 +1,6 @@
 {
   "name": "@brrrd/adapter",
-  "version": "0.1.12",
+  "version": "0.2.0",
   "description": "Next.js build adapter that packages an app for the brrrd runtime (comwit.io platform).",
   "keywords": [
     "nextjs",
@@ -40,6 +40,7 @@
     "prepack": "tsc",
     "publish:local": "pnpm publish --access public",
     "test": "tsc && node --test test/*.test.mjs",
+    "smoke:next-runtime": "tsc && node scripts/next-runtime-smoke.mjs",
     "dev": "tsc --watch",
     "harness:fixture": "node scripts/local-harness.mjs fixture",
     "harness:group": "node scripts/local-harness.mjs group",
@@ -53,9 +54,9 @@
     "next": "^16.2"
   },
   "devDependencies": {
-    "@next/routing": "^16.4.3",
+    "@next/routing": "16.4.6",
     "@types/node": "^22.0.0",
-    "next": "^16.4.3",
+    "next": "16.4.6",
     "typescript": "^5.8.0"
   }
 }

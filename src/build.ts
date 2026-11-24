@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import {
+  artifactProvenance,
   createArtifactPlan,
   executeArtifactPlan,
   manifestArtifacts,
@@ -12,9 +13,12 @@ import {
   adapterContextSnapshotEnabled,
   writeAdapterContextSnapshot,
 } from "./diagnostics.js";
-import { compileEdgeFunctions } from "./edge-function-compiler.js";
 import { assertExternalAliasesResolvable } from "./external-preflight.js";
-import { writeManifest } from "./manifest-emitter.js";
+import {
+  artifactProvenancePath,
+  writeArtifactProvenance,
+  writeManifest,
+} from "./manifest-emitter.js";
 import { createManifestSupplement } from "./manifest-supplement.js";
 import { compileMiddleware } from "./middleware-compiler.js";
 import {
@@ -26,7 +30,8 @@ import {
 import { nextServerRuntimeEnv } from "./next-config.js";
 import { compileRouteTable, compileRouting } from "./routing-compiler.js";
 import { sanitizeId } from "./routing.js";
-import type { BuildContext, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
+import { assertNodeRuntime } from "./runtime-validator.js";
+import type { BuildContext, BrrrdMiddleware } from "./types.js";
 
 function proxySourceFor(middleware: BrrrdMiddleware): "middleware" | "proxy" {
   const probe = [
@@ -37,32 +42,8 @@ function proxySourceFor(middleware: BrrrdMiddleware): "middleware" | "proxy" {
   return probe.includes("proxy") ? "proxy" : "middleware";
 }
 
-function edgeFunctionsToManifestRecord(
-  edgeFunctions: Map<string, BrrrdEdgeFunction>,
-): Record<string, BrrrdEdgeFunction> | undefined {
-  if (edgeFunctions.size === 0) return undefined;
-  return Object.fromEntries(edgeFunctions);
-}
-
-function isEdgeRuntime(runtime: string | undefined): boolean {
-  return runtime === "edge" || runtime === "experimental-edge";
-}
-
-function writeFallbackAppBundle(outDir: string): void {
-  fs.writeFileSync(
-    path.join(outDir, "bundles", "app.js"),
-    [
-      "export default async function brrrdFallbackHandler(_routeId, _req, res) {",
-      "  res.writeHead(404, { 'content-type': 'text/plain' });",
-      "  res.end('Not Found');",
-      "}",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
-}
-
 export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
+  assertNodeRuntime(ctx);
   const outDir = path.join(ctx.projectDir, "dist", "brrrd");
 
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -71,13 +52,10 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const model = createNextBuildModel(ctx);
   const supplement = createManifestSupplement(model.distDir, model.outputs.prerenders);
-  const compiledEdgeFunctions = compileEdgeFunctions(model, supplement);
   const requestOutputList = requestOutputs(model);
   const compatibility = validateCompatibility(
     model,
-    requestOutputList,
     allOutputs(model),
-    { edgeFunctions: compiledEdgeFunctions },
   );
 
   const buildCtx: BuildContext = {
@@ -99,23 +77,21 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const nodeOutputs = requestOutputList
     .filter((output): output is typeof output & { filePath: string } => (
-      typeof output.filePath === "string" && !isEdgeRuntime(output.runtime)
+      typeof output.filePath === "string"
     ))
     .map((output) => ({ ...output, id: sanitizeId(output.id) }));
 
+  const middleware = compileMiddleware(model);
+  const proxyOutput = model.outputs.middleware;
+  const nodeProxy = middleware && proxyOutput?.filePath
+    ? { filePath: proxyOutput.filePath, assets: proxyOutput.assets }
+    : undefined;
   if (nodeOutputs.length > 0) {
-    await bundleAppHandler(nodeOutputs, buildCtx);
+    await bundleAppHandler(nodeOutputs, buildCtx, nodeProxy);
     console.log(`  Bundled ${nodeOutputs.length} handlers into app.js`);
   }
-  const hasEdgeFunctions = compiledEdgeFunctions.size > 0;
-  if (nodeOutputs.length === 0 && hasEdgeFunctions) {
-    writeFallbackAppBundle(outDir);
-    console.log("  Wrote fallback dispatcher for edge-only app");
-  }
-
-  const middleware = compileMiddleware(model, supplement);
-  const artifactPlan = createArtifactPlan(model, supplement, compiledEdgeFunctions, outDir, {
-    hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
+  const artifactPlan = createArtifactPlan(model, supplement, outDir, {
+    hasAppBundle: nodeOutputs.length > 0,
     middleware,
   });
   const copySummary = executeArtifactPlan(artifactPlan, outDir);
@@ -127,9 +103,6 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   if (copySummary.middlewareCount > 0) {
     console.log(`  Copied ${copySummary.middlewareCount} proxy/middleware files`);
   }
-  if (copySummary.edgeFunctionCount > 0) {
-    console.log(`  Copied ${copySummary.edgeFunctionCount} edge function files`);
-  }
 
   // Fail-fast: the built server can carry a bundler-externalized package alias
   // (e.g. a Turbopack `@scope/name-<hash>/subpath`) that must be materialized
@@ -139,7 +112,6 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
 
   const routes = compileRouteTable(model, supplement);
   const routing = compileRouting(model, supplement);
-  const edgeFunctions = edgeFunctionsToManifestRecord(compiledEdgeFunctions);
   if (middleware) {
     routing.proxy = {
       source: proxySourceFor(middleware),
@@ -162,9 +134,6 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
       `  PPR enabled for ${supplement.pprPages.length} page(s): ${supplement.pprPages.join(", ")}`,
     );
   }
-  if (edgeFunctions) {
-    console.log(`  Edge functions: ${Object.keys(edgeFunctions).length}`);
-  }
 
   const env: Record<string, string> = {
     ...nextServerRuntimeEnv(model.config),
@@ -181,12 +150,13 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
     routing,
     manifestArtifacts(artifactPlan),
     compatibility,
-    nodeOutputs.length > 0 || hasEdgeFunctions ? "bundles/app.js" : undefined,
+    nodeOutputs.length > 0 ? "bundles/app.js" : undefined,
     middleware,
-    edgeFunctions,
     supplement.pprPages,
     supplement.preview,
   );
   console.log(`  Manifest written to ${path.join(outDir, "manifest.json")}`);
+  writeArtifactProvenance(outDir, artifactProvenance(artifactPlan));
+  console.log(`  Artifact provenance written to ${artifactProvenancePath(outDir)}`);
   console.log(`[@brrrd/adapter] Done!`);
 }

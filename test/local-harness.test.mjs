@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   artifactRunDir,
@@ -272,7 +273,7 @@ test("harnessEnv wires official deploy scripts and bundler axis", () => {
     artifactsDir: "/tmp/artifacts",
   });
 
-  assert.equal(env.ADAPTER_DIR.endsWith("brrrd-adapter"), true);
+  assert.equal(env.ADAPTER_DIR, path.resolve(fileURLToPath(new URL("..", import.meta.url))));
   assert.match(env.NEXT_TEST_DEPLOY_SCRIPT_PATH, /scripts\/e2e-deploy\.sh$/);
   assert.match(env.NEXT_TEST_DEPLOY_LOGS_SCRIPT_PATH, /scripts\/e2e-logs\.sh$/);
   assert.match(env.NEXT_TEST_CLEANUP_SCRIPT_PATH, /scripts\/e2e-cleanup\.sh$/);

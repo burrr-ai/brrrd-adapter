@@ -1,3 +1,6 @@
+import { nativeCacheBinding, nativeTagState, createOwnedLegacyCacheHandler, degradedCacheRead, degradedCacheWrite } from './cache-handler.mjs';
+import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
+
 // A-6: Polyfill for the CacheHandler interface of Next.js's legacy IncrementalCache.
 // Used by `unstable_cache`, fetch revalidate, page ISR, etc. Register this module
 // under `cacheHandler` (singular) in next.config.
@@ -585,8 +588,13 @@ function readDiskAppPageEntry(serverDistDir, cacheKey, ctx) {
       rscData = readBufferIfExists(appCachePath(serverDistDir, candidate, RSC_SUFFIX));
     }
 
+    const lastModified = readJsonIfExists(nodePath().join(serverDistDir, "brrrd-prerender-cache.json"))
+      ?.lastModified?.[nodePath().relative(serverDistDir, htmlPath).split(nodePath().sep).join("/")]
+      ?? Math.round(stat.mtimeMs);
+    // Next treats zero as "now". An unknown/invalid age is a miss, never fresh.
+    if (!Number.isFinite(lastModified) || lastModified <= 0 || lastModified > nowMs()) return null;
     return {
-      lastModified: Math.round(stat.mtimeMs),
+      lastModified,
       value: {
         kind: "APP_PAGE",
         html,
@@ -787,6 +795,7 @@ async function writeBuildDiskEntry(cacheFs, pathModule, serverDistDir, cacheKey,
 
 class BrrrdLegacyCacheHandler {
   constructor(ctx = {}) {
+    this.binding = ctx.cacheBinding;
     this.fs = ctx.fs;
     this.flushToDisk = !!ctx.flushToDisk;
     this.serverDistDir = ctx.serverDistDir;
@@ -811,6 +820,36 @@ class BrrrdLegacyCacheHandler {
   }
 
   async get(cacheKey, ctx) {
+    const native = await nativeCacheBinding(this.binding);
+    if (native) {
+      const read = await degradedCacheRead(async () => {
+        const publication = cacheTagPublication();
+        const order = publication.issueRead();
+        const hit = await native.get(cacheKey);
+        publication.hydrate(hit?.tag_states, order);
+        if (hit?.is_expired) return null;
+        let parsed;
+        if (!hit) {
+          parsed = readDiskAppPageEntry(this.serverDistDir, cacheKey, ctx);
+          if (!parsed) return null;
+        } else {
+          try { parsed = JSON.parse(new TextDecoder().decode(hit.value), decodeReviver); }
+          catch (error) { if (error instanceof SyntaxError) return null; throw error; }
+        }
+        const reconciled = reconcileFetchTags(parsed, parsedStoredTags(parsed, hit?.tags || []), ctx);
+        if (reconciled.changed) {
+          await degradedCacheWrite(() => native.set(cacheKey,
+            new TextEncoder().encode(JSON.stringify(parsed, encodeReplacer)), reconciled.tags, parsed.value?.revalidate || 0));
+        }
+        // Include disk fallbacks and page entries: path tags must not resurrect a
+        // prerender after invalidation just because SQLite has no page row yet.
+        const state = await nativeTagState(native, tagsForInvalidation(parsed, reconciled.tags, ctx));
+        if (state.expiredAtMs > 0 && state.expiredAtMs <= nowMs()
+          && entryLastModified(parsed) <= state.expiredAtMs) return null;
+        return parsed;
+      });
+      return read.degraded ? null : read.value;
+    }
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       const entry = memoryEntries.get(cacheKey);
@@ -914,6 +953,11 @@ class BrrrdLegacyCacheHandler {
     const bytes = new TextEncoder().encode(text);
     const tags = cacheValueTags(data, ctx);
     const ttl = (ctx && typeof ctx.revalidate === "number") ? ctx.revalidate : 0;
+    const native = await nativeCacheBinding(this.binding);
+    // Next owns page staleness and SWR. The backend must retain stale HTML/RSC
+    // until Next replaces it; a hard TTL would turn expiry into a cache miss.
+    if (native) return degradedCacheWrite(() => native.set(cacheKey, bytes, tags,
+      data?.kind === "APP_PAGE" || data?.kind === "APP_ROUTE" ? 0 : ttl));
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       memoryEntries.set(cacheKey, {
@@ -944,6 +988,8 @@ class BrrrdLegacyCacheHandler {
 
   async revalidateTag(tags, _durations) {
     const arr = Array.isArray(tags) ? tags : [tags];
+    const native = await nativeCacheBinding(this.binding);
+    if (native) return cacheTagPublication().update(native, arr, tagMutation(_durations, nowMs()));
     updateNextTagsManifest(arr, _durations);
     const timestamp = nowMs();
     for (const tag of arr) memoryTagTimestamps.set(tag, timestamp);
@@ -961,5 +1007,18 @@ class BrrrdLegacyCacheHandler {
   }
 }
 
-export default BrrrdLegacyCacheHandler;
-export { BrrrdLegacyCacheHandler, decodeReviver, encodeReplacer };
+let cacheHandlerClass = BrrrdLegacyCacheHandler;
+let configuredNativeOwner;
+
+export function configureNativeLegacyCacheHandler(owner) {
+  if (configuredNativeOwner !== undefined) {
+    if (configuredNativeOwner !== owner) throw new Error('competing native cache work owner');
+    return cacheHandlerClass;
+  }
+  const owned = createOwnedLegacyCacheHandler(BrrrdLegacyCacheHandler, owner);
+  configuredNativeOwner = owner;
+  cacheHandlerClass = owned;
+  return cacheHandlerClass;
+}
+
+export { cacheHandlerClass as default, BrrrdLegacyCacheHandler, decodeReviver, encodeReplacer };

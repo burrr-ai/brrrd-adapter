@@ -1,13 +1,107 @@
+import { cacheTagPublication, tagMutation } from './cache-tags.mjs';
+
 // Implements the Next.js 16 cacheHandlers interface. This module is imported by
 // both the Next build process and the brrrd isolate, so the default export must
 // be a handler object and must not touch runtime-only Deno ops at module load.
 
 const memoryEntries = new Map();
 const memoryTagStates = new Map();
-const pendingSets = new Map();
+// Build-time Node work has no request I/O lifetime. Native requests must never
+// await another request's producer promise; their reads go to the backend.
+const buildPendingSets = new Map();
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const ENVELOPE_MAGIC = textEncoder.encode("brrrd-next-cache-v1\n");
+
+// The cache is an optimization. When the native backend refuses an operation
+// (429) or it misses its deadline (408 frame, 504 reply), a read is a miss and
+// a write is not stored: Next renders fresh output either way. An unknown tag
+// expiration is left to `get`, which checks the soft tags itself. Tag and path
+// invalidation never degrade; their errors stay errors.
+const DEGRADED_STATUSES = new Set([408, 429, 504]);
+// Cumulative counters, one per outcome; the log is a rate-limited summary.
+export const cacheDegradation = { readMisses: 0, writesSkipped: 0, expirationsDeferred: 0 };
+export const DEGRADATION_LOG_INTERVAL_MS = 10_000;
+const degradationLog = { lastAt: -Infinity, logged: { ...cacheDegradation } };
+
+// Test seam: forget when the last summary was written.
+export function resetDegradationLog() {
+  degradationLog.lastAt = -Infinity;
+  degradationLog.logged = { ...cacheDegradation };
+}
+
+function degraded(counter, error) {
+  if (!DEGRADED_STATUSES.has(error?.cacheStatus)) throw error;
+  cacheDegradation[counter] += 1;
+  const now = nowMs();
+  if (now - degradationLog.lastAt < DEGRADATION_LOG_INTERVAL_MS) return;
+  const since = {};
+  for (const [name, total] of Object.entries(cacheDegradation)) since[name] = total - degradationLog.logged[name];
+  degradationLog.lastAt = now;
+  degradationLog.logged = { ...cacheDegradation };
+  console.warn(JSON.stringify({ event: "brrrd.cache.degraded", status: error.cacheStatus,
+    since, totals: { ...cacheDegradation } }));
+}
+
+export async function degradedCacheRead(read) {
+  try {
+    return { value: await read() };
+  } catch (error) {
+    degraded("readMisses", error);
+    return { degraded: true };
+  }
+}
+
+export async function degradedCacheWrite(write) {
+  try {
+    await write();
+  } catch (error) {
+    degraded("writesSkipped", error);
+  }
+}
+
+// Native requests have finite I/O lifetimes. Own the complete operation, not
+// just its RPC headers: serialization, response body consumption and finally
+// cleanup can all continue after the foreground response has been consumed.
+export function ownRequestWork(owner, promise) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  if (!promise || typeof promise.then !== "function") {
+    throw new TypeError("request work must be a promise");
+  }
+  owner(promise);
+  return promise;
+}
+
+export function createOwnedCacheHandler(handler, owner) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  for (const method of ["get", "set", "refreshTags", "getExpiration", "updateTags"]) {
+    if (typeof handler?.[method] !== "function") throw new TypeError(`cache handler requires ${method}`);
+  }
+  return {
+    get: (...args) => ownRequestWork(owner, handler.get(...args)),
+    set: (...args) => ownRequestWork(owner, handler.set(...args)),
+    refreshTags: (...args) => ownRequestWork(owner, handler.refreshTags(...args)),
+    getExpiration: (...args) => ownRequestWork(owner, handler.getExpiration(...args)),
+    updateTags: (...args) => ownRequestWork(owner, handler.updateTags(...args)),
+  };
+}
+
+export function createOwnedLegacyCacheHandler(Handler, owner) {
+  if (typeof owner !== "function") throw new TypeError("request work owner is required");
+  for (const method of ["get", "set", "revalidateTag"]) {
+    if (typeof Handler?.prototype?.[method] !== "function") throw new TypeError(`legacy cache handler requires ${method}`);
+  }
+  return class OwnedLegacyCacheHandler extends Handler {
+    get(...args) { return ownRequestWork(owner, super.get(...args)); }
+    set(...args) { return ownRequestWork(owner, super.set(...args)); }
+    revalidateTag(...args) { return ownRequestWork(owner, super.revalidateTag(...args)); }
+  };
+}
+
+function isNativeCacheExecution(binding) {
+  return binding !== undefined || configuredNativeOwner !== undefined
+    || globalThis.process?.env?.BRRRD_RUNTIME_ABI === 'workerd-node-v1';
+}
 
 function brrrdOps() {
   return globalThis.Deno?.core?.ops;
@@ -276,10 +370,29 @@ function cloneCacheEntryForStorage(entry) {
 }
 
 class BrrrdCacheHandler {
-  async get(cacheKey, softTags) {
-    const pending = pendingSets.get(cacheKey);
-    if (pending) await pending;
+  constructor(binding) { this.binding = binding; }
 
+  async get(cacheKey, softTags) {
+    if (!isNativeCacheExecution(this.binding)) {
+      const pending = buildPendingSets.get(cacheKey);
+      if (pending) await pending;
+    }
+
+    const native = await nativeCacheBinding(this.binding);
+    if (native) {
+      const read = await degradedCacheRead(async () => {
+        const publication = cacheTagPublication();
+        const order = publication.issueRead();
+        const hit = await native.get(cacheKey);
+        publication.hydrate(hit?.tag_states, order);
+        if (!hit || hit.is_expired) return undefined;
+        const stored = decodeStoredEntry(hit.value, hit.tags || [], nowMs() - Math.floor((hit.age_secs || 0) * 1000));
+        const state = await nativeTagState(native, [...stored.tags, ...(softTags || [])]);
+        if (state.expiredAtMs <= nowMs() && state.expiredAtMs > stored.timestamp) return undefined;
+        return cacheEntryWithTagState(stored, state);
+      });
+      return read.value;
+    }
     const ops = brrrdOps();
     if (!hasBrrrdCacheOps()) {
       const entry = memoryEntries.get(cacheKey);
@@ -327,6 +440,12 @@ class BrrrdCacheHandler {
         revalidate: entry.revalidate,
       };
 
+      const native = await nativeCacheBinding(this.binding);
+      if (native) {
+        await degradedCacheWrite(() => native.set(cacheKey, encodeStoredEntry(stored, bytes), stored.tags,
+          stored.revalidate || 0));
+        return;
+      }
       const ops = brrrdOps();
       if (!hasBrrrdCacheOps()) {
         memoryEntries.set(cacheKey, stored);
@@ -341,11 +460,12 @@ class BrrrdCacheHandler {
         stored.revalidate || 0,
       );
     })();
-    pendingSets.set(cacheKey, setPromise);
+    if (isNativeCacheExecution(this.binding)) return setPromise;
+    buildPendingSets.set(cacheKey, setPromise);
     try {
       await setPromise;
     } finally {
-      pendingSets.delete(cacheKey);
+      buildPendingSets.delete(cacheKey);
     }
   }
 
@@ -354,6 +474,18 @@ class BrrrdCacheHandler {
   }
 
   async getExpiration(tags) {
+    const native = await nativeCacheBinding(this.binding);
+    if (native) {
+      // Infinity tells Next that `get` checks these soft tags itself (Next's
+      // CacheHandler contract); native `get` does, and is a miss when it cannot.
+      // 0 ("never revalidated") could revive an invalidated entry.
+      try {
+        return (await nativeTagState(native, tags)).expiredAtMs;
+      } catch (error) {
+        degraded("expirationsDeferred", error);
+        return Infinity;
+      }
+    }
     if (hasBrrrdCacheOps()) {
       return (await maxRuntimeTagState(tags, dataScope())).expiredAtMs;
     }
@@ -361,6 +493,8 @@ class BrrrdCacheHandler {
   }
 
   async updateTags(tags, durations) {
+    const native = await nativeCacheBinding(this.binding);
+    if (native) return cacheTagPublication().update(native, tags, tagMutation(durations, nowMs()));
     updateNextTagsManifest(tags, durations);
     const now = nowMs();
     const state = tagStateFromDurations(durations, now);
@@ -376,7 +510,101 @@ class BrrrdCacheHandler {
   }
 }
 
-const cacheHandler = new BrrrdCacheHandler();
+const buildCacheHandler = new BrrrdCacheHandler();
+let cacheHandler = buildCacheHandler;
+let configuredNativeOwner;
 
-export default cacheHandler;
-export { BrrrdCacheHandler, cacheHandler };
+export function configureNativeCacheHandler(owner) {
+  if (configuredNativeOwner !== undefined) {
+    if (configuredNativeOwner !== owner) throw new Error('competing native cache work owner');
+    return cacheHandler;
+  }
+  const owned = createOwnedCacheHandler(buildCacheHandler, owner);
+  configuredNativeOwner = owner;
+  cacheHandler = owned;
+  return cacheHandler;
+}
+
+// Live exports keep bootstrap publication and Next's later dynamic import of
+// this external module on the same owned handler. Node build never configures it.
+export { BrrrdCacheHandler, cacheHandler, cacheHandler as default };
+
+
+// The workerd-node-v1 cache transport. The caller supplies its real env binding;
+// this helper owns no cache data, namespace, retry, or request-completion state.
+export function createCacheBinding(binding) {
+  if (!binding || typeof binding.fetch !== "function") {
+    throw new TypeError("native BRRRD_CACHE binding is required");
+  }
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  async function call(op, key, extra = {}, payload) {
+    const metadata = encoder.encode(JSON.stringify({ op, key, ...extra }));
+    if (metadata.byteLength > 65536) throw new RangeError("cache metadata exceeds 64KiB");
+    if (payload !== undefined && !(payload instanceof Uint8Array)) {
+      throw new TypeError("cache payload must be Uint8Array");
+    }
+    const bytes = payload === undefined ? new Uint8Array(0) : payload;
+    const frame = new Uint8Array(4 + metadata.byteLength + bytes.byteLength);
+    new DataView(frame.buffer).setUint32(0, metadata.byteLength, false);
+    frame.set(metadata, 4);
+    frame.set(bytes, 4 + metadata.byteLength);
+    const response = await binding.fetch("http://cache/", { method: "POST", body: frame });
+    if (op === "get" && response.status === 404) {
+      // A miss has nothing to read; release the reply instead of leaving it
+      // unread. Releasing is best effort: it never turns the miss into an error.
+      try { await response.body?.cancel(); } catch { /* the miss stands */ }
+      return null;
+    }
+    if (!response.ok) {
+      const body = await response.json();
+      const error = new Error(body.error || `cache binding failed: ${response.status}`);
+      error.cacheStatus = response.status;
+      throw error;
+    }
+    if (op !== "get") return response.json();
+    const body = await response.arrayBuffer();
+    if (body.byteLength < 4) throw new Error("cache reply has no metadata length");
+    const length = new DataView(body).getUint32(0, false);
+    if (length > body.byteLength - 4) throw new Error("cache reply metadata is truncated");
+    return { ...JSON.parse(decoder.decode(new Uint8Array(body, 4, length))),
+      value: new Uint8Array(body, 4 + length) };
+  }
+  return {
+    get: key => call("get", key),
+    set: (key, value, tags = [], ttl = 0) => call("set", key, { tags, ttl }, value),
+    commitTag: (key, { stale = null, expired = null } = {}) => call("commit_tag", key, { stale, expired }),
+    tagSnapshot: key => call("tag_snapshot", key),
+    tagState: key => call("tag_state", key),
+    tagExpiration: key => call("tag_expiration", key),
+    revalidatePath: key => call("revalidate_path", key),
+    pathExpiration: key => call("path_expiration", key),
+  };
+}
+
+
+// Native mode has one explicit ABI and requires the real official env capability.
+// Import is lazy so Next's build-time handler never requires a workerd-only module.
+export async function nativeCacheBinding(binding) {
+  if (binding !== undefined) return createCacheBinding(binding);
+  if (!isNativeCacheExecution(binding)) return undefined;
+  // Next's build/edge scanner must leave this native-only built-in to workerd.
+  const workersModule = 'cloudflare:workers';
+  const { env } = await import(/* webpackIgnore: true */ workersModule);
+  return createCacheBinding(env.BRRRD_CACHE);
+}
+
+export async function nativeTagState(cache, tags) {
+  const publication = cacheTagPublication();
+  const result = { staleAtMs: 0, expiredAtMs: 0 };
+  for (const tag of new Set(tags || [])) {
+    const order = publication.issueRead();
+    const state = await cache.tagSnapshot(tag);
+    if (state?.status !== 'committed') throw new Error(`cache tag snapshot ${state?.status || 'invalid'}`);
+    publication.hydrate([state], order);
+    const published = publication.read(tag);
+    result.staleAtMs = Math.max(result.staleAtMs, published.stale);
+    result.expiredAtMs = Math.max(result.expiredAtMs, published.expired);
+  }
+  return result;
+}

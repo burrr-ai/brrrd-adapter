@@ -3,34 +3,9 @@ import * as path from "node:path";
 import { shouldIgnoreNativeAssetForCompatibility } from "./compatibility/index.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import type { BrrrdCompatibilityReport } from "./types.js";
-import { sanitizeId } from "./routing.js";
 
 function isNativeBinding(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === ".node";
-}
-
-function isEdgeRuntime(runtime: string | undefined): boolean {
-  return runtime === "edge" || runtime === "experimental-edge";
-}
-
-function assertEdgeOutputsHaveFunctionMetadata(
-  outputs: NormalizedOutput[],
-  registry: { edgeFunctions: Map<string, unknown> },
-): void {
-  const edgeOutputs = outputs.filter((output) => isEdgeRuntime(output.runtime));
-  if (edgeOutputs.length === 0) return;
-
-  const missing = edgeOutputs.filter((output) => (
-    !registry.edgeFunctions.has(sanitizeId(output.id))
-  ));
-  if (missing.length === 0) return;
-
-  throw new Error([
-    "edge app/page/api route outputs are missing Adapter API edgeRuntime metadata or middleware-manifest.functions fallback metadata.",
-    ...missing.map((output) => (
-      `  - ${output.id} (${output.pathname}, runtime=${output.runtime ?? "unknown"})`
-    )),
-  ].join("\n"));
 }
 
 function assertNoNativeBindings(outputs: NormalizedOutput[]): void {
@@ -57,11 +32,8 @@ function assertNoNativeBindings(outputs: NormalizedOutput[]): void {
 
 export function validateCompatibility(
   model: NextBuildModel,
-  requestOutputs: NormalizedOutput[],
   allOutputs: NormalizedOutput[],
-  registry: { edgeFunctions: Map<string, unknown> },
 ): BrrrdCompatibilityReport {
-  assertEdgeOutputsHaveFunctionMetadata(requestOutputs, registry);
   assertNoNativeBindings(allOutputs);
   return {
     policies: [
@@ -71,9 +43,9 @@ export function validateCompatibility(
         detail: "traced .node assets are rejected unless an explicit compatibility policy owns them",
       },
       {
-        name: "edge-app-route-outputs",
+        name: "node-runtime-only",
         action: "validated",
-        detail: "edge app/page/api outputs are backed by Adapter API edgeRuntime metadata, with middleware-manifest.functions as fallback, and executed through the edge bridge",
+        detail: "Edge outputs are rejected before packaging; only Node routes and proxy/middleware are admitted",
       },
       {
         name: "next-og",

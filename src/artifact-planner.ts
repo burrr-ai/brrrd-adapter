@@ -20,7 +20,7 @@ import {
   isDynamicPrerenderTemplatePath,
   isRouteHandlerPrerender,
 } from "./prerender-classifier.js";
-import type { BrrrdArtifact, BrrrdEdgeFunction, BrrrdMiddleware } from "./types.js";
+import type { BrrrdArtifact, BrrrdArtifactProvenance, BrrrdMiddleware } from "./types.js";
 import { sanitizeId } from "./routing.js";
 import {
   isPagesRscFallbackOutput,
@@ -34,6 +34,8 @@ import {
 } from "./pages-dynamic-prerender.js";
 import { basePath } from "./next-config.js";
 
+import { CLIENT_DATA_SUFFIX } from "./compatibility/next-client-manifest.js";
+
 const require = createRequire(import.meta.url);
 
 const COMPRESS_EXTENSIONS = new Set([
@@ -41,7 +43,7 @@ const COMPRESS_EXTENSIONS = new Set([
 ]);
 const COMPRESS_MIN_BYTES = 1024;
 
-export type ArtifactPlanItem = BrrrdArtifact & {
+export type ArtifactPlanItem = BrrrdArtifact & Omit<BrrrdArtifactProvenance, "id"> & {
   packagePath: string;
   sourceAbsPath?: string;
   generatedContent?: string | Buffer;
@@ -57,7 +59,6 @@ export type ArtifactCopySummary = {
   prerenderCount: number;
   runtimeCount: number;
   middlewareCount: number;
-  edgeFunctionCount: number;
   compressedCount: number;
 };
 
@@ -420,10 +421,23 @@ function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   for (const name of rootManifests) {
     const sourceAbsPath = path.join(model.distDir, name);
     if (!fs.existsSync(sourceAbsPath)) continue;
+    let generatedContent: string | undefined;
+    if (name === "required-server-files.json") {
+      const deployed = JSON.parse(fs.readFileSync(sourceAbsPath, "utf8"));
+      const relative = "../node_modules/.cache/@brrrd/adapter/";
+      const absolute = "/bundle/runtime/node_modules/.cache/@brrrd/adapter/";
+      if (deployed.config?.cacheHandler === relative + "cache-handler-legacy.mjs") {
+        deployed.config.cacheHandler = absolute + "cache-handler-legacy.mjs";
+      }
+      if (deployed.config?.cacheHandlers?.default === relative + "cache-handler.mjs") {
+        deployed.config.cacheHandlers.default = absolute + "cache-handler.mjs";
+      }
+      generatedContent = JSON.stringify(deployed, null, 2) + "\n";
+    }
     items.push(artifactItem(model, {
       id: `runtime-root:${name}`,
       kind: "runtime-manifest",
-      sourceAbsPath,
+      ...(generatedContent === undefined ? { sourceAbsPath } : { generatedContent }),
       packagePath: packageJoin("runtime/.next", name),
       mountPath: packageJoin(".next", name),
       required: true,
@@ -494,6 +508,39 @@ function clientReferenceArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   };
   walk(appDir);
   return items;
+}
+
+// Immutable build-file ages belong to the artifact, not the deployment VFS clock.
+function prerenderCacheMetadata(model: NextBuildModel): ArtifactPlanItem {
+  const serverDir = path.join(model.distDir, "server");
+  const lastModified: Record<string, number> = {};
+  for (const directory of ["app", "route-cache"]) {
+    for (const file of walkFiles(path.join(serverDir, directory))) {
+      if (file.endsWith(".html") || file.endsWith(".body")) {
+        lastModified[path.relative(serverDir, file).split(path.sep).join("/")] = fs.statSync(file).mtimeMs;
+      }
+    }
+  }
+  // Next's Adapter API supplies the owning fallback path. The host must not
+  // reconstruct Next's hashed route-cache keys from a public URL. App Router
+  // pages seed HTML; prerendered App Route handlers seed a response body.
+  const fallbackHtml: Record<string, string> = {};
+  const fallbackBody: Record<string, string> = {};
+  for (const output of model.outputs.prerenders) {
+    const target = output.filePath?.endsWith(".html") ? fallbackHtml
+      : output.filePath?.endsWith(".body") ? fallbackBody : undefined;
+    if (!target || !output.filePath) continue;
+    const relative = path.relative(serverDir, output.filePath);
+    if (relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) continue;
+    target[output.pathname] = relative.split(path.sep).join("/");
+  }
+  return artifactItem(model, {
+    id: "prerender-cache-metadata", kind: "runtime-manifest",
+    packagePath: "runtime/.next/server/brrrd-prerender-cache.json",
+    mountPath: ".next/server/brrrd-prerender-cache.json", required: true,
+    generatedContent: JSON.stringify({version: 1, buildId: model.buildId, lastModified, fallbackHtml, fallbackBody}),
+    reason: "Original prerender generation times for Next cache freshness on immutable VFS",
+  });
 }
 
 function appPrerenderRuntimeArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
@@ -842,16 +889,17 @@ function serverChunkGraphArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
 }
 
 function cacheHandlerArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
-  return ["cache-handler", "cache-handler-legacy"].map((variant) => {
-    const sourceAbsPath = require.resolve(`@brrrd/adapter/${variant}`);
+  const sourceDir = path.dirname(require.resolve("@brrrd/adapter/cache-handler"));
+  return ["cache-handler", "cache-handler-legacy", "cache-tags"].map((variant) => {
+    const relative = `node_modules/.cache/@brrrd/adapter/${variant}.mjs`;
     return artifactItem(model, {
-      id: `compat:${variant}`,
+      id: `cache-support:${variant}`,
       kind: "compatibility",
-      sourceAbsPath,
-      packagePath: `runtime/brrrd-${variant}.mjs`,
-      mountPath: `brrrd-${variant}.mjs`,
+      sourceAbsPath: path.join(sourceDir, `${variant}.mjs`),
+      packagePath: `runtime/${relative}`,
+      mountPath: relative,
       required: true,
-      reason: "brrrd cache handler polyfill configured by modifyConfig",
+      reason: "closed adapter cache module graph; canonical runtime path shared by appBundle and Next config",
     });
   });
 }
@@ -968,7 +1016,7 @@ function nodeMiddlewareNextServerRuntimeArtifacts(
   model: NextBuildModel,
   middleware: BrrrdMiddleware | undefined,
 ): ArtifactPlanItem[] {
-  if (middleware?.moduleFormat !== "node") return [];
+  if (!middleware) return [];
 
   const projectRequire = createRequire(path.join(model.projectDir, "package.json"));
   let nextServerDir: string;
@@ -1146,29 +1194,6 @@ function nodeMiddlewareNextSupportDependencyArtifacts(
   return items;
 }
 
-function edgeFunctionArtifacts(
-  model: NextBuildModel,
-  edgeFunctions: Map<string, BrrrdEdgeFunction>,
-): ArtifactPlanItem[] {
-  const refs: string[] = [];
-  for (const edgeFn of edgeFunctions.values()) {
-    refs.push(
-      ...edgeFn.files,
-      ...edgeFn.wasm.map((file) => file.filePath),
-      ...edgeFn.assets.map((file) => file.filePath),
-    );
-  }
-  return uniqueStrings(refs).map((rel) => artifactItem(model, {
-    id: `edge-function:${rel}`,
-    kind: "edge-function",
-    sourceAbsPath: path.join(model.distDir, rel),
-    packagePath: packageJoin("runtime", rel),
-    mountPath: rel,
-    required: true,
-    reason: "Next Edge app/page/API compiled chunk or supporting asset",
-  }));
-}
-
 function appBundleArtifact(model: NextBuildModel, outDir: string): ArtifactPlanItem {
   return artifactItem(model, {
     id: "bundle:app",
@@ -1223,7 +1248,7 @@ function omitNextServerSourceMaps(
   };
 
   return items.filter((item) => {
-    // Keep public/browser maps and explicit middleware/edge file contracts.
+    // Keep public/browser maps and explicit middleware file contracts.
     if (item.kind !== "runtime-file" || !item.sourceAbsPath) return true;
     const sourceAbsPath = item.sourceAbsPath;
     if (!sourceMaps.has(sourceAbsPath)) {
@@ -1236,7 +1261,6 @@ function omitNextServerSourceMaps(
 export function createArtifactPlan(
   model: NextBuildModel,
   supplement: ManifestSupplement,
-  edgeFunctions: Map<string, BrrrdEdgeFunction>,
   outDir: string,
   options: { hasAppBundle: boolean; middleware?: BrrrdMiddleware },
 ): ArtifactPlan {
@@ -1262,7 +1286,16 @@ export function createArtifactPlan(
       ...pprSegmentPrefetchArtifacts(model, supplement),
       ...runtimeManifestArtifacts(model),
       ...clientReferenceArtifacts(model),
+      ...walkFiles(path.join(outDir, "runtime", ".next", "server", "app"))
+        .filter(file => file.endsWith(CLIENT_DATA_SUFFIX)).map(file => {
+          const relative = path.relative(outDir, file).split(path.sep).join("/");
+          return artifactItem(model, { id: `next-client-data:${relative}`, kind: "runtime-manifest",
+            packagePath: relative, mountPath: relative.slice("runtime/".length),
+            generatedContent: fs.readFileSync(file), required: true,
+            reason: "Next original build-time VM result for static client manifest; no runtime VM support" });
+        }),
       ...appPrerenderRuntimeArtifacts(model),
+      prerenderCacheMetadata(model),
       ...pagesPrerenderRuntimeArtifacts(model),
       ...routeRuntimeDependencyArtifacts(model),
       ...turbopackExternalAliasArtifacts(model),
@@ -1271,7 +1304,6 @@ export function createArtifactPlan(
       ...middlewareAdapterAssetArtifacts(model, options.middleware),
       ...middlewareArtifacts(model, options.middleware),
       ...nodeMiddlewareNextServerRuntimeArtifacts(model, options.middleware),
-      ...edgeFunctionArtifacts(model, edgeFunctions),
     ]), model.distDir),
   };
 }
@@ -1330,7 +1362,6 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
     prerenderCount: 0,
     runtimeCount: 0,
     middlewareCount: 0,
-    edgeFunctionCount: 0,
     compressedCount: 0,
   };
 
@@ -1370,9 +1401,6 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
       case "middleware":
         summary.middlewareCount++;
         break;
-      case "edge-function":
-        summary.edgeFunctionCount++;
-        break;
       case "app-bundle":
         break;
     }
@@ -1381,17 +1409,25 @@ export function executeArtifactPlan(plan: ArtifactPlan, outDir: string): Artifac
   return summary;
 }
 
+/** Runtime artifact records: only fields the brrrd runtime reads. */
 export function manifestArtifacts(plan: ArtifactPlan): BrrrdArtifact[] {
   return plan.items.map((item) => ({
     id: item.id,
     kind: item.kind,
-    ...(item.ownerRouteId ? { ownerRouteId: item.ownerRouteId } : {}),
-    ...(item.sourcePath ? { sourcePath: item.sourcePath } : {}),
     packagePath: item.packagePath,
     mountPath: item.mountPath,
     ...(item.contentType ? { contentType: item.contentType } : {}),
     ...(item.immutable !== undefined ? { immutable: item.immutable } : {}),
     required: item.required,
+  }));
+}
+
+/** Build-local provenance, keyed by artifact id; never part of the package. */
+export function artifactProvenance(plan: ArtifactPlan): BrrrdArtifactProvenance[] {
+  return plan.items.map((item) => ({
+    id: item.id,
+    ...(item.ownerRouteId ? { ownerRouteId: item.ownerRouteId } : {}),
+    ...(item.sourcePath ? { sourcePath: item.sourcePath } : {}),
     reason: item.reason,
   }));
 }

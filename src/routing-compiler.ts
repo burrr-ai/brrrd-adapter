@@ -304,7 +304,11 @@ export function compileRouting(
   const headers: BrrrdHeaderRule[] = [];
   const redirects: BrrrdRedirect[] = [];
   for (const route of model.routing.beforeMiddleware) {
-    const supplementRedirect = findRedirectSupplement(route, supplement?.redirects ?? []);
+    // A header rule can share a source/regex with a separate redirect rule.
+    // Only redirect-shaped Adapter API entries may consume redirect supplement data.
+    const supplementRedirect = route.destination || locationHeader(route)
+      ? findRedirectSupplement(route, supplement?.redirects ?? [])
+      : undefined;
     const h = headerRule(route, supplementRedirect);
     if (h) headers.push(h);
     const r = redirectRule(route, supplementRedirect);
@@ -572,7 +576,7 @@ function exactRoute(
       ?? staticRegexes.get(normalizeIndexUrlPath(output.urlPath))
       ?? exactPathPattern(output.urlPath, model.config),
     type,
-    ...runtimeTarget(output),
+    runtime: "nodejs",
     ...(pprResume ? { pprResume } : {}),
     ...(intercepted ? { intercepted: true } : {}),
   };
@@ -1097,7 +1101,7 @@ function dynamicRoute(
     id: sanitizeId(output.id),
     pattern,
     type,
-    ...runtimeTarget(output),
+    runtime: "nodejs",
     ...(paramsPathname ? { params: segmentParamNames(paramsPathname) } : {}),
     ...(paramsPathname ? { paramTypes: segmentParamTypes(paramsPathname) } : {}),
     ...(unprefixedI18nPage ? { localeHandling: "unprefixed" as const } : {}),
@@ -1194,18 +1198,6 @@ function dynamicPrerenderFallbackRoute(
     file: publicStorageFilePath(shell.publicPathname, allPublicPathnames),
     headers: [{ key: "content-type", value: "text/html; charset=utf-8" }],
     pagesFallbackShell: true,
-  };
-}
-
-function isEdgeOutput(output: NormalizedOutput): boolean {
-  return output.runtime === "edge" || output.runtime === "experimental-edge";
-}
-
-function runtimeTarget(output: NormalizedOutput): Pick<BrrrdRoute, "runtime" | "edgeFunction"> {
-  if (!isEdgeOutput(output)) return { runtime: "nodejs" };
-  return {
-    runtime: "edge",
-    edgeFunction: sanitizeId(output.id),
   };
 }
 

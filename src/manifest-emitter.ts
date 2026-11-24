@@ -5,8 +5,8 @@ import * as path from "node:path";
 import type { NextBuildModel } from "./model.js";
 import type {
   BrrrdArtifact,
+  BrrrdArtifactProvenance,
   BrrrdCompatibilityReport,
-  BrrrdEdgeFunction,
   BrrrdImagesConfig,
   BrrrdLocalImagePattern,
   BrrrdManifest,
@@ -117,12 +117,12 @@ export function writeManifest(
   compatibility: BrrrdCompatibilityReport,
   appBundle: string | undefined,
   middleware?: BrrrdMiddleware,
-  edgeFunctions?: Record<string, BrrrdEdgeFunction>,
   pprPages: string[] = [],
   preview?: BrrrdPreviewConfig | null,
 ): void {
   const manifest: BrrrdManifest = {
     schemaVersion: 6,
+    execution: { abi: "workerd-node-v1" },
     build: {
       buildId: model.buildId,
       deploymentId: deploymentId(),
@@ -143,12 +143,23 @@ export function writeManifest(
     compatibility,
     routing,
     middleware,
-    edgeFunctions,
     pprPages,
   };
 
-  fs.writeFileSync(
-    path.join(outDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-  );
+  // Compact: the runtime parses every byte and charges it to node memory.
+  fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(manifest));
+}
+
+/** Build-local provenance beside the package; `brrrd-fleet deploy` never uploads it. */
+export function artifactProvenancePath(outDir: string): string {
+  return path.join(path.dirname(outDir), "brrrd-diagnostics", "artifacts.json");
+}
+
+export function writeArtifactProvenance(
+  outDir: string,
+  provenance: BrrrdArtifactProvenance[],
+): void {
+  const file = artifactProvenancePath(outDir);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(provenance, null, 2));
 }

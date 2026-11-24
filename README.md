@@ -4,9 +4,35 @@ Next.js build adapter that packages a Next app for the **brrrd** runtime (the
 comwit.io deployment plane). On `next build` it emits a `dist/brrrd/` package
 (manifest + bundled handlers + static + runtime) that `brrrd-fleet deploy` ships.
 
-Requires **Next.js ≥ 16.2**.
+**0.2.x targets workerd only.** Deno maintenance stays on the 0.1.x line.
+Packages declare `execution.abi = workerd-node-v1` and require a matching native
+brrrd runtime. The current native profile is qualified with Next.js 16.4.6;
+the adapter API peer range starts at Next.js 16.2.
 
-CI installs **Next.js and @next/routing ^16.4.3**; the official deploy
+**Edge runtime is unsupported in 0.2.x.** Builds fail with all affected Next
+outputs listed before writing `dist/brrrd/`. For App Router pages/routes, remove
+`runtime = 'edge'` (including inherited layout config) or set it to `'nodejs'`.
+For Pages Router pages, remove the Edge/`experimental-edge` runtime declaration.
+Pages Router Edge APIs also need a `(req, res)` handler, or migration to an App
+Router route handler; removing the declaration alone is insufficient. Rename
+Edge `middleware.ts` to `proxy.ts` (and its `middleware` export to `proxy`), or set
+`config.runtime = 'nodejs'` in `middleware.ts`. Node routes can still use the
+`next/og` WASM compatibility renderer.
+
+Node Turbopack chunks and static package imports are linked into one esbuild
+graph. Chunk factories remain lazy and share dependency instances. The runtime
+still supplies the admitted filesystem roots for asset paths and file metadata.
+Node bundles enable both workerd and node export conditions. Each package's
+exports key order determines which matching branch is selected.
+
+Next import readiness is tracked only by the current work-unit's cache signal.
+The adapter does not retain Next's process-wide import signal or its timers.
+An import started outside that work unit, including a cached import Promise from
+another request or an earlier prerender, is not added to a later render's signal.
+Dynamic SSR/API code still awaits that Promise. Cache Components warming and PPR
+may produce fewer static results or fail static validation in this case.
+
+CI installs **Next.js and @next/routing ^16.4.6**; the official deploy
 harness resolves the latest matching Next.js tag at run time. Prerender bodies and public RSC
 URLs use the Adapter API metadata, including Next 16.4's owner-scoped
 `server/route-cache` storage.
@@ -39,14 +65,6 @@ not exposed by the Adapter API. Because brrrd is currently internally opened,
 manifest/runtime backward compatibility is not a goal; prefer the clean final
 contract over bridge layers.
 
-For Edge app/page/API routes, `ctx.outputs[].edgeRuntime` is the primary
-contract: it carries the canonical `_ENTRIES` key and entry module. Next's
-`middleware-manifest.json` remains a supplement for proxy/middleware
-matcher/env/wasm metadata and as a fallback for older/gap-shaped Edge function
-records. The adapter compiles these normalized Edge function records into
-`manifest.edgeFunctions`; it does not infer Edge runtime files from hard-coded
-`.next` filenames.
-
 Routing regexes come from the `sourceRegex` field on each `ctx.routing` phase
 entry (`beforeFiles[]`, `afterFiles[]`, `dynamicRoutes[]`, etc.) whenever Next
 provides one. Some Adapter API outputs currently omit a `dynamicRoutes[]` entry
@@ -67,8 +85,16 @@ The emitted brrrd manifest is coupled to the runtime schema. A schema-breaking
 adapter release must be tested with the matching brrrd runtime/fleet build before
 publish/deploy is considered complete. The minimum manifest contract is
 `schemaVersion`, `build`, `routes[]`, phase-aware `routing`,
-`artifacts[].packagePath`, optional `middleware`, optional `edgeFunctions`, and
+`artifacts[].packagePath`, optional Node `middleware`, and
 `compatibility`.
+
+## Releases
+
+Tags `vX.Y.Z` publish to npm under `latest`. Prerelease tags such as
+`v0.2.0-rc.0` publish under `next` for gradual adoption
+(`pnpm add @brrrd/adapter@next`); a prerelease is promoted by publishing the
+final `vX.Y.Z` tag, since the trusted-publishing release workflow cannot move
+dist-tags.
 
 ## Use
 
@@ -166,3 +192,28 @@ The GitHub workflow checks out the private `burrr-ai/brrrd` runtime repo through
 the `RUNTIME_REPO_DEPLOY_KEY` secret. Use a read-only deploy key on the runtime
 repo rather than a broad personal token. Restore a schedule only after a manual
 run reaches and completes the intended harness signal.
+
+
+## Native cache request lifetime
+
+The native bundle registers complete modern and legacy cache operations with
+`cloudflare:workers.waitUntil`, including producer serialization and RPC body
+consumption after the foreground response. Its live module exports and Next
+registry share one owned handler. Native reads never await another request's
+JavaScript producer promise: they read the backend. Build-time Node cache maps
+retain their existing in-memory/pending behavior.
+
+Native tag publication stores committed revision/epoch snapshots and causality
+fences only. Each operation snapshots its input batch and sequences that batch
+locally; it stores no generation-wide pending promises or speculative intent.
+Next's request-local pending revalidation tags provide immediate invalidation
+within that request. Other requests observe backend commits.
+
+An owner ending **before native submission** leaves no submitted write or
+invalidation. After submission, accepted backend work drains independently and
+may commit after that owner's CPU-limit response; subsequent requests must still
+make progress without awaiting the terminated owner's promise. This is not a
+rollback or exactly-once contract. A legacy SET HTTP 200 is not an unconditional
+durable-commit acknowledgement because the current backend trait can log and
+consume a write error; healthy commit/read observations and unknown outcomes
+remain distinct.

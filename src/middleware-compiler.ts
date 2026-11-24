@@ -1,7 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { ManifestSupplement } from "./manifest-supplement.js";
 import type { NextBuildModel, NormalizedOutput } from "./model.js";
 import type {
   BrrrdMiddleware,
@@ -75,11 +74,8 @@ function evaluatedFiles(
   entry: string,
 ): string[] {
   const chunks = assetChunkFiles(model, output).filter((file) => file !== entry);
-  if (output.runtime === "nodejs") {
-    const runtime = chunks.find((file) => path.posix.basename(file) === "webpack-runtime.js");
-    return uniqueStrings([...(runtime ? [runtime] : []), entry]);
-  }
-  return uniqueStrings([...chunks, entry]);
+  const runtime = chunks.find((file) => path.posix.basename(file) === "webpack-runtime.js");
+  return uniqueStrings([...(runtime ? [runtime] : []), entry]);
 }
 
 function matcherSpecs(output: NormalizedOutput): BrrrdMiddleware["matchers"] {
@@ -109,12 +105,6 @@ function stringEnv(output: NormalizedOutput): Record<string, string> {
       typeof entry[1] === "string"
     )),
   );
-}
-
-function middlewareEntryName(output: NormalizedOutput): string {
-  const entryKey = output.edgeRuntime?.entryKey;
-  if (entryKey?.startsWith("middleware_")) return entryKey.slice("middleware_".length);
-  return "middleware";
 }
 
 function hasConventionFile(projectDir: string, convention: "proxy" | "middleware"): boolean {
@@ -156,11 +146,11 @@ function middlewareFromAdapterOutput(
   const evaluated = new Set(files);
 
   return {
-    moduleFormat: output.runtime === "nodejs" ? "node" : "edge",
+    moduleFormat: "node",
     files,
     runtime: runtimeFile(files, entry),
     entry,
-    name: middlewareEntryName(output),
+    name: "middleware",
     page: sourcePageForMiddleware(model, output),
     matchers: matcherSpecs(output),
     wasm: middlewareFileRefs(model.distDir, output.wasmAssets),
@@ -169,31 +159,11 @@ function middlewareFromAdapterOutput(
   };
 }
 
-function middlewareFromSupplement(
-  supplement: ManifestSupplement,
-): BrrrdMiddleware | undefined {
-  const middleware = supplement.middleware;
-  if (!middleware) return undefined;
-  return {
-    moduleFormat: "edge",
-    files: middleware.files,
-    runtime: middleware.runtimeRel,
-    entry: middleware.entryRel,
-    name: middleware.name,
-    page: middleware.page,
-    matchers: middleware.matchers,
-    wasm: middleware.wasm,
-    assets: middleware.assets,
-    env: middleware.env,
-  };
-}
-
 export function compileMiddleware(
   model: NextBuildModel,
-  supplement: ManifestSupplement,
 ): BrrrdMiddleware | undefined {
   if (model.outputs.middleware) {
     return middlewareFromAdapterOutput(model, model.outputs.middleware);
   }
-  return middlewareFromSupplement(supplement);
+  return undefined;
 }
