@@ -12,6 +12,7 @@ import {
   runtimeDependencyExternals,
   runtimeRequireBanner,
 } from "./runtime-dependency-policy.js";
+import { hostPathToPosix } from "./posix-path.js";
 import type { BuildContext } from "./types.js";
 
 const require = createRequire(import.meta.url);
@@ -82,7 +83,9 @@ export async function bundleAppHandler(
   fs.mkdirSync(path.dirname(outfile), { recursive: true });
 
   const moduleEntries = outputs
-    .map((o) => `  '${o.id}': () => Promise.resolve().then(() => require('${o.filePath}'))`)
+    // JSON.stringify keeps Windows `\` from being read as JS string escapes;
+    // hostPathToPosix keeps the specifier `/`-separated for every host.
+    .map((o) => `  ${JSON.stringify(o.id)}: () => Promise.resolve().then(() => require(${JSON.stringify(hostPathToPosix(o.filePath))}))`)
     .join(",\n");
   const nextCacheHandlersModule = resolveModulePath("next/dist/server/use-cache/handlers", ctx);
   const nextTagsManifestModule = resolveModulePath("next/dist/server/lib/incremental-cache/tags-manifest.external", ctx);

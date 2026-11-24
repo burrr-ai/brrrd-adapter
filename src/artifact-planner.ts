@@ -33,6 +33,7 @@ import {
   pagesDynamicFallbackShell,
 } from "./pages-dynamic-prerender.js";
 import { basePath } from "./next-config.js";
+import { normalizeRequiredServerFiles } from "./posix-path.js";
 
 const require = createRequire(import.meta.url);
 
@@ -420,7 +421,7 @@ function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   for (const name of rootManifests) {
     const sourceAbsPath = path.join(model.distDir, name);
     if (!fs.existsSync(sourceAbsPath)) continue;
-    items.push(artifactItem(model, {
+    const item = artifactItem(model, {
       id: `runtime-root:${name}`,
       kind: "runtime-manifest",
       sourceAbsPath,
@@ -428,7 +429,17 @@ function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
       mountPath: packageJoin(".next", name),
       required: true,
       reason: "Next server code reads this root build manifest at runtime",
-    }));
+    });
+    if (name === "required-server-files.json") {
+      // A Windows build records host-separator relative paths here (notably
+      // config.cacheHandler); the Linux runtime needs them with `/`.
+      const { manifest, changed } = normalizeRequiredServerFiles(readJsonIfExists(sourceAbsPath));
+      if (changed) {
+        delete item.sourceAbsPath;
+        item.generatedContent = JSON.stringify(manifest);
+      }
+    }
+    items.push(item);
   }
 
   const serverManifests = [
