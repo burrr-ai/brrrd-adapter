@@ -7,7 +7,7 @@ import test from "node:test";
 import { onBuildComplete } from "../dist/build.js";
 import {
   hostPathToPosix,
-  normalizeRequiredServerFiles,
+  normalizeWindowsRequiredServerFiles,
   relativePosix,
   toPosixPath,
 } from "../dist/posix-path.js";
@@ -25,6 +25,7 @@ const WIN_MODERN_HANDLER = path.win32.relative(
   WIN_DIST,
   path.win32.join(WIN_SUPPORT, "cache-handler.mjs"),
 );
+const ESCAPED_IGNORE = "cache/\\[literal\\].js";
 
 function windowsRequiredServerFiles() {
   return {
@@ -43,7 +44,7 @@ function windowsRequiredServerFiles() {
       path.win32.join(".next", "routes-manifest.json"),
       path.win32.join(".next", "server", "middleware-manifest.json"),
     ],
-    ignore: [],
+    ignore: [ESCAPED_IGNORE],
   };
 }
 
@@ -58,6 +59,13 @@ test("toPosixPath and relativePosix drop Windows separators", () => {
   assert.equal(rel.includes("\\"), false);
 });
 
+test("relativePosix preserves literal backslashes in POSIX filenames", () => {
+  assert.equal(
+    relativePosix("/srv/app/.next", "/srv/app/local\\cache.mjs", path.posix),
+    "../local\\cache.mjs",
+  );
+});
+
 test("hostPathToPosix rewrites only when the host separator is a backslash", () => {
   const winTarget = path.win32.join(WIN_SUPPORT, "cache-handler-legacy.mjs");
   assert.equal(
@@ -68,15 +76,20 @@ test("hostPathToPosix rewrites only when the host separator is a backslash", () 
   assert.equal(hostPathToPosix("/srv/app/odd\\name.mjs", path.posix), "/srv/app/odd\\name.mjs");
 });
 
-test("normalizeRequiredServerFiles rewrites Windows cache handler and file paths", () => {
+test("normalizeWindowsRequiredServerFiles rewrites relative paths and preserves glob escapes", () => {
   const input = windowsRequiredServerFiles();
-  const { manifest, changed } = normalizeRequiredServerFiles(input);
+  const crossDriveHandler = "D:\\cache\\handler.mjs";
+  const uncHandler = "\\\\server\\share\\handler.mjs";
+  input.config.cacheHandlers.crossDrive = crossDriveHandler;
+  input.config.cacheHandlers.unc = uncHandler;
+  const { manifest, changed } = normalizeWindowsRequiredServerFiles(input);
 
   assert.equal(changed, true);
   assert.equal(manifest.config.cacheHandler, "../node_modules/.cache/@brrrd/adapter/cache-handler-legacy.mjs");
   assert.equal(manifest.config.cacheHandlers.default, "../node_modules/.cache/@brrrd/adapter/cache-handler.mjs");
   assert.equal(manifest.relativeAppDir, "apps/web");
   assert.deepEqual(manifest.files, [".next/routes-manifest.json", ".next/server/middleware-manifest.json"]);
+  assert.deepEqual(manifest.ignore, [ESCAPED_IGNORE]);
   for (const value of [
     manifest.config.cacheHandler,
     manifest.config.cacheHandlers.default,
@@ -88,11 +101,13 @@ test("normalizeRequiredServerFiles rewrites Windows cache handler and file paths
   // Host-absolute fields describe the build machine and are left as-is.
   assert.equal(manifest.appDir, WIN_PROJECT);
   assert.equal(manifest.config.outputFileTracingRoot, WIN_PROJECT);
+  assert.equal(manifest.config.cacheHandlers.crossDrive, crossDriveHandler);
+  assert.equal(manifest.config.cacheHandlers.unc, uncHandler);
   // Input is not mutated.
   assert.equal(input.config.cacheHandler, WIN_LEGACY_HANDLER);
 });
 
-test("normalizeRequiredServerFiles leaves POSIX manifests untouched", () => {
+test("normalizeWindowsRequiredServerFiles leaves already normalized paths untouched", () => {
   const input = {
     version: 1,
     config: {
@@ -102,22 +117,19 @@ test("normalizeRequiredServerFiles leaves POSIX manifests untouched", () => {
     },
     files: [".next/routes-manifest.json"],
   };
-  const { manifest, changed } = normalizeRequiredServerFiles(input);
+  const { manifest, changed } = normalizeWindowsRequiredServerFiles(input);
   assert.equal(changed, false);
   assert.equal(manifest, input);
 });
 
-test("onBuildComplete packages a Windows-built required-server-files.json with POSIX paths", async () => {
+async function packageRequiredServerFiles(t, source, options) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "brrrd-adapter-windows-paths-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const distDir = path.join(root, ".next");
   const handler = path.join(root, "handler.js");
   fs.writeFileSync(handler, "export function handler(_req, res) { res.end('ok'); }\n", "utf8");
   fs.mkdirSync(distDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(distDir, "required-server-files.json"),
-    JSON.stringify(windowsRequiredServerFiles()),
-    "utf8",
-  );
+  fs.writeFileSync(path.join(distDir, "required-server-files.json"), source);
 
   await onBuildComplete({
     routing: {
@@ -144,9 +156,15 @@ test("onBuildComplete packages a Windows-built required-server-files.json with P
     config: {},
     nextVersion: "16.2.0",
     buildId: "test-build",
-  });
+  }, options);
 
-  const outDir = path.join(root, "dist", "brrrd");
+  return path.join(root, "dist", "brrrd");
+}
+
+test("onBuildComplete packages a Windows-built required-server-files.json with POSIX paths", async (t) => {
+  const outDir = await packageRequiredServerFiles(t, JSON.stringify(windowsRequiredServerFiles()), {
+    windowsBuildHost: true,
+  });
   const packaged = fs.readFileSync(
     path.join(outDir, "runtime", ".next", "required-server-files.json"),
     "utf8",
@@ -155,6 +173,7 @@ test("onBuildComplete packages a Windows-built required-server-files.json with P
   assert.equal(parsed.config.cacheHandler, "../node_modules/.cache/@brrrd/adapter/cache-handler-legacy.mjs");
   assert.equal(parsed.config.cacheHandlers.default, "../node_modules/.cache/@brrrd/adapter/cache-handler.mjs");
   assert.equal(parsed.config.deploymentId, "dpl_test");
+  assert.deepEqual(parsed.ignore, [ESCAPED_IGNORE]);
 
   const manifest = JSON.parse(fs.readFileSync(path.join(outDir, "manifest.json"), "utf8"));
   const artifact = manifest.artifacts.find((item) => item.id === "runtime-root:required-server-files.json");
@@ -165,4 +184,18 @@ test("onBuildComplete packages a Windows-built required-server-files.json with P
     assert.equal(item.packagePath.includes("\\"), false, item.packagePath);
     assert.equal(item.mountPath.includes("\\"), false, item.mountPath);
   }
+});
+
+test("onBuildComplete copies a POSIX-built required-server-files.json byte-for-byte", async (t) => {
+  const manifest = {
+    version: 1,
+    config: { cacheHandler: "../local\\cache.mjs" },
+    relativeAppDir: "apps/west\\coast",
+    ignore: [ESCAPED_IGNORE],
+  };
+  const source = Buffer.from(JSON.stringify(manifest, null, 2) + "\r\n");
+  const options = path.sep === "\\" ? { windowsBuildHost: false } : undefined;
+  const outDir = await packageRequiredServerFiles(t, source, options);
+  const packaged = fs.readFileSync(path.join(outDir, "runtime", ".next", "required-server-files.json"));
+  assert.deepEqual(packaged, source);
 });

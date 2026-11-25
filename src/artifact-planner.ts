@@ -33,7 +33,7 @@ import {
   pagesDynamicFallbackShell,
 } from "./pages-dynamic-prerender.js";
 import { basePath } from "./next-config.js";
-import { normalizeRequiredServerFiles } from "./posix-path.js";
+import { normalizeWindowsRequiredServerFiles } from "./posix-path.js";
 
 const require = createRequire(import.meta.url);
 
@@ -408,7 +408,7 @@ function pagesStaticDataArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
   return items;
 }
 
-function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
+function runtimeManifestArtifacts(model: NextBuildModel, windowsBuildHost: boolean): ArtifactPlanItem[] {
   const items: ArtifactPlanItem[] = [];
   const rootManifests = [
     "routes-manifest.json",
@@ -430,10 +430,10 @@ function runtimeManifestArtifacts(model: NextBuildModel): ArtifactPlanItem[] {
       required: true,
       reason: "Next server code reads this root build manifest at runtime",
     });
-    if (name === "required-server-files.json") {
+    if (windowsBuildHost && name === "required-server-files.json") {
       // A Windows build records host-separator relative paths here (notably
       // config.cacheHandler); the Linux runtime needs them with `/`.
-      const { manifest, changed } = normalizeRequiredServerFiles(readJsonIfExists(sourceAbsPath));
+      const { manifest, changed } = normalizeWindowsRequiredServerFiles(readJsonIfExists(sourceAbsPath));
       if (changed) {
         delete item.sourceAbsPath;
         item.generatedContent = JSON.stringify(manifest);
@@ -1249,7 +1249,7 @@ export function createArtifactPlan(
   supplement: ManifestSupplement,
   edgeFunctions: Map<string, BrrrdEdgeFunction>,
   outDir: string,
-  options: { hasAppBundle: boolean; middleware?: BrrrdMiddleware },
+  options: { hasAppBundle: boolean; middleware?: BrrrdMiddleware; windowsBuildHost?: boolean },
 ): ArtifactPlan {
   const allPublicPathnames = publicArtifactPathnames(model);
   const staticMeta = staticResponseMetaByPathname(supplement.staticResponseMeta);
@@ -1271,7 +1271,7 @@ export function createArtifactPlan(
       ...prerenderArtifacts(model, supplement.dynamicPrerenderRoutes, staticMeta),
       ...appPrerenderDataArtifacts(model, supplement),
       ...pprSegmentPrefetchArtifacts(model, supplement),
-      ...runtimeManifestArtifacts(model),
+      ...runtimeManifestArtifacts(model, options.windowsBuildHost ?? path.sep === "\\"),
       ...clientReferenceArtifacts(model),
       ...appPrerenderRuntimeArtifacts(model),
       ...pagesPrerenderRuntimeArtifacts(model),

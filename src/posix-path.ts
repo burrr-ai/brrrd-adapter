@@ -26,9 +26,9 @@ export function hostPathToPosix(
 export function relativePosix(
   from: string,
   to: string,
-  pathImpl: Pick<typeof path, "relative"> = path,
+  pathImpl: Pick<typeof path, "relative" | "sep"> = path,
 ): string {
-  return toPosixPath(pathImpl.relative(from, to));
+  return hostPathToPosix(pathImpl.relative(from, to), pathImpl);
 }
 
 function isWindowsAbsolute(value: string): boolean {
@@ -55,8 +55,11 @@ function normalizeKey(target: Record<string, unknown>, key: string): void {
  *
  * Host-absolute fields (`appDir`, `outputFileTracingRoot`, ...) are left alone:
  * they describe the build machine and are not resolved inside the package.
+ * A custom cache handler on another drive remains absolute after
+ * `path.relative` on Windows and cannot be resolved by the Linux runtime.
+ * Preserve `ignore` patterns because their backslashes can escape glob syntax.
  */
-export function normalizeRequiredServerFiles(manifest: any): { manifest: any; changed: boolean } {
+export function normalizeWindowsRequiredServerFiles(manifest: any): { manifest: any; changed: boolean } {
   if (!manifest || typeof manifest !== "object") return { manifest, changed: false };
   const before = JSON.stringify(manifest);
   const next = JSON.parse(before);
@@ -70,9 +73,7 @@ export function normalizeRequiredServerFiles(manifest: any): { manifest: any; ch
     }
   }
   normalizeKey(next, "relativeAppDir");
-  for (const key of ["files", "ignore"]) {
-    if (Array.isArray(next[key])) next[key] = next[key].map(normalizeRelativeField);
-  }
+  if (Array.isArray(next.files)) next.files = next.files.map(normalizeRelativeField);
 
   const changed = JSON.stringify(next) !== before;
   return { manifest: changed ? next : manifest, changed };
