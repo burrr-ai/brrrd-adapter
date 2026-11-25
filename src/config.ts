@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { NextConfigComplete } from "next/dist/server/config-shared.js";
+import { hostPathToPosix } from "./posix-path.js";
 
 const require = createRequire(import.meta.url);
 const SUPPORT_DIR = path.join("node_modules", ".cache", "@brrrd", "adapter");
@@ -90,7 +91,11 @@ function materializeSupportFile(projectDir: string, variant: string): string {
     fs.writeFileSync(target, sourceBytes);
   }
 
-  return target;
+  // Hand Next a `/`-separated path. Next still re-derives the
+  // required-server-files.json entry with the host's path.relative, so the
+  // artifact planner normalizes that manifest too; this keeps the value we
+  // inject from adding Windows separators anywhere else in the build output.
+  return hostPathToPosix(target);
 }
 
 function resolveProjectDir(ctx: ModifyConfigContext): string {

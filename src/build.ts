@@ -62,7 +62,10 @@ function writeFallbackAppBundle(outDir: string): void {
   );
 }
 
-export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
+export async function onBuildComplete(
+  ctx: AdapterBuildContext,
+  options: { windowsBuildHost?: boolean } = {},
+): Promise<void> {
   const outDir = path.join(ctx.projectDir, "dist", "brrrd");
 
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -117,6 +120,7 @@ export async function onBuildComplete(ctx: AdapterBuildContext): Promise<void> {
   const artifactPlan = createArtifactPlan(model, supplement, compiledEdgeFunctions, outDir, {
     hasAppBundle: nodeOutputs.length > 0 || hasEdgeFunctions,
     middleware,
+    windowsBuildHost: options.windowsBuildHost,
   });
   const copySummary = executeArtifactPlan(artifactPlan, outDir);
   console.log(
